@@ -81,6 +81,10 @@
 - لا يطلب صلاحية الإنترنت لتشغيل المحتوى.
 - تحفظ تفضيلات القراءة والمسبحة والتقدم محليًا على الجهاز.
 
+البيان الكامل:
+
+[سياسة الخصوصية](PRIVACY_POLICY.md)
+
 ## المحتوى والتراخيص
 
 الكود الأصلي لهذا المشروع مرخص بموجب [MIT](LICENSE).
@@ -139,6 +143,10 @@ Run connected UI tests with:
 ### License and attribution
 
 The project source code is released under the [MIT License](LICENSE). See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for the bundled Hisn al-Muslim data and font licenses.
+
+### Privacy
+
+Read the app-specific [Privacy Policy](PRIVACY_POLICY.md).
 
 ### Contributing
 
