@@ -13,12 +13,19 @@ import com.sakinah.tasbih.data.HisnCatalog
 import com.sakinah.tasbih.data.HisnContentRepository
 import com.sakinah.tasbih.data.ReadingProgress
 import com.sakinah.tasbih.data.TasbihPhrase
+import com.sakinah.tasbih.data.TasbihPhraseAnalytics
 import com.sakinah.tasbih.data.ThemeMode
+import java.time.Duration
+import java.time.ZonedDateTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -43,6 +50,7 @@ data class SakinahUiState(
     val favoriteEntryIds: Set<String> = emptySet(),
     val readingProgress: Map<String, ReadingProgress> = emptyMap(),
     val activityAnalytics: ActivityAnalytics = ActivityAnalytics(),
+    val selectedTasbihPhraseAnalytics: TasbihPhraseAnalytics = TasbihPhraseAnalytics(),
 ) {
     val tasbihProgress: Float
         get() = if (tasbihTarget <= 0) 0f else {
@@ -62,11 +70,19 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     private val contentRepository = HisnContentRepository(application)
     private val contentState = MutableStateFlow<ContentState>(ContentState.Loading)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val preferencesWithPhraseAnalytics = preferencesRepository.preferences.flatMapLatest { preferences ->
+        activityRepository.observeTasbihPhraseAnalytics(preferences.selectedPhraseId).map { phraseAnalytics ->
+            preferences to phraseAnalytics
+        }
+    }
+
     val uiState: StateFlow<SakinahUiState> = combine(
-        preferencesRepository.preferences,
-    contentState,
-    activityRepository.analytics,
-) { preferences, content, analytics ->
+        preferencesWithPhraseAnalytics,
+        contentState,
+        activityRepository.analytics,
+    ) { preferencesAndPhraseAnalytics, content, analytics ->
+        val (preferences, phraseAnalytics) = preferencesAndPhraseAnalytics
         val phrases = (
             DhikrCatalog.builtInTasbihPhrases
                 .filterNot { it.id in preferences.hiddenBuiltInPhraseIds } +
@@ -95,6 +111,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
             favoriteEntryIds = preferences.favoriteEntryIds,
             readingProgress = preferences.readingProgress,
             activityAnalytics = analytics,
+            selectedTasbihPhraseAnalytics = phraseAnalytics,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -104,6 +121,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         loadContent()
+        watchForDailyRollover()
     }
 
     fun retryContentLoad() {
@@ -176,12 +194,19 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
 
         val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
         val entry = collection.entries[safeIndex]
-        if (progress.repetitionCount >= entry.repetitions) return@launch
+        if (progress.isEntryCompleted(safeIndex, collection)) return@launch
+        val nextCount = (progress.repetitionCountFor(safeIndex) + 1).coerceAtMost(entry.repetitions)
+        val completedEntryIndices = if (nextCount >= entry.repetitions) {
+            progress.completedEntryIndices + safeIndex
+        } else {
+            progress.completedEntryIndices
+        }
         preferencesRepository.saveReadingProgress(
             collectionId = collectionId,
             progress = progress.copy(
                 entryIndex = safeIndex,
-                repetitionCount = (progress.repetitionCount + 1).coerceAtMost(entry.repetitions),
+                repetitionCounts = progress.repetitionCounts + (safeIndex to nextCount),
+                completedEntryIndices = completedEntryIndices,
             ),
         )
         activityRepository.recordReader(entry, collection.title)
@@ -194,21 +219,35 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
         if (progress.completed) return@launch
 
         val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
-        val entry = collection.entries[safeIndex]
-        if (progress.repetitionCount < entry.repetitions) return@launch
+        if (!progress.isEntryCompleted(safeIndex, collection)) return@launch
 
-        val nextProgress = if (safeIndex == collection.entries.lastIndex) {
-            progress.copy(completed = true)
+        val completedEntryIndices = progress.completedEntryIndices.toMutableSet()
+        collection.entries.indices.filterTo(completedEntryIndices) { index ->
+            progress.isEntryCompleted(index, collection)
+        }
+        completedEntryIndices += safeIndex
+        val allEntriesCompleted = collection.entries.indices.all { it in completedEntryIndices }
+
+        val nextProgress = if (allEntriesCompleted) {
+            progress.copy(
+                completedEntryIndices = completedEntryIndices.toSet(),
+                completed = true,
+            )
         } else {
-            ReadingProgress(entryIndex = safeIndex + 1)
+            val nextIncompleteIndex = (1..collection.entries.size)
+                .map { offset -> (safeIndex + offset) % collection.entries.size }
+                .first { index -> index !in completedEntryIndices }
+            progress.copy(
+                entryIndex = nextIncompleteIndex,
+                completedEntryIndices = completedEntryIndices.toSet(),
+            )
         }
         preferencesRepository.saveReadingProgress(collectionId, nextProgress)
         if (nextProgress.completed) activityRepository.recordCompletion(collection)
     }
 
     /**
-     * Moves between dhikr entries without requiring the current repetition target first.
-     * Manual navigation starts the destination entry from zero and never marks the session complete.
+     * Moves between dhikr entries without changing counts or completion state.
      */
     fun navigateDhikr(collectionId: String, direction: Int) = viewModelScope.launch {
         val collection = uiState.value.catalog.collection(collectionId) ?: return@launch
@@ -223,7 +262,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
 
         preferencesRepository.saveReadingProgress(
             collectionId = collectionId,
-            progress = ReadingProgress(entryIndex = targetIndex),
+            progress = progress.copy(entryIndex = targetIndex),
         )
     }
 
@@ -285,9 +324,24 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun watchForDailyRollover() {
+        viewModelScope.launch {
+            while (true) {
+                val delayUntilNextDay = millisUntilNextDailyRollover()
+                preferencesRepository.rollOverDailyStateIfNeeded()
+                delay(delayUntilNextDay + 1_000L)
+            }
+        }
+    }
+
     private sealed interface ContentState {
         data object Loading : ContentState
         data class Ready(val catalog: HisnCatalog) : ContentState
         data object Failed : ContentState
     }
+}
+
+internal fun millisUntilNextDailyRollover(now: ZonedDateTime = ZonedDateTime.now()): Long {
+    val nextDayStart = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
+    return Duration.between(now, nextDayStart).toMillis().coerceAtLeast(1_000L)
 }

@@ -1,6 +1,7 @@
 package com.sakinah.tasbih.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -12,6 +13,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.time.LocalDate
 import java.util.Base64
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -50,19 +52,19 @@ class AppPreferencesRepository(context: Context) {
         .map { stored -> stored.toAppPreferences() }
 
     suspend fun incrementCounter() {
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             preferences[Keys.counter] = (preferences[Keys.counter] ?: 0) + 1
         }
     }
 
     suspend fun decrementCounter() {
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             preferences[Keys.counter] = ((preferences[Keys.counter] ?: 0) - 1).coerceAtLeast(0)
         }
     }
 
     suspend fun resetCounter() {
-        dataStore.edit { preferences -> preferences[Keys.counter] = 0 }
+        editDailyState { preferences -> preferences[Keys.counter] = 0 }
     }
 
     suspend fun setTarget(target: Int) {
@@ -72,7 +74,7 @@ class AppPreferencesRepository(context: Context) {
     }
 
     suspend fun selectPhrase(phrase: TasbihPhrase) {
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             if (preferences[Keys.selectedPhraseId] != phrase.id) {
                 preferences[Keys.selectedPhraseId] = phrase.id
                 preferences[Keys.target] = phrase.defaultGoal.coerceIn(NoTarget, MaximumTarget)
@@ -86,7 +88,7 @@ class AppPreferencesRepository(context: Context) {
         require(cleanText.isNotEmpty())
         var resolvedId = ""
 
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             val phrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
             val existing = phrases.firstOrNull {
                 normalizeArabicForSearch(it.text) == normalizeArabicForSearch(cleanText)
@@ -123,7 +125,7 @@ class AppPreferencesRepository(context: Context) {
             return
         }
 
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             val phrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
             val updated = TasbihPhrase(
                 id = phrase.id,
@@ -145,15 +147,15 @@ class AppPreferencesRepository(context: Context) {
     }
 
     suspend fun deleteCustomPhrase(id: String) {
-        dataStore.edit { preferences ->
+        editDailyState dailyEdit@ { preferences ->
             val phrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
             val remaining = phrases
                 .filterNot { it.id == id }
-            if (remaining.size == phrases.size) return@edit
+            if (remaining.size == phrases.size) return@dailyEdit
 
             val hiddenBuiltInIds = preferences[Keys.hiddenBuiltInPhraseIds].orEmpty()
             val availablePhrases = visibleBuiltInTasbihPhrases(hiddenBuiltInIds) + remaining
-            if (availablePhrases.isEmpty()) return@edit
+            if (availablePhrases.isEmpty()) return@dailyEdit
 
             preferences[Keys.customPhrases] = remaining
                 .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
@@ -168,16 +170,16 @@ class AppPreferencesRepository(context: Context) {
     }
 
     suspend fun hideBuiltInPhrase(id: String) {
-        dataStore.edit { preferences ->
-            if (DhikrCatalog.builtInTasbihPhrases.none { it.id == id }) return@edit
+        editDailyState dailyEdit@ { preferences ->
+            if (DhikrCatalog.builtInTasbihPhrases.none { it.id == id }) return@dailyEdit
 
             val hiddenBuiltInIds = preferences[Keys.hiddenBuiltInPhraseIds].orEmpty()
-            if (id in hiddenBuiltInIds) return@edit
+            if (id in hiddenBuiltInIds) return@dailyEdit
 
             val customPhrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
             val updatedHiddenIds = hiddenBuiltInIds + id
             val availablePhrases = visibleBuiltInTasbihPhrases(updatedHiddenIds) + customPhrases
-            if (availablePhrases.isEmpty()) return@edit
+            if (availablePhrases.isEmpty()) return@dailyEdit
 
             preferences[Keys.hiddenBuiltInPhraseIds] = updatedHiddenIds
             if (preferences[Keys.selectedPhraseId] == id) {
@@ -190,13 +192,25 @@ class AppPreferencesRepository(context: Context) {
     }
 
     suspend fun saveReadingProgress(collectionId: String, progress: ReadingProgress) {
-        dataStore.edit { preferences ->
+        editDailyState { preferences ->
             val progressMap = decodeReadingProgress(preferences[Keys.readingProgress].orEmpty())
                 .toMutableMap()
             progressMap[collectionId] = progress
-            preferences[Keys.readingProgress] = progressMap
-                .mapTo(mutableSetOf()) { (id, value) -> value.encodeForPreferences(id) }
+            preferences[Keys.readingProgress] = encodeReadingProgress(progressMap)
         }
+    }
+
+    /**
+     * Starts a fresh daily session while retaining progress for non-daily library collections.
+     * The saved activity database is intentionally untouched because it is historical data.
+     */
+    suspend fun rollOverDailyStateIfNeeded(): Boolean {
+        val todayKey = currentDayKey()
+        var didRollOver = false
+        dataStore.edit { preferences ->
+            didRollOver = rollOverDailyState(preferences, todayKey)
+        }
+        return didRollOver
     }
 
     suspend fun toggleFavorite(entryId: String) {
@@ -254,28 +268,60 @@ class AppPreferencesRepository(context: Context) {
         dataStore.edit { preferences -> preferences[Keys.autoAdvanceDhikrEnabled] = enabled }
     }
 
-    private fun Preferences.toAppPreferences() = AppPreferences(
-        tasbihCount = (this[Keys.counter] ?: 0).coerceAtLeast(0),
-        tasbihTarget = (this[Keys.target] ?: DefaultTarget).coerceIn(NoTarget, MaximumTarget),
-        selectedPhraseId = this[Keys.selectedPhraseId] ?: DefaultPhraseId,
-        customPhrases = decodeCustomPhrases(this[Keys.customPhrases].orEmpty()),
-        hiddenBuiltInPhraseIds = this[Keys.hiddenBuiltInPhraseIds].orEmpty(),
-        dynamicColorEnabled = this[Keys.dynamicColor] ?: false,
-        themeMode = ThemeMode.fromStorage(this[Keys.themeMode]),
-        arabicFontStyle = ArabicFontStyle.fromStorage(this[Keys.arabicFontStyle]),
-        hapticsEnabled = this[Keys.haptics] ?: true,
-        showDiacritics = this[Keys.showDiacritics] ?: true,
-        textScale = (this[Keys.textScale] ?: 1f).coerceIn(MinimumTextScale, MaximumTextScale),
-        tasbihTextScale = (this[Keys.tasbihTextScale] ?: 1f).coerceIn(
-            MinimumTasbihTextScale,
-            MaximumTasbihTextScale,
-        ),
-        showReferenceByDefault = this[Keys.showReferenceByDefault] ?: false,
-        dhikrCompletionSoundEnabled = this[Keys.dhikrCompletionSoundEnabled] ?: true,
-        autoAdvanceDhikrEnabled = this[Keys.autoAdvanceDhikrEnabled] ?: true,
-        favoriteEntryIds = this[Keys.favorites].orEmpty(),
-        readingProgress = decodeReadingProgress(this[Keys.readingProgress].orEmpty()),
-    )
+    private fun Preferences.toAppPreferences(): AppPreferences {
+        val dailyState = dailyStateForDate(
+            storedDayKey = this[Keys.dailyStateDay],
+            currentDayKey = currentDayKey(),
+            tasbihCount = this[Keys.counter] ?: 0,
+            readingProgress = decodeReadingProgress(this[Keys.readingProgress].orEmpty()),
+        )
+        return AppPreferences(
+            tasbihCount = dailyState.tasbihCount,
+            tasbihTarget = (this[Keys.target] ?: DefaultTarget).coerceIn(NoTarget, MaximumTarget),
+            selectedPhraseId = this[Keys.selectedPhraseId] ?: DefaultPhraseId,
+            customPhrases = decodeCustomPhrases(this[Keys.customPhrases].orEmpty()),
+            hiddenBuiltInPhraseIds = this[Keys.hiddenBuiltInPhraseIds].orEmpty(),
+            dynamicColorEnabled = this[Keys.dynamicColor] ?: false,
+            themeMode = ThemeMode.fromStorage(this[Keys.themeMode]),
+            arabicFontStyle = ArabicFontStyle.fromStorage(this[Keys.arabicFontStyle]),
+            hapticsEnabled = this[Keys.haptics] ?: true,
+            showDiacritics = this[Keys.showDiacritics] ?: true,
+            textScale = (this[Keys.textScale] ?: 1f).coerceIn(MinimumTextScale, MaximumTextScale),
+            tasbihTextScale = (this[Keys.tasbihTextScale] ?: 1f).coerceIn(
+                MinimumTasbihTextScale,
+                MaximumTasbihTextScale,
+            ),
+            showReferenceByDefault = this[Keys.showReferenceByDefault] ?: false,
+            dhikrCompletionSoundEnabled = this[Keys.dhikrCompletionSoundEnabled] ?: true,
+            autoAdvanceDhikrEnabled = this[Keys.autoAdvanceDhikrEnabled] ?: true,
+            favoriteEntryIds = this[Keys.favorites].orEmpty(),
+            readingProgress = dailyState.readingProgress,
+        )
+    }
+
+    private suspend fun editDailyState(transform: (MutablePreferences) -> Unit) {
+        val todayKey = currentDayKey()
+        dataStore.edit { preferences ->
+            rollOverDailyState(preferences, todayKey)
+            transform(preferences)
+        }
+    }
+
+    private fun rollOverDailyState(preferences: MutablePreferences, todayKey: String): Boolean {
+        val storedDayKey = preferences[Keys.dailyStateDay]
+        if (storedDayKey == todayKey) return false
+
+        val dailyState = dailyStateForDate(
+            storedDayKey = storedDayKey,
+            currentDayKey = todayKey,
+            tasbihCount = preferences[Keys.counter] ?: 0,
+            readingProgress = decodeReadingProgress(preferences[Keys.readingProgress].orEmpty()),
+        )
+        preferences[Keys.counter] = dailyState.tasbihCount
+        preferences[Keys.readingProgress] = encodeReadingProgress(dailyState.readingProgress)
+        preferences[Keys.dailyStateDay] = todayKey
+        return true
+    }
 
     private object Keys {
         val counter = intPreferencesKey("tasbih_counter")
@@ -295,6 +341,7 @@ class AppPreferencesRepository(context: Context) {
         val autoAdvanceDhikrEnabled = booleanPreferencesKey("reader_auto_advance_enabled")
         val favorites = stringSetPreferencesKey("favorite_dhikr_entries")
         val readingProgress = stringSetPreferencesKey("reading_progress")
+        val dailyStateDay = stringPreferencesKey("daily_state_day")
     }
 
     private companion object {
@@ -331,18 +378,123 @@ private fun decodeCustomPhrases(values: Set<String>): List<TasbihPhrase> = value
     }.getOrNull()
 }.sortedBy(TasbihPhrase::id)
 
-private fun ReadingProgress.encodeForPreferences(collectionId: String): String =
-    "$collectionId|$entryIndex|$repetitionCount|${if (completed) 1 else 0}"
+private const val ReadingProgressStorageVersion = "v2"
+
+private fun ReadingProgress.encodeForPreferences(collectionId: String): String {
+    val completedIndicesValue = completedEntryIndices
+        .asSequence()
+        .filter { it >= 0 }
+        .sorted()
+        .joinToString(",")
+        .ifEmpty { "-" }
+    val repetitionCountsValue = repetitionCounts
+        .asSequence()
+        .filter { (index, count) -> index >= 0 && count > 0 }
+        .sortedBy { (index, _) -> index }
+        .joinToString(",") { (index, count) -> "$index:$count" }
+        .ifEmpty { "-" }
+    return listOf(
+        collectionId,
+        ReadingProgressStorageVersion,
+        entryIndex.coerceAtLeast(0).toString(),
+        if (completed) "1" else "0",
+        completedIndicesValue,
+        repetitionCountsValue,
+    ).joinToString("|")
+}
+
+private fun encodeReadingProgress(values: Map<String, ReadingProgress>): Set<String> =
+    values.mapTo(mutableSetOf()) { (id, value) -> value.encodeForPreferences(id) }
 
 private fun decodeReadingProgress(values: Set<String>): Map<String, ReadingProgress> =
     values.mapNotNull { value ->
         runCatching {
-            val parts = value.split('|', limit = 4)
-            require(parts.size == 4)
-            parts[0] to ReadingProgress(
-                entryIndex = parts[1].toInt().coerceAtLeast(0),
-                repetitionCount = parts[2].toInt().coerceAtLeast(0),
-                completed = parts[3] == "1",
-            )
+            val parts = value.split('|')
+            when {
+                parts.size == 6 && parts[1] == ReadingProgressStorageVersion -> {
+                    parts[0] to ReadingProgress(
+                        entryIndex = parts[2].toInt().coerceAtLeast(0),
+                        completed = parts[3] == "1",
+                        completedEntryIndices = decodeCompletedEntryIndices(parts[4]),
+                        repetitionCounts = decodeEntryRepetitionCounts(parts[5]),
+                    )
+                }
+
+                parts.size == 4 -> {
+                    val entryIndex = parts[1].toInt().coerceAtLeast(0)
+                    val repetitionCount = parts[2].toInt().coerceAtLeast(0)
+                    val completed = parts[3] == "1"
+                    parts[0] to ReadingProgress(
+                        entryIndex = entryIndex,
+                        repetitionCounts = if (repetitionCount > 0) {
+                            mapOf(entryIndex to repetitionCount)
+                        } else {
+                            emptyMap()
+                        },
+                        completedEntryIndices = if (completed) {
+                            emptySet()
+                        } else {
+                            (0 until entryIndex).toSet()
+                        },
+                        completed = completed,
+                    )
+                }
+
+                else -> error("Unsupported reading progress value")
+            }
         }.getOrNull()
     }.toMap()
+
+private fun decodeCompletedEntryIndices(value: String): Set<Int> = value
+    .takeUnless { it == "-" }
+    ?.split(',')
+    ?.mapNotNull { encodedIndex -> encodedIndex.toIntOrNull()?.takeIf { it >= 0 } }
+    ?.toSet()
+    .orEmpty()
+
+private fun decodeEntryRepetitionCounts(value: String): Map<Int, Int> = value
+    .takeUnless { it == "-" }
+    ?.split(',')
+    ?.mapNotNull { encodedCount ->
+        val parts = encodedCount.split(':', limit = 2)
+        if (parts.size != 2) return@mapNotNull null
+        val index = parts[0].toIntOrNull()?.takeIf { it >= 0 } ?: return@mapNotNull null
+        val count = parts[1].toIntOrNull()?.takeIf { it > 0 } ?: return@mapNotNull null
+        index to count
+    }
+    ?.toMap()
+    .orEmpty()
+
+internal data class DailyStateValues(
+    val tasbihCount: Int,
+    val readingProgress: Map<String, ReadingProgress>,
+)
+
+internal fun dailyStateForDate(
+    storedDayKey: String?,
+    currentDayKey: String,
+    tasbihCount: Int,
+    readingProgress: Map<String, ReadingProgress>,
+): DailyStateValues = if (storedDayKey == currentDayKey) {
+    DailyStateValues(
+        tasbihCount = tasbihCount.coerceAtLeast(0),
+        readingProgress = readingProgress,
+    )
+} else {
+    DailyStateValues(
+        tasbihCount = 0,
+        readingProgress = readingProgress.filterKeys { collectionId ->
+            !isDailyDhikrCollectionId(collectionId)
+        },
+    )
+}
+
+internal fun isDailyDhikrCollectionId(collectionId: String): Boolean {
+    val order = collectionId.removePrefix("hisn_")
+        .takeIf { collectionId.startsWith("hisn_") }
+        ?.toIntOrNull()
+        ?: return false
+    return order in DhikrGroup.DailyLife.firstOrder..DhikrGroup.MorningEvening.lastOrder
+}
+
+private fun currentDayKey(): String = LocalDate.now().toString()

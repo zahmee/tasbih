@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -37,6 +39,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Refresh
@@ -48,6 +52,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,6 +61,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
@@ -97,11 +104,16 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.TasbihPhrase
+import com.sakinah.tasbih.data.TasbihPhraseAnalytics
 import com.sakinah.tasbih.data.displayArabic
 import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
+import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TasbihScreen(
     state: SakinahUiState,
@@ -116,6 +128,7 @@ fun TasbihScreen(
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
+    var showPhraseStatistics by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
     val haptics = LocalHapticFeedback.current
     fun count() {
@@ -150,6 +163,7 @@ fun TasbihScreen(
                     count = state.tasbihCount,
                     onUndo = onDecrement,
                     onReset = { showResetConfirmation = true },
+                    onOpenStatistics = { showPhraseStatistics = true },
                     onManagePhrases = onOpenPhraseManager,
                     onAdd = {
                         editingPhrase = null
@@ -227,6 +241,15 @@ fun TasbihScreen(
                     },
             )
         }
+    }
+
+    if (showPhraseStatistics) {
+        TasbihPhraseStatisticsSheet(
+            phrase = state.selectedPhrase,
+            analytics = state.selectedTasbihPhraseAnalytics,
+            showDiacritics = state.showDiacritics,
+            onDismiss = { showPhraseStatistics = false },
+        )
     }
 }
 
@@ -565,6 +588,7 @@ private fun TasbihTopBar(
     count: Int,
     onUndo: () -> Unit,
     onReset: () -> Unit,
+    onOpenStatistics: () -> Unit,
     onManagePhrases: () -> Unit,
     onAdd: () -> Unit,
 ) {
@@ -592,6 +616,15 @@ private fun TasbihTopBar(
                     )
                 }
                 FilledTonalIconButton(
+                    onClick = onOpenStatistics,
+                    modifier = Modifier.testTag("tasbih_phrase_statistics"),
+                ) {
+                    Icon(
+                        Icons.Outlined.BarChart,
+                        contentDescription = stringResource(R.string.tasbih_phrase_statistics),
+                    )
+                }
+                FilledTonalIconButton(
                     onClick = onManagePhrases,
                     modifier = Modifier.testTag("tasbih_manage_phrases"),
                 ) {
@@ -614,6 +647,380 @@ private fun TasbihTopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TasbihPhraseStatisticsSheet(
+    phrase: TasbihPhrase,
+    analytics: TasbihPhraseAnalytics,
+    showDiacritics: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val stats = if (analytics.sourceId == phrase.id) {
+        analytics
+    } else {
+        TasbihPhraseAnalytics(sourceId = phrase.id)
+    }
+    val today = LocalDate.now()
+    val weekStart = today.minusDays(6)
+    val monthStart = today.withDayOfMonth(1)
+    val weekDays = remember(stats.daily, today) {
+        (6L downTo 0L).map { offset ->
+            val date = today.minusDays(offset)
+            date to stats.countFor(date)
+        }
+    }
+    val todayCount = stats.countFor(today)
+    val weekCount = stats.countBetween(weekStart, today)
+    val monthCount = stats.countBetween(monthStart, today)
+    val bestDay = stats.bestDay()
+    val bestDate = remember(bestDay?.dayKey) {
+        bestDay?.dayKey?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.testTag("tasbih_phrase_statistics_sheet"),
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 720.dp)
+                .testTag("tasbih_phrase_statistics_content"),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Icon(
+                            Icons.Outlined.BarChart,
+                            contentDescription = null,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.tasbih_phrase_statistics),
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        Text(
+                            text = stringResource(R.string.tasbih_phrase_statistics_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("tasbih_phrase_statistics_close"),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.close),
+                        )
+                    }
+                }
+            }
+
+            item {
+                PhraseStatisticsHero(
+                    phraseText = displayArabic(phrase.text, showDiacritics),
+                    totalCount = stats.totalCount,
+                )
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PhraseStatisticMetric(
+                            modifier = Modifier.weight(1f),
+                            value = todayCount,
+                            label = stringResource(R.string.tasbih_phrase_today),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                        PhraseStatisticMetric(
+                            modifier = Modifier.weight(1f),
+                            value = weekCount,
+                            label = stringResource(R.string.tasbih_phrase_last_seven_days),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PhraseStatisticMetric(
+                            modifier = Modifier.weight(1f),
+                            value = monthCount,
+                            label = stringResource(R.string.tasbih_phrase_this_month),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+                        PhraseStatisticMetric(
+                            modifier = Modifier.weight(1f),
+                            value = stats.activeDays,
+                            label = stringResource(R.string.tasbih_phrase_active_days),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    }
+                }
+            }
+
+            if (stats.totalCount == 0) {
+                item { PhraseStatisticsEmptyState() }
+            } else {
+                item {
+                    PhraseBestDayCard(
+                        count = bestDay?.count ?: 0,
+                        date = bestDate,
+                    )
+                }
+            }
+
+            item {
+                SakinahSectionHeader(text = stringResource(R.string.tasbih_phrase_weekly_activity))
+            }
+
+            item {
+                PhraseWeeklyActivityCard(days = weekDays, today = today)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseStatisticsHero(
+    phraseText: String,
+    totalCount: Int,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+            Text(
+                text = stringResource(R.string.tasbih_phrase_only),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f),
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = phraseText,
+                style = TextStyle(
+                    fontFamily = LocalDhikrFontFamily.current,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    lineHeight = 32.sp,
+                ),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = totalCount.toString(),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.testTag("tasbih_phrase_total_value"),
+            )
+            Text(
+                text = stringResource(R.string.tasbih_phrase_total),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhraseStatisticMetric(
+    modifier: Modifier,
+    value: Int,
+    label: String,
+    color: Color,
+) {
+    val contentColor = MaterialTheme.colorScheme.contentColorFor(color)
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        color = color,
+        contentColor = contentColor,
+        border = sakinahCardBorder(0.12f),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 15.dp, vertical = 14.dp)) {
+            Text(
+                text = value.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor.copy(alpha = 0.74f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhraseStatisticsEmptyState() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = sakinahCardBorder(0.14f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SakinahRosette(modifier = Modifier.size(38.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.tasbih_phrase_no_activity),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.tasbih_phrase_no_activity_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseBestDayCard(
+    count: Int,
+    date: LocalDate?,
+) {
+    val arabicLocale = remember { Locale.forLanguageTag("ar") }
+    val dateLabel = remember(date) {
+        date?.format(DateTimeFormatter.ofPattern("d MMMM yyyy", arabicLocale)).orEmpty()
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        border = sakinahCardBorder(0.14f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 17.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.tasbih_phrase_best_day),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = dateLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f),
+                )
+            }
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhraseWeeklyActivityCard(
+    days: List<Pair<LocalDate, Int>>,
+    today: LocalDate,
+) {
+    val maxValue = days.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+    val arabicLocale = remember { Locale.forLanguageTag("ar") }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = sakinahCardBorder(0.14f),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .padding(horizontal = 12.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            days.forEach { (date, count) ->
+                PhraseDayBar(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    date = date,
+                    count = count,
+                    maxValue = maxValue,
+                    isToday = date == today,
+                    arabicLocale = arabicLocale,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseDayBar(
+    modifier: Modifier,
+    date: LocalDate,
+    count: Int,
+    maxValue: Int,
+    isToday: Boolean,
+    arabicLocale: Locale,
+) {
+    val targetRatio = count.toFloat() / maxValue.coerceAtLeast(1)
+    val animatedRatio by animateFloatAsState(
+        targetValue = targetRatio,
+        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
+        label = "tasbih phrase day ${date.dayOfYear}",
+    )
+    val accent = if (isToday) {
+        LocalSakinahBrandColors.current.antiqueGold
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom,
+    ) {
+        Text(
+            text = if (count > 0) count.toString() else "·",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .width(20.dp)
+                .height((8f + 64f * animatedRatio).dp)
+                .clip(CircleShape)
+                .background(accent.copy(alpha = if (isToday) 1f else 0.78f)),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = date.format(DateTimeFormatter.ofPattern("EE", arabicLocale)).take(1),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isToday) accent else MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhraseCarousel(
@@ -623,7 +1030,6 @@ private fun PhraseCarousel(
 ) {
     val phrases = state.tasbihPhrases
     val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
-    val shape = MaterialTheme.shapes.extraLarge
     val interactionSource = remember { MutableInteractionSource() }
     val position = stringResource(
         R.string.tasbih_phrase_position,
@@ -643,75 +1049,77 @@ private fun PhraseCarousel(
         onSelectPhrase(phrases[nextIndex].id)
     }
 
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 138.dp)
             .testTag("tasbih_phrase_card")
-            .clip(shape)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onLongPress,
                 onLongClickLabel = stringResource(R.string.edit_dhikr),
                 onLongClick = onLongPress,
-            ),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = sakinahCardBorder(0.32f),
+            )
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        Text(
+            text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
+            style = TextStyle(
+                fontFamily = LocalDhikrFontFamily.current,
+                fontWeight = FontWeight.Bold,
+                fontSize = (22f * state.tasbihTextScale).sp,
+                lineHeight = (32f * state.tasbihTextScale).sp,
+                textAlign = TextAlign.Center,
+            ),
+            maxLines = 5,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp, vertical = 6.dp)
+                .testTag("tasbih_phrase_text"),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+            IconButton(
+                enabled = currentIndex > 0,
+                onClick = { moveBy(-1) },
+                modifier = Modifier.testTag("tasbih_previous_phrase"),
             ) {
-                IconButton(
-                    enabled = currentIndex > 0,
-                    onClick = { moveBy(-1) },
-                    modifier = Modifier.testTag("tasbih_previous_phrase"),
-                ) {
-                    CarouselArrow(
-                        pointsRight = true,
-                        contentDescription = stringResource(R.string.previous_dhikr),
-                    )
-                }
-                Text(
-                    text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
-                    style = TextStyle(
-                        fontFamily = LocalDhikrFontFamily.current,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = (21f * state.tasbihTextScale).sp,
-                        lineHeight = (30f * state.tasbihTextScale).sp,
-                        textAlign = TextAlign.Center,
-                    ),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                CarouselArrow(
+                    pointsRight = true,
+                    contentDescription = stringResource(R.string.previous_dhikr),
                 )
-                IconButton(
-                    enabled = currentIndex < phrases.lastIndex,
-                    onClick = { moveBy(1) },
-                    modifier = Modifier.testTag("tasbih_next_phrase"),
-                ) {
-                    CarouselArrow(
-                        pointsRight = false,
-                        contentDescription = stringResource(R.string.next_tasbih_dhikr),
-                    )
-                }
             }
             Text(
-                text = "$position  •  $goalLabel  •  ${stringResource(R.string.tap_to_edit)}",
+                text = stringResource(R.string.tasbih_phrase_summary, position, goalLabel),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
             )
+            IconButton(
+                enabled = currentIndex < phrases.lastIndex,
+                onClick = { moveBy(1) },
+                modifier = Modifier.testTag("tasbih_next_phrase"),
+            ) {
+                CarouselArrow(
+                    pointsRight = false,
+                    contentDescription = stringResource(R.string.next_tasbih_dhikr),
+                )
+            }
         }
+        Text(
+            text = stringResource(R.string.tap_to_edit),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -1000,37 +1408,55 @@ private fun PhraseEditorDialog(
                     singleLine = true,
                 )
                 Spacer(Modifier.height(10.dp))
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Icon(
+                            Icons.Outlined.DeleteOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.delete_custom_dhikr),
+                            maxLines = 1,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (onDelete != null) {
-                        TextButton(
-                            onClick = onDelete,
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                        ) {
-                            Icon(
-                                Icons.Outlined.DeleteOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(5.dp))
-                            Text(stringResource(R.string.delete_custom_dhikr))
-                        }
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 50.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.cancel),
+                            maxLines = 1,
+                        )
                     }
-                    Spacer(Modifier.weight(1f))
-                    OutlinedButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    Spacer(Modifier.width(8.dp))
                     Button(
                         enabled = canSave,
-                        modifier = Modifier.testTag("custom_save"),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 50.dp)
+                            .testTag("custom_save"),
                         onClick = { onSave(text.trim(), goal ?: 33) },
                     ) {
-                        Text(stringResource(R.string.save))
+                        Text(
+                            text = stringResource(R.string.save),
+                            maxLines = 1,
+                        )
                     }
                 }
             }

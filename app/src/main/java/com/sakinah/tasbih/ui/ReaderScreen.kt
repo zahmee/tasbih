@@ -349,19 +349,20 @@ private fun SessionHeader(
         }
         Spacer(Modifier.height(10.dp))
         BeadTrail(
-            total = collection.entries.size,
+            collection = collection,
             currentIndex = currentIndex,
-            completed = progress.completed,
+            progress = progress,
         )
     }
 }
 
 @Composable
 private fun BeadTrail(
-    total: Int,
+    collection: DhikrCollection,
     currentIndex: Int,
-    completed: Boolean,
+    progress: ReadingProgress,
 ) {
+    val total = collection.entries.size
     val listState = rememberLazyListState()
     LaunchedEffect(currentIndex, total) {
         if (total > 0) listState.animateScrollToItem(currentIndex.coerceIn(0, total - 1))
@@ -373,8 +374,8 @@ private fun BeadTrail(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items(total) { index ->
-            val isDone = completed || index < currentIndex
-            val isCurrent = !completed && index == currentIndex
+            val isDone = progress.isEntryCompleted(index, collection)
+            val isCurrent = !progress.completed && index == currentIndex
             Box(
                 modifier = Modifier
                     .size(if (isCurrent) 13.dp else 9.dp)
@@ -751,14 +752,14 @@ private fun ReaderBottomAction(
                     }
                 }
 
-                progress.repetitionCount >= entry.repetitions -> {
+                progress.isEntryCompleted(progress.entryIndex, collection) -> {
                     if (state.autoAdvanceDhikrEnabled) {
                         Spacer(Modifier.height(66.dp))
                     } else {
                         Button(onClick = onAdvance, modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 stringResource(
-                                    if (progress.entryIndex == collection.entries.lastIndex) {
+                                    if (progress.completedEntries(collection) == collection.entries.size) {
                                         R.string.finish_session
                                     } else {
                                         R.string.next_dhikr

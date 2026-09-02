@@ -56,7 +56,52 @@ class DhikrCatalogTest {
             ),
         )
 
-        assertEquals(0.25f, ReadingProgress(repetitionCount = 1).fraction(collection), 0.001f)
+        assertEquals(
+            0.25f,
+            ReadingProgress(repetitionCounts = mapOf(0 to 1)).fraction(collection),
+            0.001f,
+        )
         assertEquals(1f, ReadingProgress(completed = true).fraction(collection), 0.001f)
+    }
+
+    @Test
+    fun `manual navigation does not count skipped entries as completed`() {
+        val collection = DhikrCollection(
+            id = "test",
+            order = 1,
+            title = "اختبار",
+            audioUrl = null,
+            entries = List(3) { index ->
+                DhikrEntry("entry_$index", "test", "ذكر", 1, "")
+            },
+        )
+
+        val navigatedProgress = ReadingProgress(entryIndex = 2)
+
+        assertEquals(0, navigatedProgress.completedEntries(collection))
+        assertEquals(0f, navigatedProgress.fraction(collection), 0.001f)
+        assertEquals(0, navigatedProgress.repetitionCount)
+    }
+
+    @Test
+    fun `completion follows counted entries even when read out of order`() {
+        val collection = DhikrCollection(
+            id = "test",
+            order = 1,
+            title = "اختبار",
+            audioUrl = null,
+            entries = List(3) { index ->
+                DhikrEntry("entry_$index", "test", "ذكر", 1, "")
+            },
+        )
+        val progress = ReadingProgress(
+            entryIndex = 2,
+            repetitionCounts = mapOf(2 to 1),
+            completedEntryIndices = setOf(2),
+        )
+
+        assertEquals(1, progress.completedEntries(collection))
+        assertEquals(1f / 3f, progress.fraction(collection), 0.001f)
+        assertTrue(progress.isEntryCompleted(2, collection))
     }
 }

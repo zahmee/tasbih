@@ -46,24 +46,39 @@ data class HisnCatalog(
 
 data class ReadingProgress(
     val entryIndex: Int = 0,
-    val repetitionCount: Int = 0,
+    val repetitionCounts: Map<Int, Int> = emptyMap(),
+    val completedEntryIndices: Set<Int> = emptySet(),
     val completed: Boolean = false,
 ) {
-    fun completedEntries(collection: DhikrCollection): Int = when {
-        completed -> collection.entries.size
-        collection.entries.isEmpty() -> 0
-        else -> entryIndex.coerceIn(0, collection.entries.lastIndex)
+    val repetitionCount: Int
+        get() = repetitionCountFor(entryIndex)
+
+    fun repetitionCountFor(index: Int): Int = repetitionCounts[index]?.coerceAtLeast(0) ?: 0
+
+    fun isEntryCompleted(index: Int, collection: DhikrCollection): Boolean {
+        if (completed) return index in collection.entries.indices
+        val entry = collection.entries.getOrNull(index) ?: return false
+        return index in completedEntryIndices || repetitionCountFor(index) >= entry.repetitions
+    }
+
+    fun completedEntries(collection: DhikrCollection): Int = collection.entries.indices.count { index ->
+        isEntryCompleted(index, collection)
     }
 
     fun fraction(collection: DhikrCollection): Float {
         if (collection.entries.isEmpty()) return 0f
         if (completed) return 1f
 
-        val safeIndex = entryIndex.coerceIn(0, collection.entries.lastIndex)
-        val entry = collection.entries[safeIndex]
-        val entryFraction = repetitionCount.toFloat() / entry.repetitions.coerceAtLeast(1)
-        return ((safeIndex + entryFraction.coerceIn(0f, 1f)) / collection.entries.size)
-            .coerceIn(0f, 1f)
+        val completedFraction = collection.entries.indices.fold(0f) { total, index ->
+            val entry = collection.entries[index]
+            val entryFraction = if (isEntryCompleted(index, collection)) {
+                1f
+            } else {
+                repetitionCountFor(index).toFloat() / entry.repetitions.coerceAtLeast(1)
+            }
+            total + entryFraction.coerceIn(0f, 1f)
+        }
+        return (completedFraction / collection.entries.size).coerceIn(0f, 1f)
     }
 }
 

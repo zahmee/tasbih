@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -99,44 +100,81 @@ internal fun SakinahScreenHeader(
     eyebrow: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            if (!eyebrow.isNullOrBlank()) {
-                Text(
-                    text = eyebrow,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = LocalSakinahBrandColors.current.antiqueGold,
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val useStackedActions = trailing != null && maxWidth < 520.dp
+
+        if (useStackedActions) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SakinahHeaderCopy(
+                    title = title,
+                    subtitle = subtitle,
+                    eyebrow = eyebrow,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    trailing()
+                }
             }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 30.sp,
-                    lineHeight = 38.sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SakinahHeaderCopy(
+                    title = title,
+                    subtitle = subtitle,
+                    eyebrow = eyebrow,
+                    modifier = Modifier.weight(1f),
                 )
+                if (trailing != null) {
+                    Spacer(Modifier.width(12.dp))
+                    trailing()
+                } else {
+                    SakinahRosette(modifier = Modifier.padding(top = 2.dp).size(42.dp))
+                }
             }
         }
-        if (trailing != null) {
-            Spacer(Modifier.width(12.dp))
-            trailing()
-        } else {
-            SakinahRosette(modifier = Modifier.padding(top = 2.dp).size(42.dp))
+    }
+}
+
+@Composable
+private fun SakinahHeaderCopy(
+    title: String,
+    subtitle: String?,
+    eyebrow: String?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        if (!eyebrow.isNullOrBlank()) {
+            Text(
+                text = eyebrow,
+                style = MaterialTheme.typography.labelLarge,
+                color = LocalSakinahBrandColors.current.antiqueGold,
+            )
+            Spacer(Modifier.height(2.dp))
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = 30.sp,
+                lineHeight = 38.sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() },
+        )
+        if (!subtitle.isNullOrBlank()) {
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

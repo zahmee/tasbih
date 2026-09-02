@@ -18,6 +18,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.lifecycle.ViewModelProvider
+import com.sakinah.tasbih.ui.SakinahViewModel
 import org.junit.Rule
 import org.junit.Test
 
@@ -28,6 +30,10 @@ class SakinahCoreFlowTest {
     @Test
     fun libraryReaderAndCustomTasbihSurviveRecreation() {
         waitForTag("home_featured")
+        composeRule.activityRule.scenario.onActivity { activity ->
+            ViewModelProvider(activity)[SakinahViewModel::class.java]
+                .restartCollection("hisn_001")
+        }
 
         composeRule.onNodeWithTag("nav_library").performClick()
         waitForTag("library_group_DailyLife")
@@ -37,9 +43,10 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("collection_hisn_001").performClick()
         waitForTag("reader_count_button")
-        composeRule.onNodeWithText("الذكر 1 من 4").assertIsDisplayed()
+        waitForText("الذكر 1 من 4")
         composeRule.onNodeWithTag("reader_next_dhikr").performClick()
         waitForText("الذكر 2 من 4")
+        composeRule.onNodeWithText("0٪").assertIsDisplayed()
         composeRule.onNodeWithTag("reader_previous_dhikr").performClick()
         waitForText("الذكر 1 من 4")
         composeRule.onNodeWithTag("reader_count_button").performClick()
@@ -74,6 +81,13 @@ class SakinahCoreFlowTest {
         composeRule.onNodeWithTag("tasbih_counter").performClick()
         waitForText("1 من 9")
 
+        composeRule.onNodeWithTag("tasbih_phrase_statistics").performClick()
+        waitForTag("tasbih_phrase_statistics_sheet")
+        composeRule.onNodeWithText("إحصائيات هذا الذكر").assertIsDisplayed()
+        composeRule.onNodeWithText("إجمالي مرات التسبيح").assertIsDisplayed()
+        composeRule.onNodeWithTag("tasbih_phrase_statistics_close").performClick()
+        waitForTag("tasbih_counter")
+
         composeRule.activityRule.scenario.recreate()
         waitForTag("home_featured")
         composeRule.onNodeWithTag("nav_tasbih").performClick()
@@ -88,6 +102,17 @@ class SakinahCoreFlowTest {
         composeRule.onNodeWithTag("font_baqiyat").assertIsSelected()
         composeRule.onNodeWithTag("open_achievements").performScrollTo().performClick()
         waitForTag("achievements_screen")
+
+        composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("source_statistics"))
+        composeRule.onNodeWithTag("source_statistics").assertIsDisplayed()
+        composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("hourly_activity"))
+        composeRule.onNodeWithTag("hourly_activity").assertIsDisplayed()
+        composeRule.onNodeWithTag("hour_range_Year").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("long_term_activity"))
+        composeRule.onNodeWithTag("long_term_activity").assertIsDisplayed()
+        composeRule.onNodeWithTag("trend_mode_Yearly").performClick().assertIsSelected()
+
+        composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasText("آخر سبعة أيام"))
         composeRule.onNodeWithText("آخر سبعة أيام").assertIsDisplayed()
         composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_calendar"))
         composeRule.onNodeWithTag("activity_calendar").assertIsDisplayed()
