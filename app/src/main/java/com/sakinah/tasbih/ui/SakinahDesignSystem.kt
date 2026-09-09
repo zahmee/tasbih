@@ -16,6 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +49,52 @@ import kotlin.math.sin
 
 internal val SakinahContentMaxWidth = 840.dp
 internal val SakinahReadingMaxWidth = 920.dp
+
+private val FocusExpandBlueLight = Color(0xFF1565C0)
+private val FocusExpandBlueDark = Color(0xFF90CAF9)
+private val FocusExitRedLight = Color(0xFFB3261E)
+private val FocusExitRedDark = Color(0xFFFFB4AB)
+
+/**
+ * Shared focus-mode control used by both reading and tasbih flows.
+ *
+ * The colored affordance belongs to the icon, not the button's surface. This keeps the
+ * control calm in both themes while preserving the familiar blue-to-enter and red-to-exit cue.
+ */
+@Composable
+internal fun FocusModeIconButton(
+    isExit: Boolean,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val isDarkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val iconColor = when {
+        isExit && isDarkSurface -> FocusExitRedDark
+        isExit -> FocusExitRedLight
+        isDarkSurface -> FocusExpandBlueDark
+        else -> FocusExpandBlueLight
+    }
+    val neutralContainer = MaterialTheme.colorScheme.surfaceContainerHigh
+
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = neutralContainer,
+            contentColor = iconColor,
+            disabledContainerColor = neutralContainer,
+            disabledContentColor = iconColor.copy(alpha = 0.38f),
+        ),
+    ) {
+        Icon(
+            imageVector = if (isExit) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+            contentDescription = contentDescription,
+        )
+    }
+}
 
 /** A quiet parchment field shared by every destination in the app. */
 @Composable

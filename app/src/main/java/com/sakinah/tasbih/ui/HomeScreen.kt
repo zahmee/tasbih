@@ -66,7 +66,6 @@ import kotlin.math.sin
 fun HomeScreen(
     state: SakinahUiState,
     onOpenCollection: (String) -> Unit,
-    onOpenLibrary: () -> Unit,
     onOpenTasbih: () -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -142,12 +141,6 @@ fun HomeScreen(
                         QuickAccessGrid(
                             state = state,
                             onOpenCollection = onOpenCollection,
-                        )
-                    }
-                    item {
-                        BookLibraryCard(
-                            state = state,
-                            onClick = onOpenLibrary,
                         )
                     }
                 }
@@ -259,7 +252,8 @@ private fun HomeHero(isMorning: Boolean) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 132.dp)
+                .heightIn(min = 96.dp)
+                .testTag("home_greeting")
                 .drawBehind {
                     drawRect(
                         brush = Brush.linearGradient(
@@ -308,7 +302,7 @@ private fun HomeHero(isMorning: Boolean) {
                     }
                     drawPath(arch, foreground.copy(alpha = 0.055f))
                 }
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -318,8 +312,8 @@ private fun HomeHero(isMorning: Boolean) {
                     Text(
                         text = stringResource(R.string.greeting),
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 27.sp,
-                            lineHeight = 32.sp,
+                            fontSize = 24.sp,
+                            lineHeight = 29.sp,
                         ),
                     )
                     Spacer(Modifier.height(2.dp))
@@ -331,7 +325,7 @@ private fun HomeHero(isMorning: Boolean) {
                         color = brand.onHero.copy(alpha = 0.86f),
                     )
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 HomeIslamicSeal(isMorning = isMorning)
             }
         }
@@ -505,54 +499,6 @@ private fun QuickAccessCard(
 }
 
 @Composable
-private fun BookLibraryCard(
-    state: SakinahUiState,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IslamicNavigationIcon(
-                symbol = IslamicNavSymbol.Manuscript,
-                selected = true,
-                modifier = Modifier.size(30.dp),
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.book_summary),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 20.sp,
-                    ),
-                )
-                Text(
-                    stringResource(
-                        R.string.book_summary_format,
-                        state.catalog.collections.size,
-                        state.catalog.totalDhikr,
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            TextButton(onClick = onClick) {
-                Text(stringResource(R.string.library))
-            }
-        }
-    }
-}
-
-@Composable
 private fun TasbihSnapshot(
     state: SakinahUiState,
     onClick: () -> Unit,
@@ -641,7 +587,7 @@ private fun HomeIslamicSeal(isMorning: Boolean) {
     val foreground = brand.onHero
     val gold = brand.antiqueGold
     val cutout = brand.heroStart
-    Canvas(modifier = Modifier.size(52.dp)) {
+    Canvas(modifier = Modifier.size(42.dp)) {
         drawCircle(foreground.copy(alpha = 0.07f), radius = size.minDimension / 2f)
         drawCircle(
             color = gold.copy(alpha = 0.9f),

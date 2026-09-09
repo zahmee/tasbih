@@ -1,5 +1,8 @@
 package com.sakinah.tasbih.ui
 
+import android.media.AudioManager
+import android.media.ToneGenerator
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -64,9 +67,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -111,12 +117,18 @@ import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val TASBIH_COMPLETION_TONE_DURATION_MILLIS = 2_000
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TasbihScreen(
     state: SakinahUiState,
+    isFocusMode: Boolean,
+    onFocusModeChange: (Boolean) -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
     onReset: () -> Unit,
@@ -130,17 +142,89 @@ fun TasbihScreen(
     var showEditor by remember { mutableStateOf(false) }
     var showPhraseStatistics by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
+    var showCompletedCycle by remember { mutableStateOf(false) }
+    var completionJob by remember { mutableStateOf<Job?>(null) }
     val haptics = LocalHapticFeedback.current
+    val completionScope = rememberCoroutineScope()
+    val completionTone = remember {
+        ToneGenerator(AudioManager.STREAM_NOTIFICATION, 55)
+    }
+    var previousCount by remember(state.selectedPhrase.id, state.tasbihTarget) {
+        mutableIntStateOf(state.tasbihCount)
+    }
+    var lastResetMilestone by remember(state.selectedPhrase.id, state.tasbihTarget) {
+        mutableIntStateOf(latestTasbihMilestone(state.tasbihCount, state.tasbihTarget))
+    }
+    val exactUnacknowledgedMilestone = state.tasbihTarget > 0 &&
+        state.tasbihCount > 0 &&
+        state.tasbihCount % state.tasbihTarget == 0 &&
+        state.tasbihCount > lastResetMilestone
+    val displayCompletedCycle = showCompletedCycle || exactUnacknowledgedMilestone
+    val displayedProgress = tasbihCycleProgress(
+        count = state.tasbihCount,
+        target = state.tasbihTarget,
+        showCompletedCycle = displayCompletedCycle,
+    )
+
     fun count() {
         if (state.hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         onIncrement()
     }
 
-    SakinahScreenBackground {
+    BackHandler(enabled = isFocusMode) {
+        onFocusModeChange(false)
+    }
+
+    DisposableEffect(completionTone) {
+        onDispose {
+            completionJob?.cancel()
+            completionTone.stopTone()
+            completionTone.release()
+        }
+    }
+
+    LaunchedEffect(state.selectedPhrase.id, state.tasbihTarget) {
+        completionJob?.cancel()
+        completionTone.stopTone()
+        showCompletedCycle = false
+        previousCount = state.tasbihCount
+        lastResetMilestone = latestTasbihMilestone(state.tasbihCount, state.tasbihTarget)
+    }
+
+    LaunchedEffect(state.selectedPhrase.id, state.tasbihTarget, state.tasbihCount) {
+        val currentCount = state.tasbihCount
+        val countBeforeUpdate = previousCount
+        previousCount = currentCount
+
+        if (currentCount < countBeforeUpdate || state.tasbihTarget <= 0) {
+            completionJob?.cancel()
+            completionTone.stopTone()
+            showCompletedCycle = false
+            lastResetMilestone = latestTasbihMilestone(currentCount, state.tasbihTarget)
+            return@LaunchedEffect
+        }
+
+        if (hasCrossedTasbihCycle(countBeforeUpdate, currentCount, state.tasbihTarget)) {
+            val completedMilestone = latestTasbihMilestone(currentCount, state.tasbihTarget)
+            completionJob?.cancel()
+            completionTone.stopTone()
+            showCompletedCycle = true
+            completionTone.startTone(
+                ToneGenerator.TONE_PROP_BEEP,
+                TASBIH_COMPLETION_TONE_DURATION_MILLIS,
+            )
+            completionJob = completionScope.launch {
+                delay(TASBIH_COMPLETION_TONE_DURATION_MILLIS.toLong())
+                completionTone.stopTone()
+                lastResetMilestone = completedMilestone
+                showCompletedCycle = false
+            }
+        }
+    }
+
+    SakinahScreenBackground(showOrnament = !isFocusMode) {
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = SakinahContentMaxWidth)
                 .fillMaxSize(),
         ) {
             // Keep the convenient background gesture without exposing a duplicate
@@ -156,39 +240,69 @@ fun TasbihScreen(
 
             Column(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = SakinahContentMaxWidth)
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .testTag(if (isFocusMode) "tasbih_focus_screen" else "tasbih_standard_screen")
+                    .padding(
+                        horizontal = if (isFocusMode) 16.dp else 20.dp,
+                        vertical = if (isFocusMode) 8.dp else 16.dp,
+                    ),
             ) {
-                TasbihTopBar(
-                    count = state.tasbihCount,
-                    onUndo = onDecrement,
-                    onReset = { showResetConfirmation = true },
-                    onOpenStatistics = { showPhraseStatistics = true },
-                    onManagePhrases = onOpenPhraseManager,
-                    onAdd = {
-                        editingPhrase = null
-                        showEditor = true
-                    },
-                )
-                Spacer(Modifier.height(12.dp))
-                PhraseCarousel(
-                    state = state,
-                    onSelectPhrase = onSelectPhrase,
-                    onLongPress = {
-                        if (state.hapticsEnabled) {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                        editingPhrase = state.selectedPhrase
-                        showEditor = true
-                    },
-                )
-                Spacer(Modifier.height(8.dp))
+                if (isFocusMode) {
+                    FocusPhraseHeader(
+                        state = state,
+                        onSelectPhrase = onSelectPhrase,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                } else {
+                    TasbihTopBar(
+                        count = state.tasbihCount,
+                        onUndo = onDecrement,
+                        onReset = { showResetConfirmation = true },
+                        onOpenStatistics = { showPhraseStatistics = true },
+                        onManagePhrases = onOpenPhraseManager,
+                        onAdd = {
+                            editingPhrase = null
+                            showEditor = true
+                        },
+                        onEnterFocusMode = { onFocusModeChange(true) },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    PhraseCarousel(
+                        state = state,
+                        onSelectPhrase = onSelectPhrase,
+                        onLongPress = {
+                            if (state.hapticsEnabled) {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                            editingPhrase = state.selectedPhrase
+                            showEditor = true
+                        },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 CounterSection(
                     state = state,
+                    displayedProgress = displayedProgress,
+                    showCompletionFeedback = displayCompletedCycle,
+                    isFocusMode = isFocusMode,
                     onIncrement = ::count,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                )
+            }
+
+            if (isFocusMode) {
+                FocusModeIconButton(
+                    isExit = true,
+                    contentDescription = stringResource(R.string.tasbih_exit_focus_mode),
+                    onClick = { onFocusModeChange(false) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .testTag("tasbih_exit_focus_mode"),
                 )
             }
         }
@@ -591,12 +705,19 @@ private fun TasbihTopBar(
     onOpenStatistics: () -> Unit,
     onManagePhrases: () -> Unit,
     onAdd: () -> Unit,
+    onEnterFocusMode: () -> Unit,
 ) {
     SakinahScreenHeader(
         title = stringResource(R.string.my_tasbih),
         subtitle = stringResource(R.string.my_tasbih_subtitle),
         trailing = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FocusModeIconButton(
+                    isExit = false,
+                    contentDescription = stringResource(R.string.tasbih_focus_mode),
+                    onClick = onEnterFocusMode,
+                    modifier = Modifier.testTag("tasbih_focus_mode"),
+                )
                 FilledTonalIconButton(
                     enabled = count > 0,
                     onClick = onUndo,
@@ -1124,6 +1245,67 @@ private fun PhraseCarousel(
 }
 
 @Composable
+private fun FocusPhraseHeader(
+    state: SakinahUiState,
+    onSelectPhrase: (String) -> Unit,
+) {
+    val phrases = state.tasbihPhrases
+    val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
+
+    fun moveBy(change: Int) {
+        if (phrases.isEmpty()) return
+        val nextIndex = (currentIndex + change).coerceIn(0, phrases.lastIndex)
+        if (nextIndex != currentIndex) onSelectPhrase(phrases[nextIndex].id)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 48.dp)
+            .heightIn(min = 82.dp)
+            .testTag("tasbih_focus_phrase_header"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            enabled = currentIndex > 0,
+            onClick = { moveBy(-1) },
+            modifier = Modifier.testTag("tasbih_previous_phrase"),
+        ) {
+            CarouselArrow(
+                pointsRight = true,
+                contentDescription = stringResource(R.string.previous_dhikr),
+            )
+        }
+        Text(
+            text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
+            style = TextStyle(
+                fontFamily = LocalDhikrFontFamily.current,
+                fontWeight = FontWeight.Bold,
+                fontSize = (24f * state.tasbihTextScale).sp,
+                lineHeight = (36f * state.tasbihTextScale).sp,
+                textAlign = TextAlign.Center,
+            ),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .testTag("tasbih_phrase_text"),
+        )
+        IconButton(
+            enabled = currentIndex < phrases.lastIndex,
+            onClick = { moveBy(1) },
+            modifier = Modifier.testTag("tasbih_next_phrase"),
+        ) {
+            CarouselArrow(
+                pointsRight = false,
+                contentDescription = stringResource(R.string.next_tasbih_dhikr),
+            )
+        }
+    }
+}
+
+@Composable
 private fun CarouselArrow(
     pointsRight: Boolean,
     contentDescription: String,
@@ -1156,12 +1338,17 @@ private fun CarouselArrow(
 @Composable
 private fun CounterSection(
     state: SakinahUiState,
+    displayedProgress: Float,
+    showCompletionFeedback: Boolean,
+    isFocusMode: Boolean,
     onIncrement: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val availableHeight = (maxHeight - 52.dp).coerceAtLeast(164.dp)
-        val dialSize = minOf(maxWidth, availableHeight, 286.dp)
+        val feedbackSpace = if (isFocusMode) 0.dp else 52.dp
+        val availableHeight = (maxHeight - feedbackSpace).coerceAtLeast(164.dp)
+        val maximumDialSize = if (isFocusMode) 360.dp else 286.dp
+        val dialSize = minOf(maxWidth, availableHeight, maximumDialSize)
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1169,28 +1356,33 @@ private fun CounterSection(
         ) {
             CounterDial(
                 state = state,
+                displayedProgress = displayedProgress,
+                showCompletedCycle = showCompletionFeedback,
                 onIncrement = onIncrement,
                 diameter = dialSize,
             )
-            Spacer(Modifier.height(10.dp))
-            if (state.isTasbihGoalComplete) {
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ) {
+            if (!isFocusMode) {
+                Spacer(Modifier.height(10.dp))
+                if (showCompletionFeedback) {
+                    Surface(
+                        modifier = Modifier.testTag("tasbih_completion_feedback"),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.completed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        )
+                    }
+                } else {
                     Text(
-                        text = stringResource(R.string.completed),
+                        text = stringResource(R.string.tap_anywhere_to_count),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            } else {
-                Text(
-                    text = stringResource(R.string.tap_anywhere_to_count),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }
@@ -1199,19 +1391,31 @@ private fun CounterSection(
 @Composable
 private fun CounterDial(
     state: SakinahUiState,
+    displayedProgress: Float,
+    showCompletedCycle: Boolean,
     onIncrement: () -> Unit,
     diameter: androidx.compose.ui.unit.Dp,
 ) {
     val tapPulse = remember { Animatable(0f) }
     val feedbackScope = rememberCoroutineScope()
     val animatedProgress by animateFloatAsState(
-        targetValue = state.tasbihProgress,
+        targetValue = displayedProgress,
         label = "tasbih progress",
     )
     val trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
     val progressColor = MaterialTheme.colorScheme.primary
+    val cycleCount = tasbihCycleCount(
+        count = state.tasbihCount,
+        target = state.tasbihTarget,
+        showCompletedCycle = showCompletedCycle,
+    )
     val targetLabel = if (state.tasbihTarget == 0) {
         stringResource(R.string.unlimited)
+    } else {
+        stringResource(R.string.counter_value, cycleCount, state.tasbihTarget)
+    }
+    val counterStateDescription = if (state.tasbihTarget == 0) {
+        stringResource(R.string.counter_free_value, state.tasbihCount)
     } else {
         stringResource(R.string.counter_value, state.tasbihCount, state.tasbihTarget)
     }
@@ -1255,13 +1459,12 @@ private fun CounterDial(
                 .testTag("tasbih_counter")
                 .semantics {
                     contentDescription = buttonLabel
-                    stateDescription = targetLabel
+                    stateDescription = counterStateDescription
                     progressBarRangeInfo = if (state.tasbihTarget == 0) {
                         ProgressBarRangeInfo.Indeterminate
                     } else {
                         ProgressBarRangeInfo(
-                            current = state.tasbihCount.toFloat()
-                                .coerceAtMost(state.tasbihTarget.toFloat()),
+                            current = cycleCount.toFloat(),
                             range = 0f..state.tasbihTarget.toFloat().coerceAtLeast(1f),
                         )
                     }
@@ -1308,11 +1511,13 @@ private fun CounterDial(
                             lineHeight = (diameter.value * 0.26f).sp,
                         ),
                         textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("tasbih_total_count"),
                     )
                     Text(
                         text = targetLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        modifier = Modifier.testTag("tasbih_cycle_count"),
                     )
                 }
             }

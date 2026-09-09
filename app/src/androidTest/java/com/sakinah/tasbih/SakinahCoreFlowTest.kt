@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -19,6 +21,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.ViewModelProvider
+import org.junit.Assert.assertEquals
 import com.sakinah.tasbih.ui.SakinahViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -26,6 +29,20 @@ import org.junit.Test
 class SakinahCoreFlowTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun homeKeepsTheCompactGreetingAndMovesTheFullBookToTheLibrary() {
+        waitForTag("home_featured")
+
+        composeRule.onNodeWithTag("home_greeting").assertIsDisplayed()
+        composeRule.onNodeWithText("السلام عليكم").assertIsDisplayed()
+        waitForAbsentText("حصن المسلم كاملًا")
+        composeRule.onNodeWithTag("nav_library").assertIsDisplayed()
+        composeRule.onNodeWithTag("nav_library").performClick()
+        waitForTag("library_group_DailyLife")
+        composeRule.onNodeWithTag("library_group_DailyLife").performClick()
+        waitForTag("collection_hisn_001")
+    }
 
     @Test
     fun libraryReaderAndCustomTasbihSurviveRecreation() {
@@ -49,7 +66,7 @@ class SakinahCoreFlowTest {
         composeRule.onNodeWithText("0٪").assertIsDisplayed()
         composeRule.onNodeWithTag("reader_previous_dhikr").performClick()
         waitForText("الذكر 1 من 4")
-        composeRule.onNodeWithTag("reader_count_button").performClick()
+        composeRule.onNodeWithTag("reader_count_area").performClick()
         waitForText("الذكر 2 من 4")
 
         composeRule.activityRule.scenario.onActivity {
@@ -190,6 +207,131 @@ class SakinahCoreFlowTest {
         }
     }
 
+    @Test
+    fun tasbihFocusModeHidesNavigationAndCyclesProgressWithoutResettingTotal() {
+        waitForTag("home_featured")
+        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        waitForTag("tasbih_counter")
+
+        composeRule.activityRule.scenario.onActivity { activity ->
+            ViewModelProvider(activity)[SakinahViewModel::class.java].apply {
+                resetTasbih()
+                setTasbihTarget(1)
+            }
+        }
+        waitForText("0 من 1")
+
+        composeRule.onNodeWithTag("tasbih_focus_mode").performClick()
+        waitForTag("tasbih_focus_screen")
+        waitForAbsentTag("nav_home")
+        waitForAbsentTag("tasbih_add")
+        composeRule.onNodeWithTag("tasbih_focus_phrase_header").assertIsDisplayed()
+        composeRule.onNodeWithTag("tasbih_exit_focus_mode").assertIsDisplayed()
+        composeRule.onNodeWithTag("tasbih_counter").assertIsDisplayed().performClick()
+
+        waitForText("1 من 1")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("0 من 1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(
+            testTag = "tasbih_total_count",
+            useUnmergedTree = true,
+        ).assertTextEquals("1")
+
+        composeRule.onNodeWithTag("tasbih_exit_focus_mode").performClick()
+        waitForTag("tasbih_standard_screen")
+        waitForTag("nav_home")
+        waitForAbsentTag("tasbih_exit_focus_mode")
+        composeRule.onNodeWithTag(
+            testTag = "tasbih_total_count",
+            useUnmergedTree = true,
+        ).assertTextEquals("1")
+    }
+
+    @Test
+    fun readerFocusModeHidesReaderControlsAndExitsWithoutIncrementing() {
+        waitForTag("home_featured")
+        lateinit var viewModel: SakinahViewModel
+        composeRule.activityRule.scenario.onActivity { activity ->
+            viewModel = ViewModelProvider(activity)[SakinahViewModel::class.java].apply {
+                restartCollection("hisn_001")
+                setAutoAdvanceDhikrEnabled(false)
+            }
+        }
+
+        composeRule.onNodeWithTag("nav_library").performClick()
+        waitForTag("library_group_DailyLife")
+        composeRule.onNodeWithTag("library_group_DailyLife").performClick()
+        waitForTag("collection_hisn_001")
+        composeRule.onNodeWithTag("collection_hisn_001").performClick()
+        waitForTag("reader_count_button")
+        composeRule.onNodeWithTag("reader_focus_mode").performClick()
+
+        waitForTag("reader_focus_screen")
+        waitForAbsentTag("reader_settings")
+        waitForAbsentTag("reader_focus_mode")
+        waitForAbsentTag("reader_session_header")
+        waitForAbsentTag("reader_reference_toggle")
+        composeRule.onNodeWithTag("reader_count_button").assertIsDisplayed()
+
+        // Navigation remains navigation in focus mode and must not count a repetition.
+        composeRule.onNodeWithTag("reader_next_dhikr").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            viewModel.uiState.value.progressFor("hisn_001").entryIndex == 1
+        }
+        composeRule.activityRule.scenario.onActivity {
+            val progress = viewModel.uiState.value.progressFor("hisn_001")
+            assertEquals(0, progress.repetitionCountFor(0))
+            assertEquals(0, progress.repetitionCountFor(1))
+        }
+        composeRule.onNodeWithTag("reader_previous_dhikr").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            viewModel.uiState.value.progressFor("hisn_001").entryIndex == 0
+        }
+
+        // The scrollable text canvas counts exactly once, then focus mode advances even with
+        // the ordinary reader auto-advance preference disabled.
+        composeRule.onNodeWithTag("reader_dhikr_text").performTouchInput { click(center) }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            viewModel.uiState.value.progressFor("hisn_001").repetitionCountFor(0) == 1
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            viewModel.uiState.value.progressFor("hisn_001").entryIndex == 1
+        }
+        composeRule.activityRule.scenario.onActivity {
+            val progress = viewModel.uiState.value.progressFor("hisn_001")
+            assertEquals(1, progress.repetitionCountFor(0))
+            assertEquals(0, progress.repetitionCountFor(1))
+        }
+        composeRule.onNodeWithTag("reader_exit_focus_mode").assertIsDisplayed().performClick()
+
+        waitForTag("reader_focus_mode")
+        waitForTag("reader_session_header")
+        waitForAbsentTag("reader_exit_focus_mode")
+        composeRule.onNodeWithTag(
+            testTag = "reader_repetition_count",
+            useUnmergedTree = true,
+        ).assertTextEquals("0")
+
+        composeRule.onNodeWithTag("reader_focus_mode").performClick()
+        waitForTag("reader_focus_screen")
+        composeRule.activityRule.scenario.onActivity {
+            it.onBackPressedDispatcher.onBackPressed()
+        }
+        waitForTag("reader_focus_mode")
+        composeRule.onNodeWithTag(
+            testTag = "reader_repetition_count",
+            useUnmergedTree = true,
+        ).assertTextEquals("0")
+
+        composeRule.activityRule.scenario.onActivity {
+            viewModel.setAutoAdvanceDhikrEnabled(true)
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            viewModel.uiState.value.autoAdvanceDhikrEnabled
+        }
+    }
+
     private fun waitForTag(tag: String) {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
@@ -199,6 +341,18 @@ class SakinahCoreFlowTest {
     private fun waitForText(text: String) {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun waitForAbsentTag(tag: String) {
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    private fun waitForAbsentText(text: String) {
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty()
         }
     }
 

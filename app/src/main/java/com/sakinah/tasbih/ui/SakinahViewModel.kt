@@ -29,6 +29,37 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+internal fun tasbihCycleCount(
+    count: Int,
+    target: Int,
+    showCompletedCycle: Boolean = false,
+): Int = when {
+    target <= 0 -> 0
+    showCompletedCycle -> target
+    else -> count.coerceAtLeast(0) % target
+}
+
+internal fun tasbihCycleProgress(
+    count: Int,
+    target: Int,
+    showCompletedCycle: Boolean = false,
+): Float = if (target <= 0) {
+    0f
+} else {
+    tasbihCycleCount(count, target, showCompletedCycle).toFloat() / target
+}
+
+internal fun hasCrossedTasbihCycle(previousCount: Int, currentCount: Int, target: Int): Boolean {
+    if (target <= 0 || currentCount <= previousCount) return false
+    return currentCount / target > previousCount.coerceAtLeast(0) / target
+}
+
+internal fun latestTasbihMilestone(count: Int, target: Int): Int = if (target <= 0 || count <= 0) {
+    0
+} else {
+    (count / target) * target
+}
+
 data class SakinahUiState(
     val isLoading: Boolean = true,
     val contentLoadFailed: Boolean = false,
@@ -53,12 +84,7 @@ data class SakinahUiState(
     val selectedTasbihPhraseAnalytics: TasbihPhraseAnalytics = TasbihPhraseAnalytics(),
 ) {
     val tasbihProgress: Float
-        get() = if (tasbihTarget <= 0) 0f else {
-            (tasbihCount.toFloat() / tasbihTarget).coerceIn(0f, 1f)
-        }
-
-    val isTasbihGoalComplete: Boolean
-        get() = tasbihTarget > 0 && tasbihCount >= tasbihTarget
+        get() = tasbihCycleProgress(tasbihCount, tasbihTarget)
 
     fun progressFor(collectionId: String): ReadingProgress =
         readingProgress[collectionId] ?: ReadingProgress()

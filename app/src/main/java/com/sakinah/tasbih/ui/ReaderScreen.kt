@@ -3,8 +3,12 @@ package com.sakinah.tasbih.ui
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.text.BidiFormatter
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +72,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
@@ -78,7 +84,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.DhikrCollection
@@ -89,11 +97,58 @@ import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
+private fun Modifier.countUnconsumedTap(
+    enabled: Boolean,
+    onTap: () -> Unit,
+): Modifier = if (!enabled) {
+    this
+} else {
+    this
+        .pointerInput(onTap) {
+            awaitEachGesture {
+                val down = awaitFirstDown(
+                    requireUnconsumed = false,
+                    pass = PointerEventPass.Final,
+                )
+                if (down.isConsumed) return@awaitEachGesture
+
+                val pointerId = down.id
+                val downPosition = down.position
+                var isTap = true
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Final)
+                    val change = event.changes.firstOrNull { it.id == pointerId }
+                    if (change == null) {
+                        isTap = false
+                        break
+                    }
+                    if (
+                        change.isConsumed ||
+                        (change.position - downPosition).getDistance() > viewConfiguration.touchSlop
+                    ) {
+                        isTap = false
+                    }
+                    if (!change.pressed) break
+                }
+                if (isTap) onTap()
+            }
+        }
+        .semantics {
+            role = Role.Button
+            onClick {
+                onTap()
+                true
+            }
+        }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     state: SakinahUiState,
     collectionId: String,
+    isFocusMode: Boolean,
+    onFocusModeChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onIncrement: () -> Unit,
     onAdvance: () -> Unit,
@@ -115,7 +170,19 @@ fun ReaderScreen(
     val progress = state.progressFor(collectionId)
     val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
     val entry = collection.entries[safeIndex]
+    val canIncrement = !progress.completed &&
+        !progress.isEntryCompleted(safeIndex, collection)
     val isFavorite = entry.id in state.favoriteEntryIds
+    val haptics = LocalHapticFeedback.current
+    val countActionLabel = stringResource(R.string.tap_to_count)
+    val incrementDhikr = {
+        if (canIncrement) {
+            if (state.hapticsEnabled) {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+            onIncrement()
+        }
+    }
     var showAddDialog by remember(entry.id) { mutableStateOf(false) }
     var showReaderSettings by rememberSaveable { mutableStateOf(false) }
     var showReference by rememberSaveable(entry.id) {
@@ -143,14 +210,33 @@ fun ReaderScreen(
             if (state.dhikrCompletionSoundEnabled) {
                 completionTone.startTone(ToneGenerator.TONE_PROP_BEEP, 130)
             }
-            if (state.autoAdvanceDhikrEnabled) {
+            if (state.autoAdvanceDhikrEnabled || isFocusMode) {
                 if (state.dhikrCompletionSoundEnabled) delay(180)
                 onAdvance()
             }
         }
     }
 
-    SakinahScreenBackground {
+    BackHandler(enabled = isFocusMode) {
+        onFocusModeChange(false)
+    }
+
+    SakinahScreenBackground(showOrnament = !isFocusMode) {
+        if (isFocusMode) {
+            ReaderFocusLayout(
+                state = state,
+                progress = progress,
+                collection = collection,
+                entry = entry,
+                currentIndex = safeIndex,
+                canIncrement = canIncrement,
+                onIncrement = incrementDhikr,
+                onAdvance = onAdvance,
+                onRestart = onRestart,
+                onNavigateDhikr = onNavigateDhikr,
+                onExitFocusMode = { onFocusModeChange(false) },
+            )
+        } else {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -191,6 +277,12 @@ fun ReaderScreen(
                 },
                 actions = {
                     if (!progress.completed) {
+                        FocusModeIconButton(
+                            isExit = false,
+                            contentDescription = stringResource(R.string.reader_focus_mode),
+                            onClick = { onFocusModeChange(true) },
+                            modifier = Modifier.testTag("reader_focus_mode"),
+                        )
                         IconButton(
                             onClick = { onToggleFavorite(entry.id) },
                             colors = IconButtonDefaults.iconButtonColors(
@@ -229,13 +321,34 @@ fun ReaderScreen(
                     progress = progress,
                     collection = collection,
                     entry = entry,
-                    onIncrement = onIncrement,
+                    onIncrement = incrementDhikr,
                     onAdvance = onAdvance,
                     onRestart = onRestart,
                 )
             },
         ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (canIncrement) {
+                            Modifier
+                                .testTag("reader_count_area")
+                                .pointerInput(incrementDhikr) {
+                                    detectTapGestures(onTap = { incrementDhikr() })
+                                }
+                                .semantics {
+                                    role = Role.Button
+                                    onClick(label = countActionLabel) {
+                                        incrementDhikr()
+                                        true
+                                    }
+                                }
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -276,6 +389,7 @@ fun ReaderScreen(
                 }
             }
         }
+    }
     }
 
     if (showAddDialog) {
@@ -320,12 +434,14 @@ private fun SessionHeader(
     currentIndex: Int,
 ) {
     Column(
-        modifier = Modifier.semantics {
-            progressBarRangeInfo = ProgressBarRangeInfo(
-                current = progress.fraction(collection),
-                range = 0f..1f,
-            )
-        },
+        modifier = Modifier
+            .testTag("reader_session_header")
+            .semantics {
+                progressBarRangeInfo = ProgressBarRangeInfo(
+                    current = progress.fraction(collection),
+                    range = 0f..1f,
+                )
+            },
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -449,6 +565,7 @@ private fun DhikrReadingCard(
                             lineHeight = (49f * state.textScale).sp,
                         ),
                         textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("reader_dhikr_text"),
                     )
                 }
 
@@ -734,7 +851,6 @@ private fun ReaderBottomAction(
     onAdvance: () -> Unit,
     onRestart: () -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -771,51 +887,180 @@ private fun ReaderBottomAction(
                 }
 
                 else -> {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("reader_count_button")
-                            .height(66.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .clickable {
-                                if (state.hapticsEnabled) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                onIncrement()
-                            },
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.tap_to_count),
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.16f),
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.repetition_progress,
-                                        progress.repetitionCount,
-                                        entry.repetitions,
-                                    ),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                )
-                            }
-                        }
-                    }
+                    ReaderCounterDock(
+                        progress = progress,
+                        entry = entry,
+                        onIncrement = onIncrement,
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReaderFocusLayout(
+    state: SakinahUiState,
+    progress: ReadingProgress,
+    collection: DhikrCollection,
+    entry: DhikrEntry,
+    currentIndex: Int,
+    canIncrement: Boolean,
+    onIncrement: () -> Unit,
+    onAdvance: () -> Unit,
+    onRestart: () -> Unit,
+    onNavigateDhikr: (Int) -> Unit,
+    onExitFocusMode: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("reader_focus_screen")
+            .countUnconsumedTap(
+                enabled = canIncrement,
+                onTap = onIncrement,
+            ),
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = SakinahReadingMaxWidth)
+                .fillMaxSize()
+                .padding(start = 16.dp, top = 58.dp, end = 16.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (progress.completed) {
+                SessionCompleteCard(onRestart = onRestart)
+            } else {
+                DhikrReadingCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    entry = entry,
+                    state = state,
+                    showReference = false,
+                    onToggleReference = null,
+                    canNavigatePrevious = currentIndex > 0,
+                    canNavigateNext = currentIndex < collection.entries.lastIndex,
+                    onNavigateDhikr = onNavigateDhikr,
+                )
+            }
+
+            ReaderFocusBottomAction(
+                progress = progress,
+                collection = collection,
+                entry = entry,
+                onIncrement = onIncrement,
+                onRestart = onRestart,
+            )
+        }
+
+        FocusModeIconButton(
+            isExit = true,
+            contentDescription = stringResource(R.string.reader_exit_focus_mode),
+            onClick = onExitFocusMode,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .testTag("reader_exit_focus_mode"),
+        )
+    }
+}
+
+@Composable
+private fun ReaderFocusBottomAction(
+    progress: ReadingProgress,
+    collection: DhikrCollection,
+    entry: DhikrEntry,
+    onIncrement: () -> Unit,
+    onRestart: () -> Unit,
+) {
+    when {
+        progress.completed -> Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.restart_session))
+        }
+
+        progress.isEntryCompleted(progress.entryIndex, collection) ->
+            // Focus mode always advances after completion. Keep this space stable while the
+            // next entry is persisted and rendered.
+            Spacer(Modifier.height(66.dp))
+
+        else -> ReaderCounterDock(
+            progress = progress,
+            entry = entry,
+            onIncrement = onIncrement,
+        )
+    }
+}
+
+@Composable
+private fun ReaderCounterDock(
+    progress: ReadingProgress,
+    entry: DhikrEntry,
+    onIncrement: () -> Unit,
+) {
+    val repetitionFraction = (
+        progress.repetitionCount.toFloat() / entry.repetitions.coerceAtLeast(1)
+    ).coerceIn(0f, 1f)
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("reader_count_button")
+            .clip(MaterialTheme.shapes.extraLarge)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.tap_to_count),
+                onClick = onIncrement,
+            ),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = sakinahCardBorder(0.24f),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 11.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Text(
+                        text = progress.repetitionCount.toString(),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 28.sp,
+                            lineHeight = 34.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .widthIn(min = 52.dp)
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                            .testTag("reader_repetition_count"),
+                    )
+                }
+                Spacer(Modifier.width(13.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.repetition_target, entry.repetitions),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.tap_to_count),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            ProgressLine(progress = repetitionFraction, height = 4.dp)
         }
     }
 }

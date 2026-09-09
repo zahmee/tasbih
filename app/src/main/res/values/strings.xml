@@ -28,8 +28,6 @@
     <string name="quick_access">وصول سريع</string>
     <string name="sleep_adhkar">أذكار النوم</string>
     <string name="after_prayer_adhkar">بعد الصلاة</string>
-    <string name="book_summary">حصن المسلم كاملًا</string>
-    <string name="book_summary_format">%1$d بابًا • %2$d ذكرًا ودعاءً</string>
     <string name="daily_tasbih">مسبحتك</string>
     <string name="collection_progress">أتممت %1$d من %2$d</string>
 
@@ -58,8 +56,10 @@
 
     <!-- Reader -->
     <string name="dhikr_position">الذكر %1$d من %2$d</string>
-    <string name="repetition_progress">%1$d من %2$d</string>
-    <string name="tap_to_count">اضغط بعد كل مرة</string>
+    <string name="tap_to_count">اضغط في أي مكان بعد كل مرة</string>
+    <string name="repetition_target">من %1$d</string>
+    <string name="reader_focus_mode">توسيع شاشة الذكر</string>
+    <string name="reader_exit_focus_mode">إرجاع شاشة الذكر إلى وضعها الطبيعي</string>
     <string name="next_dhikr">الذكر التالي</string>
     <string name="finish_session">إتمام الورد</string>
     <string name="session_complete">أتممت هذا الباب</string>
@@ -119,6 +119,8 @@
     <string name="tasbih_phrase_no_activity_hint">ابدأ التسبيح وستظهر إحصائياته هنا.</string>
     <string name="close">إغلاق</string>
     <string name="tap_anywhere_to_count">اضغط في المساحة للعد</string>
+    <string name="tasbih_focus_mode">وضع التسبيح بملء الشاشة</string>
+    <string name="tasbih_exit_focus_mode">الخروج من وضع ملء الشاشة</string>
     <string name="dhikr_text">نص الذكر</string>
     <string name="dhikr_text_hint">مثال: سبحان الله وبحمده</string>
     <string name="default_goal">الهدف الافتراضي</string>

@@ -30,7 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
@@ -110,30 +113,44 @@ private fun SakinahNavigation(
     viewModel: SakinahViewModel,
 ) {
     val backStack = remember { mutableStateListOf<Any>(AppDestination.Home) }
+    var isTasbihFocusMode by rememberSaveable { mutableStateOf(false) }
+    var isReaderFocusMode by rememberSaveable { mutableStateOf(false) }
     val latestState = rememberUpdatedState(state)
     val activity = LocalActivity.current
     val topLevelDestination = backStack.lastOrNull().topLevelDestination()
 
     fun navigateTopLevel(destination: AppDestination) {
+        if (destination != AppDestination.Tasbih) isTasbihFocusMode = false
+        isReaderFocusMode = false
         backStack.clear()
         backStack.add(destination)
     }
 
     fun openReader(collectionId: String) {
         if (latestState.value.catalog.collection(collectionId) != null) {
+            isReaderFocusMode = false
             backStack.add(AppDestination.Reader(collectionId))
         }
     }
 
     fun navigateBack() {
-        if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else activity?.finish()
+        if (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader) {
+            isReaderFocusMode = false
+        } else if (backStack.size > 1) {
+            backStack.removeAt(backStack.lastIndex)
+        } else {
+            activity?.finish()
+        }
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavigationRail = maxWidth >= 600.dp
+        val hideTopLevelNavigation = (isTasbihFocusMode &&
+            topLevelDestination == AppDestination.Tasbih) ||
+            (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader)
         Scaffold(
             bottomBar = {
-                if (topLevelDestination != null && !useNavigationRail) {
+                if (topLevelDestination != null && !useNavigationRail && !hideTopLevelNavigation) {
                     AppNavigationBar(
                         selected = topLevelDestination,
                         onNavigate = ::navigateTopLevel,
@@ -146,7 +163,7 @@ private fun SakinahNavigation(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                if (topLevelDestination != null && useNavigationRail) {
+                if (topLevelDestination != null && useNavigationRail && !hideTopLevelNavigation) {
                     AppNavigationRail(
                         selected = topLevelDestination,
                         onNavigate = ::navigateTopLevel,
@@ -166,7 +183,6 @@ private fun SakinahNavigation(
                             HomeScreen(
                                 state = latestState.value,
                                 onOpenCollection = ::openReader,
-                                onOpenLibrary = { navigateTopLevel(AppDestination.Library) },
                                 onOpenTasbih = { navigateTopLevel(AppDestination.Tasbih) },
                                 onRetry = viewModel::retryContentLoad,
                             )
@@ -183,6 +199,8 @@ private fun SakinahNavigation(
                         AppDestination.Tasbih -> NavEntry(destination) {
                             TasbihScreen(
                                 state = latestState.value,
+                                isFocusMode = isTasbihFocusMode,
+                                onFocusModeChange = { isTasbihFocusMode = it },
                                 onIncrement = viewModel::incrementTasbih,
                                 onDecrement = viewModel::decrementTasbih,
                                 onReset = viewModel::resetTasbih,
@@ -237,6 +255,8 @@ private fun SakinahNavigation(
                             ReaderScreen(
                                 state = latestState.value,
                                 collectionId = destination.collectionId,
+                                isFocusMode = isReaderFocusMode,
+                                onFocusModeChange = { isReaderFocusMode = it },
                                 onBack = ::navigateBack,
                                 onIncrement = { viewModel.incrementDhikr(destination.collectionId) },
                                 onAdvance = { viewModel.advanceDhikr(destination.collectionId) },
