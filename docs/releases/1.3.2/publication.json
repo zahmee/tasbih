@@ -1,0 +1,31 @@
+{
+  "observedAtUTC": "2026-10-03T18:49:19Z",
+  "releaseDate": "2026-10-03",
+  "versionName": "1.3.2",
+  "versionCode": 6,
+  "repository": "https://github.com/zahmee/tasbih",
+  "branch": "main",
+  "releaseSourceCommit": "2dd8f9270c98889b85cc4daa9878958679df8682",
+  "releaseTag": "v1.3.2",
+  "releaseURL": "https://github.com/zahmee/tasbih/releases/tag/v1.3.2",
+  "releasePublishedAtUTC": "2026-10-03T18:43:21Z",
+  "apkDownloadURL": "https://github.com/zahmee/tasbih/releases/download/v1.3.2/Anaa-1.3.2.apk",
+  "apkSHA256": "1B5694FD2E684D7E775EE81701BA8DDAAE0584B51BBEB7BBAC9B711825617F2F",
+  "remoteAPKDigestMatchesLocal": true,
+  "aabSHA256": "977944B1EA9E6D0C4BCCD9C333C68F91AFFC038D5FBEA714B77CC3F3FF845AC9",
+  "googlePlay": {
+    "package": "com.sakinah.tasbih",
+    "track": "production",
+    "releaseName": "اناء 1.3.2 — تحسينات الأذكار والأيقونة",
+    "bundleAccepted": true,
+    "supportedDeviceChange": false,
+    "targetedCountries": 178,
+    "rolloutPercent": 100,
+    "reviewSubmissionRequestAccepted": true,
+    "consoleSection": "Changes in review",
+    "preliminaryChecks": "running",
+    "reviewDispatch": "queued until preliminary checks succeed",
+    "managedPublishing": false,
+    "newReleasePublicAvailabilityConfirmed": false
+  }
+}
