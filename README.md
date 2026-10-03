@@ -1,4 +1,4 @@
-# سكينة
+# آناء — أذكار ومسبحة
 
 [العربية](#العربية)
 
@@ -8,7 +8,7 @@
 
 <div dir="rtl">
 
-> سكينة تطبيق عربي أصلي للأذكار اليومية، وكتاب حصن المسلم، والمسبحة. يعمل محليًا، بلا حساب، وبلا إعلانات أو اشتراكات.
+> آناء تطبيق عربي أصلي للأذكار اليومية، وكتاب حصن المسلم، والمسبحة. يعمل محليًا، بلا حساب، وبلا إعلانات أو اشتراكات.
 
 ## المشروع متاح للجميع
 
@@ -26,7 +26,7 @@
 - إدارة مستقلة لأذكار المسبحة: إضافة وتعديل وحذف، مع توقف التنقل عند أول ذكر وآخره.
 - واجهة عربية من اليمين إلى اليسار، وخطوط مناسبة للنصوص العربية، وخيار الألوان الديناميكية والوضع الداكن.
 
-يبقى نطاق سكينة مقصودًا ومركزًا: الذكر والقراءة والتسبيح، من دون أقسام جانبية مشتتة.
+يبقى نطاق آناء مقصودًا ومركزًا: الذكر والقراءة والتسبيح، من دون أقسام جانبية مشتتة.
 
 ## صور من التطبيق
 
@@ -107,7 +107,9 @@
 
 ## الإصدار
 
-الإصدار الحالي هو 1.3.0، ورقم البناء 4.
+الإصدار الحالي هو ١.٣.٢، ورقم البناء ٦، وتاريخ الإصدار ٣ أكتوبر ٢٠٢٦.
+
+راجع [سجل التحديثات](CHANGELOG.md) للاطلاع على تغييرات هذا الإصدار.
 
 </div>
 
@@ -115,7 +117,7 @@
 
 ## English
 
-Sakinah is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim content, and personal tasbih sessions. It works locally with no account, ads, subscriptions, or network permission required for its content.
+Anaa is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim content, and personal tasbih sessions. It works locally with no account, ads, subscriptions, or network permission required for its content.
 
 ### Highlights
 
@@ -125,6 +127,10 @@ Sakinah is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim co
 - A flexible tasbih with editable phrases and bounded previous/next navigation.
 - Local-first settings and progress storage.
 - RTL-first interface built with Kotlin and Jetpack Compose.
+
+### Current release
+
+Version 1.3.2, build 6, released October 3, 2026. See [the changelog](CHANGELOG.md).
 
 ### Build
 

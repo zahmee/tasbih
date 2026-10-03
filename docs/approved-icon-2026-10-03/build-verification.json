@@ -1,0 +1,13 @@
+{
+  "artifact": "dist/Anaa-1.3.1-approved-icon.apk",
+  "sha256": "DBC411A1356ACBAD03B99FA6A71DB9491D9BA46690AE9D27A3795FD3E952E3A9",
+  "bytes": 3447834,
+  "built": "2026-10-03T21:05:37.4248805+03:00",
+  "versionName": "1.3.1",
+  "versionCode": 5,
+  "buildDebug": "Passed",
+  "buildRelease": "Passed",
+  "signatureVerification": "Passed (v2)",
+  "nativeLauncherVisual": "Passed",
+  "uploadCertificateSHA256": "71E5718995852EF2B26596BF95F81552017E129763E6275F854A3AC623D588BD"
+}

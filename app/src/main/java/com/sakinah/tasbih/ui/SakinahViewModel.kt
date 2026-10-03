@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sakinah.tasbih.data.AppPreferencesRepository
+import com.sakinah.tasbih.data.CompletionSound
+import com.sakinah.tasbih.data.DefaultCompletionSoundVolume
+import com.sakinah.tasbih.data.DailyResetSettings
+import com.sakinah.tasbih.data.nextDailyReset
 import com.sakinah.tasbih.data.ActivityAnalytics
 import com.sakinah.tasbih.data.ActivityRepository
 import com.sakinah.tasbih.data.ArabicFontStyle
@@ -11,6 +15,8 @@ import com.sakinah.tasbih.data.DhikrCatalog
 import com.sakinah.tasbih.data.DhikrEntry
 import com.sakinah.tasbih.data.HisnCatalog
 import com.sakinah.tasbih.data.HisnContentRepository
+import com.sakinah.tasbih.data.ReaderUndo
+import com.sakinah.tasbih.data.ReadingSessionRepository
 import com.sakinah.tasbih.data.ReadingProgress
 import com.sakinah.tasbih.data.TasbihPhrase
 import com.sakinah.tasbih.data.TasbihPhraseAnalytics
@@ -24,6 +30,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -77,9 +85,15 @@ data class SakinahUiState(
     val tasbihTextScale: Float = 1f,
     val showReferenceByDefault: Boolean = false,
     val dhikrCompletionSoundEnabled: Boolean = true,
+    val tasbihCompletionSoundEnabled: Boolean = true,
+    val completionSound: CompletionSound = CompletionSound.ClearBell,
+    val completionSoundVolume: Float = DefaultCompletionSoundVolume,
     val autoAdvanceDhikrEnabled: Boolean = true,
     val favoriteEntryIds: Set<String> = emptySet(),
     val readingProgress: Map<String, ReadingProgress> = emptyMap(),
+    val readerUndo: Map<String, ReaderUndo> = emptyMap(),
+    val recentEntryIds: List<String> = emptyList(),
+    val dailyReset: DailyResetSettings = DailyResetSettings(),
     val activityAnalytics: ActivityAnalytics = ActivityAnalytics(),
     val selectedTasbihPhraseAnalytics: TasbihPhraseAnalytics = TasbihPhraseAnalytics(),
 ) {
@@ -94,6 +108,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     private val preferencesRepository = AppPreferencesRepository(application)
     private val activityRepository = ActivityRepository(application)
     private val contentRepository = HisnContentRepository(application)
+    private val readingSessions = ReadingSessionRepository(preferencesRepository, activityRepository)
     private val contentState = MutableStateFlow<ContentState>(ContentState.Loading)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -109,11 +124,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
         activityRepository.analytics,
     ) { preferencesAndPhraseAnalytics, content, analytics ->
         val (preferences, phraseAnalytics) = preferencesAndPhraseAnalytics
-        val phrases = (
-            DhikrCatalog.builtInTasbihPhrases
-                .filterNot { it.id in preferences.hiddenBuiltInPhraseIds } +
-                preferences.customPhrases
-            ).ifEmpty { DhikrCatalog.builtInTasbihPhrases.take(1) }
+        val phrases = preferences.tasbihPhrases
         val selectedPhrase = phrases.firstOrNull { it.id == preferences.selectedPhraseId }
             ?: phrases.first()
         SakinahUiState(
@@ -133,9 +144,17 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
             tasbihTextScale = preferences.tasbihTextScale,
             showReferenceByDefault = preferences.showReferenceByDefault,
             dhikrCompletionSoundEnabled = preferences.dhikrCompletionSoundEnabled,
+            tasbihCompletionSoundEnabled = preferences.tasbihCompletionSoundEnabled,
+            completionSound = preferences.completionSound,
+            completionSoundVolume = preferences.completionSoundVolume,
             autoAdvanceDhikrEnabled = preferences.autoAdvanceDhikrEnabled,
             favoriteEntryIds = preferences.favoriteEntryIds,
             readingProgress = preferences.readingProgress,
+            readerUndo = preferences.readerUndo,
+            dailyReset = preferences.dailyReset,
+            recentEntryIds = preferences.recentEntryIds.ifEmpty {
+                analytics.recent.filter { it.kind == com.sakinah.tasbih.data.ActivityKinds.Reader }.map { it.sourceId }.distinct().take(12)
+            },
             activityAnalytics = analytics,
             selectedTasbihPhraseAnalytics = phraseAnalytics,
         )
@@ -195,6 +214,10 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
         if (text.isNotBlank()) preferencesRepository.updatePhrase(phrase, text, defaultGoal)
     }
 
+    fun moveTasbihPhrase(id: String, destinationIndex: Int) = viewModelScope.launch {
+        preferencesRepository.moveTasbihPhrase(id, destinationIndex)
+    }
+
     fun addEntryToTasbih(entry: DhikrEntry) = viewModelScope.launch {
         preferencesRepository.addCustomPhrase(entry.text, entry.repetitions)
     }
@@ -213,87 +236,31 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun incrementDhikr(collectionId: String) = viewModelScope.launch {
-        val collection = uiState.value.catalog.collection(collectionId) ?: return@launch
-        if (collection.entries.isEmpty()) return@launch
-        val progress = uiState.value.progressFor(collectionId)
-        if (progress.completed) return@launch
-
-        val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
-        val entry = collection.entries[safeIndex]
-        if (progress.isEntryCompleted(safeIndex, collection)) return@launch
-        val nextCount = (progress.repetitionCountFor(safeIndex) + 1).coerceAtMost(entry.repetitions)
-        val completedEntryIndices = if (nextCount >= entry.repetitions) {
-            progress.completedEntryIndices + safeIndex
-        } else {
-            progress.completedEntryIndices
-        }
-        preferencesRepository.saveReadingProgress(
-            collectionId = collectionId,
-            progress = progress.copy(
-                entryIndex = safeIndex,
-                repetitionCounts = progress.repetitionCounts + (safeIndex to nextCount),
-                completedEntryIndices = completedEntryIndices,
-            ),
-        )
-        activityRepository.recordReader(entry, collection.title)
+        uiState.value.catalog.collection(collectionId)?.let { readingSessions.increment(it) }
     }
 
     fun advanceDhikr(collectionId: String) = viewModelScope.launch {
-        val collection = uiState.value.catalog.collection(collectionId) ?: return@launch
-        if (collection.entries.isEmpty()) return@launch
-        val progress = uiState.value.progressFor(collectionId)
-        if (progress.completed) return@launch
-
-        val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
-        if (!progress.isEntryCompleted(safeIndex, collection)) return@launch
-
-        val completedEntryIndices = progress.completedEntryIndices.toMutableSet()
-        collection.entries.indices.filterTo(completedEntryIndices) { index ->
-            progress.isEntryCompleted(index, collection)
-        }
-        completedEntryIndices += safeIndex
-        val allEntriesCompleted = collection.entries.indices.all { it in completedEntryIndices }
-
-        val nextProgress = if (allEntriesCompleted) {
-            progress.copy(
-                completedEntryIndices = completedEntryIndices.toSet(),
-                completed = true,
-            )
-        } else {
-            val nextIncompleteIndex = (1..collection.entries.size)
-                .map { offset -> (safeIndex + offset) % collection.entries.size }
-                .first { index -> index !in completedEntryIndices }
-            progress.copy(
-                entryIndex = nextIncompleteIndex,
-                completedEntryIndices = completedEntryIndices.toSet(),
-            )
-        }
-        preferencesRepository.saveReadingProgress(collectionId, nextProgress)
-        if (nextProgress.completed) activityRepository.recordCompletion(collection)
+        uiState.value.catalog.collection(collectionId)?.let { readingSessions.advance(it) }
     }
 
-    /**
-     * Moves between dhikr entries without changing counts or completion state.
-     */
     fun navigateDhikr(collectionId: String, direction: Int) = viewModelScope.launch {
-        val collection = uiState.value.catalog.collection(collectionId) ?: return@launch
-        if (collection.entries.isEmpty() || direction == 0) return@launch
+        uiState.value.catalog.collection(collectionId)?.let { readingSessions.navigate(it, direction) }
+    }
 
-        val progress = uiState.value.progressFor(collectionId)
-        if (progress.completed) return@launch
+    fun openReaderEntry(entry: DhikrEntry) = viewModelScope.launch {
+        uiState.value.catalog.collection(entry.collectionId)?.let { readingSessions.openEntry(it, entry.id) }
+    }
 
-        val currentIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
-        val targetIndex = (currentIndex + direction).coerceIn(0, collection.entries.lastIndex)
-        if (targetIndex == currentIndex) return@launch
+    fun recordVisitedEntry(entryId: String) = viewModelScope.launch {
+        preferencesRepository.recordVisitedEntry(entryId)
+    }
 
-        preferencesRepository.saveReadingProgress(
-            collectionId = collectionId,
-            progress = progress.copy(entryIndex = targetIndex),
-        )
+    fun undoDhikr(collectionId: String) = viewModelScope.launch {
+        readingSessions.undo(collectionId)
     }
 
     fun restartCollection(collectionId: String) = viewModelScope.launch {
-        preferencesRepository.saveReadingProgress(collectionId, ReadingProgress())
+        readingSessions.restart(collectionId)
     }
 
     fun toggleFavorite(entryId: String) = viewModelScope.launch {
@@ -336,9 +303,29 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
         preferencesRepository.setDhikrCompletionSoundEnabled(enabled)
     }
 
+    fun setTasbihCompletionSoundEnabled(enabled: Boolean) = viewModelScope.launch {
+        preferencesRepository.setTasbihCompletionSoundEnabled(enabled)
+    }
+
+    fun setCompletionSound(sound: CompletionSound) = viewModelScope.launch {
+        preferencesRepository.setCompletionSound(sound)
+    }
+
+    fun setCompletionSoundVolume(volume: Float) = viewModelScope.launch {
+        preferencesRepository.setCompletionSoundVolume(volume)
+    }
+
     fun setAutoAdvanceDhikrEnabled(enabled: Boolean) = viewModelScope.launch {
         preferencesRepository.setAutoAdvanceDhikrEnabled(enabled)
     }
+
+    fun setTasbihDailyReset(enabled: Boolean) = viewModelScope.launch { preferencesRepository.setTasbihDailyReset(enabled) }
+
+    fun setAdhkarDailyReset(enabled: Boolean) = viewModelScope.launch { preferencesRepository.setAdhkarDailyReset(enabled) }
+
+    fun setDailyResetTime(minuteOfDay: Int) = viewModelScope.launch { preferencesRepository.setDailyResetTime(minuteOfDay) }
+
+    fun refreshDailyState() = viewModelScope.launch { preferencesRepository.rollOverDailyStateIfNeeded() }
 
     private fun loadContent() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -352,10 +339,12 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
 
     private fun watchForDailyRollover() {
         viewModelScope.launch {
-            while (true) {
-                val delayUntilNextDay = millisUntilNextDailyRollover()
-                preferencesRepository.rollOverDailyStateIfNeeded()
-                delay(delayUntilNextDay + 1_000L)
+            preferencesRepository.preferences.map { it.dailyReset }.distinctUntilChanged().collectLatest { settings ->
+                while (true) {
+                    preferencesRepository.rollOverDailyStateIfNeeded()
+                    // Recheck the wall clock as well as the exact boundary, including time-zone edits.
+                    delay((millisUntilNextDailyRollover(settings = settings) + 100L).coerceAtMost(60_000L))
+                }
             }
         }
     }
@@ -367,7 +356,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
-internal fun millisUntilNextDailyRollover(now: ZonedDateTime = ZonedDateTime.now()): Long {
-    val nextDayStart = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
+internal fun millisUntilNextDailyRollover(now: ZonedDateTime = ZonedDateTime.now(), settings: DailyResetSettings = DailyResetSettings()): Long {
+    val nextDayStart = nextDailyReset(now, settings)
     return Duration.between(now, nextDayStart).toMillis().coerceAtLeast(1_000L)
 }

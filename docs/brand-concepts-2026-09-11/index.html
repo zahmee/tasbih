@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>آناء — مقترحات الهوية والصفحة الرئيسية</title>
+<style>
+:root{--paper:#f7f4ed;--ink:#2c312e;--muted:#60675f;--rule:#d7d6cd;--green:#185348;--clay:#a66445;--night:#18242e}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:94px}
+body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.8 "Segoe UI",Tahoma,Arial,sans-serif}
+a{color:inherit;text-underline-offset:.25em}
+a:focus-visible{outline:3px solid #185348;outline-offset:5px}
+.wrap{width:min(1280px,calc(100% - 40px));margin:auto}
+header{padding:56px 0 28px}
+.eyebrow{font-size:15px;color:var(--muted);margin:0 0 8px}
+h1{font-size:clamp(30px,4vw,48px);line-height:1.4;margin:0 0 12px;letter-spacing:-.02em}
+.intro{max-width:780px;margin:0;color:var(--muted)}
+nav{position:sticky;top:0;background:var(--paper);border-block:1px solid var(--rule);z-index:2}
+nav .wrap{display:flex;gap:28px;flex-wrap:wrap}
+nav a{padding:14px 0;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:9px;min-height:52px}
+nav a:hover{text-decoration:underline}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.green{background:var(--green)}.clay{background:var(--clay)}.night{background:var(--night)}
+section{padding:48px 0 36px;border-bottom:1px solid var(--rule)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:12px}
+h2{margin:0;font-size:28px;line-height:1.5}
+.kind{color:var(--muted);font-size:16px;margin:0}
+figure{margin:22px 0 0}
+figure>a{display:block}
+img{display:block;width:100%;height:auto;aspect-ratio:3/2;background:#f3f0e8}
+figcaption{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:18px}
+figcaption p{margin:0}
+.label{display:block;font-weight:700;margin-bottom:3px}
+.description{color:var(--muted)}
+.original{display:inline-block;font-size:15px;min-height:44px;padding-top:12px}
+.choice{padding:32px 0 48px}
+.choice p{max-width:870px}
+.recommend{color:var(--ink)}
+footer{font-size:14px;color:var(--muted);border-top:1px solid var(--rule);padding:18px 0 24px}
+@media(max-width:650px){
+ .wrap{width:calc(100% - 24px)}
+ header{padding-top:28px}
+ h1{font-size:30px}
+ nav .wrap{gap:18px}
+ nav a{font-size:15px}
+ section{padding:30px 0}
+ .section-head{display:block}
+ h2{font-size:24px}
+ figcaption{grid-template-columns:1fr;gap:12px}
+ body{font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{
+ nav{position:static}
+ section{break-before:page;break-inside:avoid}
+ header{padding-top:0}
+ .original{display:none}
+ .wrap{width:100%}
+}
+</style>
+</head>
+<body>
+<header class="wrap">
+<p class="eyebrow">الهوية البصرية · اعتُمد الاتجاه الأول</p>
+<h1>آناء، برسم جديد</h1>
+<p class="intro">اعتمد المستخدم الاتجاه الأول ونُفذ في التطبيق. تحتفظ هذه الصفحة بالمقترحات الثلاثة مرجعًا للمقارنة. اضغط على أي لوحة لفتحها بحجمها الكامل.</p>
+</header>
+<nav aria-label="الانتقال إلى التصاميم">
+<div class="wrap">
+<a href="#flow"><span class="dot green" aria-hidden="true"></span>١ · الانسيابي</a>
+<a href="#geometry"><span class="dot clay" aria-hidden="true"></span>٢ · الهندسي</a>
+<a href="#night"><span class="dot night" aria-hidden="true"></span>٣ · الليلي</a>
+</div>
+</nav>
+<main class="wrap">
+<section id="flow" aria-labelledby="flow-title">
+<div class="section-head"><h2 id="flow-title">١ · الانسيابي</h2><p class="kind">أخضر عميق · خطوط مرنة</p></div>
+<figure>
+<a href="concept-1-flow.png" target="_blank" rel="noopener" aria-label="فتح التصميم الأول بحجمه الكامل"><img src="concept-1-flow.png" width="1536" height="1024" alt="التصميم الأول: علامة خضراء انسيابية تستلهم النون، ورسم اسم آناء بخط مرن، وصفحة فاتحة ببطاقة ورد اليوم وصفين للوصول السريع."></a>
+<figcaption>
+<p><span class="label">الاسم والشعار</span><span class="description">حركة منحنية تستلهم حرف النون، مع نقطة بلون نحاسي ورسم مرن للاسم.</span></p>
+<p><span class="label">ترتيب الصفحة</span><span class="description">هوية خفيفة أعلى الشاشة، ثم بطاقة واضحة لورد اليوم وزر للإكمال، وبعدها الوصول السريع في صفين.</span></p>
+</figcaption>
+</figure>
+<a class="original" href="concept-1-flow.png">فتح الصورة الأصلية</a>
+</section>
+<section id="geometry" aria-labelledby="geometry-title">
+<div class="section-head"><h2 id="geometry-title">٢ · الهندسي</h2><p class="kind">طيني دافئ · حروف هندسية</p></div>
+<figure>
+<a href="concept-2-geometry.png" target="_blank" rel="noopener" aria-label="فتح التصميم الثاني بحجمه الكامل"><img src="concept-2-geometry.png" width="1536" height="1024" loading="lazy" alt="التصميم الثاني: أيقونة طينية بحروف هندسية، ورسم كوفي معاصر لاسم آناء، وصفحة فاتحة يتوسطها الاسم ويظهر الورد دون بطاقة كبيرة."></a>
+<figcaption>
+<p><span class="label">الاسم والشعار</span><span class="description">رسم هندسي مستلهم من الخط الكوفي، وعلامة مختصرة من ضربتين ونقطة، قابلة للظهور بلون واحد.</span></p>
+<p><span class="label">ترتيب الصفحة</span><span class="description">الاسم في الوسط والتاريخ في سطر مختصر. الورد هو العنصر الرئيسي دون إطار كبير، وتحته زر الإكمال واختصاران متجاوران.</span></p>
+</figcaption>
+</figure>
+<a class="original" href="concept-2-geometry.png">فتح الصورة الأصلية</a>
+</section>
+<section id="night" aria-labelledby="night-title">
+<div class="section-head"><h2 id="night-title">٣ · الليلي</h2><p class="kind">كحلي داكن · لمسات ذهبية</p></div>
+<figure>
+<a href="concept-3-night.png" target="_blank" rel="noopener" aria-label="فتح التصميم الثالث بحجمه الكامل"><img src="concept-3-night.png" width="1536" height="1024" loading="lazy" alt="التصميم الثالث: علامة من قوسين ونقطة بلون ذهبي، ورسم عربي للاسم، وصفحة داكنة تعرض تقدم الورد في حلقة صغيرة وبجوارها عنوان الذكر."></a>
+<figcaption>
+<p><span class="label">الاسم والشعار</span><span class="description">قوسان مفتوحان حول نقطة يعبّران عن تتابع الأوقات، مع رسم عربي خفيف للاسم.</span></p>
+<p><span class="label">ترتيب الصفحة</span><span class="description">الاسم والتاريخ متقابلان، ثم عنوان الورد مع تقدم دائري صغير، وزر واضح، وقائمة مختصرة للوصول السريع.</span></p>
+</figcaption>
+</figure>
+<a class="original" href="concept-3-night.png">فتح الصورة الأصلية</a>
+</section>
+<div class="choice">
+<p class="recommend"><strong>التصميم المعتمد: الأول، الانسيابي.</strong> نُفذ رسم الاسم والعلامة والأيقونة وترتيب الصفحة الرئيسية بموارد متجهة تدعم الوضعين الفاتح والليلي.</p>
+<p class="description"><a href="../brand-assets/evidence/home.png">مشاهدة الشاشة المنفذة</a></p>
+</div>
+</main>
+<footer><div class="wrap">معاينات لاختيار الاتجاه البصري · المسبحة متاحة من شريط التنقل السفلي في جميع الخيارات.</div></footer>
+</body>
+</html>

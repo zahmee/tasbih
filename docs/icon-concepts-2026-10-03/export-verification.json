@@ -1,0 +1,44 @@
+[
+  {
+    "id": "01-clear-noon",
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "store_dimensions": [
+      512,
+      512
+    ],
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 195935
+  },
+  {
+    "id": "02-clear-tasbih",
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "store_dimensions": [
+      512,
+      512
+    ],
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 226344
+  },
+  {
+    "id": "03-clear-book",
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "store_dimensions": [
+      512,
+      512
+    ],
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 202574
+  }
+]

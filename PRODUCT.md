@@ -10,11 +10,19 @@ Arabic-speaking Muslims using a phone during short, focused moments of daily dhi
 
 ## Product Purpose
 
-Sakinah provides offline-first access to daily adhkar, Hisn al-Muslim, and a personal tasbih. Success means the user can begin, count, resume, and complete remembrance with minimal friction while their progress stays private on the device.
+Anaa provides offline-first access to daily adhkar, Hisn al-Muslim, and a personal tasbih. Success means the user can begin, count, resume, and complete remembrance with minimal friction while their progress stays private on the device.
+
+## Product Name
+
+The approved Arabic name inside the application is «آناء», with «أذكار ومسبحة» as its descriptor. Use the short name in the launcher and screen headings, and the full name «آناء — أذكار ومسبحة» in descriptive material. The Google Play listing title is «اناء», without the alif madda, as explicitly requested on October 3, 2026. The English transliteration is Anaa.
+
+Keep the existing Android application ID, storage names, and persisted preference values when applying the display-name change, so existing installations retain their data.
 
 ## Brand Personality
 
 Calm, respectful, and focused. The interface should feel quietly reassuring and contemporary while treating the religious content with appropriate dignity.
+
+The launcher and splash icon approved on October 3, 2026 is the revised first concept: a clear green alif and noon, with copper prayer beads replacing the noon dot on an ivory background. Native vector layers follow the approved artwork's contours and provide a matching monochrome layer. The store PNG preserves the approved export unchanged. Home and About retain the existing flowing emblem and bespoke Arabic wordmark. Reading actions remain pine-green, and the home screen uses one featured reading card followed by two full-width quick links.
 
 ## Anti-references
 

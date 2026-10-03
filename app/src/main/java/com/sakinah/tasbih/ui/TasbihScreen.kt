@@ -1,7 +1,6 @@
 package com.sakinah.tasbih.ui
 
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -9,10 +8,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +34,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,11 +43,17 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,6 +76,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -89,6 +97,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.LocalContentColor
@@ -104,6 +115,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -112,6 +124,7 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.TasbihPhrase
 import com.sakinah.tasbih.data.TasbihPhraseAnalytics
 import com.sakinah.tasbih.data.displayArabic
+import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
 import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
 import java.time.LocalDate
@@ -123,7 +136,7 @@ import kotlinx.coroutines.launch
 
 private const val TASBIH_COMPLETION_TONE_DURATION_MILLIS = 2_000
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasbihScreen(
     state: SakinahUiState,
@@ -136,19 +149,16 @@ fun TasbihScreen(
     onSelectPhrase: (String) -> Unit,
     onAddCustomPhrase: (String, Int) -> Unit,
     onUpdatePhrase: (String, String, Int) -> Unit,
-    onDeleteCustomPhrase: (String) -> Unit,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
-    var showPhraseStatistics by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
+    var showPhraseStatistics by rememberSaveable { mutableStateOf(false) }
     var showCompletedCycle by remember { mutableStateOf(false) }
     var completionJob by remember { mutableStateOf<Job?>(null) }
     val haptics = LocalHapticFeedback.current
     val completionScope = rememberCoroutineScope()
-    val completionTone = remember {
-        ToneGenerator(AudioManager.STREAM_NOTIFICATION, 55)
-    }
+    val completionTone = rememberCompletionSoundPlayer()
     var previousCount by remember(state.selectedPhrase.id, state.tasbihTarget) {
         mutableIntStateOf(state.tasbihCount)
     }
@@ -171,6 +181,8 @@ fun TasbihScreen(
         onIncrement()
     }
 
+    val currentCountAction by rememberUpdatedState { count() }
+
     BackHandler(enabled = isFocusMode) {
         onFocusModeChange(false)
     }
@@ -178,14 +190,13 @@ fun TasbihScreen(
     DisposableEffect(completionTone) {
         onDispose {
             completionJob?.cancel()
-            completionTone.stopTone()
-            completionTone.release()
+            completionTone.stop()
         }
     }
 
     LaunchedEffect(state.selectedPhrase.id, state.tasbihTarget) {
         completionJob?.cancel()
-        completionTone.stopTone()
+        completionTone.stop()
         showCompletedCycle = false
         previousCount = state.tasbihCount
         lastResetMilestone = latestTasbihMilestone(state.tasbihCount, state.tasbihTarget)
@@ -198,7 +209,7 @@ fun TasbihScreen(
 
         if (currentCount < countBeforeUpdate || state.tasbihTarget <= 0) {
             completionJob?.cancel()
-            completionTone.stopTone()
+            completionTone.stop()
             showCompletedCycle = false
             lastResetMilestone = latestTasbihMilestone(currentCount, state.tasbihTarget)
             return@LaunchedEffect
@@ -207,15 +218,14 @@ fun TasbihScreen(
         if (hasCrossedTasbihCycle(countBeforeUpdate, currentCount, state.tasbihTarget)) {
             val completedMilestone = latestTasbihMilestone(currentCount, state.tasbihTarget)
             completionJob?.cancel()
-            completionTone.stopTone()
+            completionTone.stop()
             showCompletedCycle = true
-            completionTone.startTone(
-                ToneGenerator.TONE_PROP_BEEP,
-                TASBIH_COMPLETION_TONE_DURATION_MILLIS,
-            )
+            if (state.tasbihCompletionSoundEnabled) {
+                completionTone.play(state.completionSound, state.completionSoundVolume)
+            }
             completionJob = completionScope.launch {
                 delay(TASBIH_COMPLETION_TONE_DURATION_MILLIS.toLong())
-                completionTone.stopTone()
+                completionTone.stop()
                 lastResetMilestone = completedMilestone
                 showCompletedCycle = false
             }
@@ -223,10 +233,10 @@ fun TasbihScreen(
     }
 
     SakinahScreenBackground(showOrnament = !isFocusMode) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-        ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val landscape = maxWidth > maxHeight && maxHeight < 500.dp
+            val textMaxHeight = if (landscape) (maxHeight - 132.dp).coerceAtLeast(64.dp)
+                else (maxHeight * if (isFocusMode) 0.38f else 0.26f).coerceAtLeast(64.dp)
             // Keep the convenient background gesture without exposing a duplicate
             // accessibility action; the dial below is the single announced counter.
             Box(
@@ -234,7 +244,7 @@ fun TasbihScreen(
                     .matchParentSize()
                     .testTag("tasbih_count_surface")
                     .pointerInput(Unit) {
-                        detectTapGestures(onTap = { count() })
+                        detectTapGestures(onTap = { currentCountAction() })
                     },
             )
 
@@ -249,18 +259,15 @@ fun TasbihScreen(
                         vertical = if (isFocusMode) 8.dp else 16.dp,
                     ),
             ) {
-                if (isFocusMode) {
-                    FocusPhraseHeader(
-                        state = state,
-                        onSelectPhrase = onSelectPhrase,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                } else {
+                if (!isFocusMode) {
                     TasbihTopBar(
-                        count = state.tasbihCount,
-                        onUndo = onDecrement,
+                        count = state.tasbihCount, onUndo = onDecrement,
                         onReset = { showResetConfirmation = true },
                         onOpenStatistics = { showPhraseStatistics = true },
+                        onEdit = {
+                            editingPhrase = state.selectedPhrase.copy(defaultGoal = state.tasbihTarget)
+                            showEditor = true
+                        },
                         onManagePhrases = onOpenPhraseManager,
                         onAdd = {
                             editingPhrase = null
@@ -268,42 +275,25 @@ fun TasbihScreen(
                         },
                         onEnterFocusMode = { onFocusModeChange(true) },
                     )
-                    Spacer(Modifier.height(12.dp))
-                    PhraseCarousel(
-                        state = state,
-                        onSelectPhrase = onSelectPhrase,
-                        onLongPress = {
-                            if (state.hapticsEnabled) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            editingPhrase = state.selectedPhrase
-                            showEditor = true
-                        },
-                    )
                     Spacer(Modifier.height(8.dp))
                 }
-                CounterSection(
-                    state = state,
-                    displayedProgress = displayedProgress,
-                    showCompletionFeedback = displayCompletedCycle,
-                    isFocusMode = isFocusMode,
-                    onIncrement = ::count,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                )
-            }
-
-            if (isFocusMode) {
-                FocusModeIconButton(
-                    isExit = true,
-                    contentDescription = stringResource(R.string.tasbih_exit_focus_mode),
-                    onClick = { onFocusModeChange(false) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .testTag("tasbih_exit_focus_mode"),
-                )
+                val phraseContent: @Composable () -> Unit = {
+                    if (isFocusMode) FocusPhraseHeader(state, textMaxHeight, onSelectPhrase) { onFocusModeChange(false) }
+                    else PhraseCarousel(state, textMaxHeight, onSelectPhrase)
+                }
+                val counterContent: @Composable (Modifier) -> Unit = { modifier ->
+                    CounterSection(state, displayedProgress, displayCompletedCycle, isFocusMode, ::count, modifier)
+                }
+                if (landscape) {
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Large)) {
+                        Column(Modifier.weight(1.2f)) { phraseContent() }
+                        counterContent(Modifier.weight(1f).fillMaxHeight())
+                    }
+                } else {
+                    phraseContent()
+                    Spacer(Modifier.height(8.dp))
+                    counterContent(Modifier.fillMaxWidth().weight(1f))
+                }
             }
         }
     }
@@ -332,29 +322,17 @@ fun TasbihScreen(
     }
 
     if (showEditor) {
-        key(editingPhrase?.id ?: "new_phrase") {
-            PhraseEditorDialog(
-                phrase = editingPhrase,
-                onDismiss = { showEditor = false },
-                onSave = { text, goal ->
-                    val phrase = editingPhrase
-                    if (phrase == null) {
-                        onAddCustomPhrase(text, goal)
-                    } else {
-                        onUpdatePhrase(phrase.id, text, goal)
-                    }
-                    showEditor = false
-                },
-                onDelete = editingPhrase
-                    ?.takeIf(TasbihPhrase::isCustom)
-                    ?.let { phrase ->
-                        {
-                            onDeleteCustomPhrase(phrase.id)
-                            showEditor = false
-                        }
-                    },
-            )
-        }
+        PhraseEditorDialog(
+            phrase = editingPhrase,
+            onDismiss = { showEditor = false },
+            onSave = { text, goal ->
+                val phrase = editingPhrase
+                if (phrase == null) onAddCustomPhrase(text, goal)
+                else onUpdatePhrase(phrase.id, text, goal)
+                showEditor = false
+            },
+            onDelete = null,
+        )
     }
 
     if (showPhraseStatistics) {
@@ -375,12 +353,27 @@ fun TasbihPhraseManagerScreen(
     onSelectPhrase: (String) -> Unit,
     onAddCustomPhrase: (String, Int) -> Unit,
     onUpdatePhrase: (String, String, Int) -> Unit,
+    onMovePhrase: (String, Int) -> Unit,
     onDeletePhrase: (String) -> Unit,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
     var phrasePendingDeletion by remember { mutableStateOf<TasbihPhrase?>(null) }
+    var reorderingPhraseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealPhraseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealIndex by rememberSaveable { mutableIntStateOf(0) }
+    val listState = rememberLazyListState()
     val canDeletePhrase = state.tasbihPhrases.size > 1
+
+    LaunchedEffect(state.tasbihPhrases, revealPhraseId, revealIndex) {
+        val id = revealPhraseId ?: return@LaunchedEffect
+        if (state.tasbihPhrases.getOrNull(revealIndex)?.id == id) {
+            listState.animateScrollToItem(revealIndex + 1) // The introduction precedes the phrase rows.
+            revealPhraseId = null
+        } else if (state.tasbihPhrases.none { it.id == id }) {
+            revealPhraseId = null
+        }
+    }
 
     SakinahScreenBackground {
         Scaffold(
@@ -419,8 +412,9 @@ fun TasbihPhraseManagerScreen(
                 )
             },
         ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()).imePadding()) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .widthIn(max = SakinahContentMaxWidth)
@@ -428,29 +422,39 @@ fun TasbihPhraseManagerScreen(
                         .testTag("tasbih_phrase_manager_list"),
                     contentPadding = PaddingValues(
                         start = 20.dp,
-                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        top = 8.dp,
                         end = 20.dp,
                         bottom = 28.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     item { TasbihPhraseManagerIntro() }
-                    item { TasbihPhraseTableHeader() }
-                    items(
+                    itemsIndexed(
                         items = state.tasbihPhrases,
-                        key = TasbihPhrase::id,
-                    ) { phrase ->
+                        key = { _, phrase -> phrase.id },
+                    ) { index, phrase ->
                         TasbihPhraseTableRow(
                             phrase = phrase,
                             showDiacritics = state.showDiacritics,
                             selected = phrase.id == state.selectedPhrase.id,
                             canDelete = canDeletePhrase,
+                            position = index + 1,
+                            total = state.tasbihPhrases.size,
+                            isReordering = reorderingPhraseId == phrase.id,
                             onSelect = { onSelectPhrase(phrase.id) },
                             onEdit = {
                                 editingPhrase = phrase
                                 showEditor = true
                             },
                             onDelete = { phrasePendingDeletion = phrase },
+                            onBeginReorder = { reorderingPhraseId = phrase.id },
+                            onCancelReorder = { reorderingPhraseId = null },
+                            onSaveOrder = { position ->
+                                revealPhraseId = phrase.id
+                                revealIndex = position - 1
+                                onMovePhrase(phrase.id, position - 1)
+                                reorderingPhraseId = null
+                            },
                         )
                     }
                 }
@@ -489,7 +493,7 @@ fun TasbihPhraseManagerScreen(
             onDismissRequest = { phrasePendingDeletion = null },
             title = { Text(stringResource(R.string.delete_dhikr_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
                     Text(stringResource(R.string.delete_dhikr_message))
                     Text(
                         text = displayArabic(phrase.text, state.showDiacritics),
@@ -526,172 +530,96 @@ fun TasbihPhraseManagerScreen(
 
 @Composable
 private fun TasbihPhraseManagerIntro() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        border = sakinahCardBorder(0.18f),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text(
-                text = stringResource(R.string.manage_tasbih_phrases),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.manage_tasbih_phrases_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun TasbihPhraseTableHeader() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.tasbih_table_dhikr),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = stringResource(R.string.tasbih_table_target),
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(62.dp),
-            )
-            Text(
-                text = stringResource(R.string.tasbih_table_actions),
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(96.dp),
-            )
-        }
-    }
+    Text(stringResource(R.string.phrase_manager_hint), style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
 }
 
 @Composable
 private fun TasbihPhraseTableRow(
-    phrase: TasbihPhrase,
-    showDiacritics: Boolean,
-    selected: Boolean,
-    canDelete: Boolean,
-    onSelect: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    phrase: TasbihPhrase, showDiacritics: Boolean, selected: Boolean, canDelete: Boolean,
+    position: Int, total: Int, isReordering: Boolean,
+    onSelect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
+    onBeginReorder: () -> Unit, onCancelReorder: () -> Unit, onSaveOrder: (Int) -> Unit,
 ) {
-    val phraseKind = stringResource(
-        if (phrase.isCustom) R.string.tasbih_phrase_personal else R.string.tasbih_phrase_ready,
-    )
-    val goal = if (phrase.defaultGoal == 0) {
-        stringResource(R.string.unlimited)
-    } else {
-        phrase.defaultGoal.toString()
-    }
-    val status = if (selected) {
-        "$phraseKind • ${stringResource(R.string.tasbih_phrase_selected)}"
-    } else {
-        phraseKind
-    }
-    val editTag = if (selected) {
-        "tasbih_phrase_edit_selected"
-    } else {
-        "tasbih_phrase_edit_${phrase.id}"
-    }
-    val deleteTag = if (selected) {
-        "tasbih_phrase_delete_selected"
-    } else {
-        "tasbih_phrase_delete_${phrase.id}"
-    }
-
+    var expanded by remember { mutableStateOf(false) }
+    val phraseKind = stringResource(if (phrase.isCustom) R.string.tasbih_phrase_personal else R.string.tasbih_phrase_ready)
+    val status = if (selected) "$phraseKind • ${stringResource(R.string.tasbih_phrase_selected)}" else phraseKind
+    val positionLabel = stringResource(R.string.phrase_order_position, arabicNumber(position), arabicNumber(total))
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("tasbih_phrase_row_${phrase.id}")
+        modifier = Modifier.fillMaxWidth().testTag("tasbih_phrase_row_${phrase.id}")
             .semantics { this.selected = selected }
-            .clickable(onClick = onSelect),
+            .then(if (isReordering) Modifier else Modifier.clickable(onClick = onSelect)),
         shape = MaterialTheme.shapes.large,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
-        contentColor = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-        border = sakinahCardBorder(if (selected) 0.38f else 0.16f),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
+            Text(displayArabic(phrase.text, showDiacritics), style = TextStyle(
+                fontFamily = LocalDhikrFontFamily.current, fontWeight = FontWeight.Medium, fontSize = 18.sp, lineHeight = 28.sp))
+            Text("$status • $positionLabel", style = MaterialTheme.typography.labelLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = displayArabic(phrase.text, showDiacritics),
-                    style = TextStyle(
-                        fontFamily = LocalDhikrFontFamily.current,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 18.sp,
-                        lineHeight = 27.sp,
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    if (phrase.defaultGoal == 0) stringResource(R.string.unlimited)
+                    else "${stringResource(R.string.goal)}: ${phrase.defaultGoal}",
+                    modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = status,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Box {
+                    IconButton(onClick = { expanded = true }, modifier = Modifier.testTag(
+                        if (selected) "tasbih_phrase_actions_selected" else "tasbih_phrase_actions_${phrase.id}")) {
+                        Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.change_phrase_order)) }, enabled = total > 1,
+                            leadingIcon = { Icon(Icons.Outlined.SwapVert, null) },
+                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_reorder_selected" else "tasbih_phrase_reorder_${phrase.id}"),
+                            onClick = { expanded = false; onBeginReorder() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.edit_dhikr)) },
+                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_edit_selected" else "tasbih_phrase_edit_${phrase.id}"),
+                            onClick = { expanded = false; onEdit() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.delete_dhikr)) }, enabled = canDelete,
+                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_delete_selected" else "tasbih_phrase_delete_${phrase.id}"),
+                            onClick = { expanded = false; onDelete() })
+                    }
+                }
             }
-            Text(
-                text = goal,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(62.dp),
+            if (isReordering) {
+                PhraseOrderEditor(phrase.id, position, total, onCancelReorder, onSaveOrder)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseOrderEditor(id: String, currentPosition: Int, total: Int, onCancel: () -> Unit, onSave: (Int) -> Unit) {
+    var positionText by rememberSaveable(id, currentPosition) { mutableStateOf(arabicNumber(currentPosition)) }
+    val position = positionText.toIntOrNull()
+    val validPosition = position != null && position in 1..total
+    Column(verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small), modifier = Modifier.testTag("phrase_order_editor")) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconButton(onClick = { positionText = arabicNumber(requireNotNull(position) - 1) },
+                enabled = validPosition && requireNotNull(position) > 1, modifier = Modifier.testTag("phrase_order_up")) {
+                Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.phrase_order_up))
+            }
+            OutlinedTextField(
+                value = positionText, onValueChange = { positionText = it },
+                modifier = Modifier.weight(1f).testTag("phrase_order_input"),
+                label = { Text(stringResource(R.string.phrase_order_label)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true, isError = !validPosition,
             )
-            Row(
-                modifier = Modifier.width(96.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier.testTag(editTag),
-                ) {
-                    Icon(
-                        Icons.Outlined.Edit,
-                        contentDescription = stringResource(R.string.edit_dhikr),
-                    )
-                }
-                IconButton(
-                    enabled = canDelete,
-                    onClick = onDelete,
-                    modifier = Modifier.testTag(deleteTag),
-                ) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = stringResource(R.string.delete_dhikr),
-                    )
-                }
+            IconButton(onClick = { positionText = arabicNumber(requireNotNull(position) + 1) },
+                enabled = validPosition && requireNotNull(position) < total, modifier = Modifier.testTag("phrase_order_down")) {
+                Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.phrase_order_down))
+            }
+        }
+        Text(stringResource(R.string.phrase_order_range, arabicNumber(total)),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (validPosition) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
+            TextButton(onClick = onCancel, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
+            Button(onClick = { onSave(requireNotNull(position)) }, enabled = validPosition,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("phrase_order_save")) {
+                Text(stringResource(R.string.save_phrase_order))
             }
         }
     }
@@ -703,69 +631,41 @@ private fun TasbihTopBar(
     onUndo: () -> Unit,
     onReset: () -> Unit,
     onOpenStatistics: () -> Unit,
+    onEdit: () -> Unit,
     onManagePhrases: () -> Unit,
     onAdd: () -> Unit,
     onEnterFocusMode: () -> Unit,
 ) {
-    SakinahScreenHeader(
-        title = stringResource(R.string.my_tasbih),
-        subtitle = stringResource(R.string.my_tasbih_subtitle),
-        trailing = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                FocusModeIconButton(
-                    isExit = false,
-                    contentDescription = stringResource(R.string.tasbih_focus_mode),
-                    onClick = onEnterFocusMode,
-                    modifier = Modifier.testTag("tasbih_focus_mode"),
-                )
-                FilledTonalIconButton(
-                    enabled = count > 0,
-                    onClick = onUndo,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.Undo,
-                        contentDescription = stringResource(R.string.undo),
-                    )
-                }
-                FilledTonalIconButton(
-                    enabled = count > 0,
-                    onClick = onReset,
-                ) {
-                    Icon(
-                        Icons.Outlined.Refresh,
-                        contentDescription = stringResource(R.string.reset),
-                    )
-                }
-                FilledTonalIconButton(
-                    onClick = onOpenStatistics,
-                    modifier = Modifier.testTag("tasbih_phrase_statistics"),
-                ) {
-                    Icon(
-                        Icons.Outlined.BarChart,
-                        contentDescription = stringResource(R.string.tasbih_phrase_statistics),
-                    )
-                }
-                FilledTonalIconButton(
-                    onClick = onManagePhrases,
-                    modifier = Modifier.testTag("tasbih_manage_phrases"),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.ListAlt,
-                        contentDescription = stringResource(R.string.manage_tasbih_phrases),
-                    )
-                }
-                FilledTonalIconButton(
-                    onClick = onAdd,
-                    modifier = Modifier.testTag("tasbih_add"),
-                ) {
-                    Icon(
-                        Icons.Outlined.Add,
-                        contentDescription = stringResource(R.string.add_dhikr),
-                    )
-                }
+    var expanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().testTag("tasbih_top_bar"), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.my_tasbih), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        FocusModeIconButton(false, stringResource(R.string.tasbih_focus_mode), onEnterFocusMode, Modifier.testTag("tasbih_focus_mode"))
+        Box {
+            IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("tasbih_actions")) {
+                Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))
             }
-        },
-    )
+            DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.edit_dhikr)) },
+                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                    modifier = Modifier.testTag("tasbih_edit"), onClick = { expanded = false; onEdit() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.manage_tasbih_phrases)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ListAlt, contentDescription = null) },
+                    modifier = Modifier.testTag("tasbih_manage_phrases"), onClick = { expanded = false; onManagePhrases() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.undo)) }, enabled = count > 0,
+                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null) },
+                    modifier = Modifier.testTag("tasbih_undo"), onClick = { expanded = false; onUndo() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.add_dhikr)) },
+                    leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                    modifier = Modifier.testTag("tasbih_add"), onClick = { expanded = false; onAdd() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.tasbih_phrase_statistics)) },
+                    leadingIcon = { Icon(Icons.Outlined.BarChart, contentDescription = null) },
+                    modifier = Modifier.testTag("tasbih_phrase_statistics"), onClick = { expanded = false; onOpenStatistics() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.reset)) }, enabled = count > 0,
+                    leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
+                    onClick = { expanded = false; onReset() })
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1142,16 +1042,15 @@ private fun PhraseDayBar(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhraseCarousel(
     state: SakinahUiState,
+    textMaxHeight: Dp,
     onSelectPhrase: (String) -> Unit,
-    onLongPress: () -> Unit,
 ) {
+    val textScroll = key(state.selectedPhrase.id) { rememberScrollState() }
     val phrases = state.tasbihPhrases
     val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
-    val interactionSource = remember { MutableInteractionSource() }
     val position = stringResource(
         R.string.tasbih_phrase_position,
         currentIndex + 1,
@@ -1174,32 +1073,9 @@ private fun PhraseCarousel(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("tasbih_phrase_card")
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onLongPress,
-                onLongClickLabel = stringResource(R.string.edit_dhikr),
-                onLongClick = onLongPress,
-            )
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
-            style = TextStyle(
-                fontFamily = LocalDhikrFontFamily.current,
-                fontWeight = FontWeight.Bold,
-                fontSize = (22f * state.tasbihTextScale).sp,
-                lineHeight = (32f * state.tasbihTextScale).sp,
-                textAlign = TextAlign.Center,
-            ),
-            maxLines = 5,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp, vertical = 6.dp)
-                .testTag("tasbih_phrase_text"),
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1218,8 +1094,6 @@ private fun PhraseCarousel(
                 text = stringResource(R.string.tasbih_phrase_summary, position, goalLabel),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
@@ -1235,20 +1109,35 @@ private fun PhraseCarousel(
             }
         }
         Text(
-            text = stringResource(R.string.tap_to_edit),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
+            style = TextStyle(
+                fontFamily = LocalDhikrFontFamily.current,
+                fontWeight = FontWeight.Bold,
+                fontSize = (22f * state.tasbihTextScale).sp,
+                lineHeight = (32f * state.tasbihTextScale).sp,
+                textAlign = TextAlign.Center,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = textMaxHeight)
+                .verticalScroll(textScroll)
+                .padding(horizontal = 2.dp, vertical = 6.dp)
+                .testTag("tasbih_phrase_text"),
         )
+        if (textScroll.maxValue > 0) Text(stringResource(R.string.scroll_dhikr_hint),
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun FocusPhraseHeader(
     state: SakinahUiState,
+    textMaxHeight: Dp,
     onSelectPhrase: (String) -> Unit,
+    onExitFocusMode: () -> Unit,
 ) {
+    val textScroll = key(state.selectedPhrase.id) { rememberScrollState() }
     val phrases = state.tasbihPhrases
     val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
 
@@ -1258,24 +1147,22 @@ private fun FocusPhraseHeader(
         if (nextIndex != currentIndex) onSelectPhrase(phrases[nextIndex].id)
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(end = 48.dp)
-            .heightIn(min = 82.dp)
             .testTag("tasbih_focus_phrase_header"),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        IconButton(
-            enabled = currentIndex > 0,
-            onClick = { moveBy(-1) },
-            modifier = Modifier.testTag("tasbih_previous_phrase"),
-        ) {
-            CarouselArrow(
-                pointsRight = true,
-                contentDescription = stringResource(R.string.previous_dhikr),
-            )
-        }
+        FocusNavigationBar(
+            canGoPrevious = currentIndex > 0,
+            canGoNext = currentIndex < phrases.lastIndex,
+            onPrevious = { moveBy(-1) },
+            onNext = { moveBy(1) },
+            onExit = onExitFocusMode,
+            previousTag = "tasbih_previous_phrase",
+            nextTag = "tasbih_next_phrase",
+            exitTag = "tasbih_exit_focus_mode",
+        )
         Text(
             text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
             style = TextStyle(
@@ -1285,28 +1172,22 @@ private fun FocusPhraseHeader(
                 lineHeight = (36f * state.tasbihTextScale).sp,
                 textAlign = TextAlign.Center,
             ),
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .fillMaxWidth()
+                .heightIn(max = textMaxHeight)
+                .verticalScroll(textScroll)
+                .padding(vertical = 6.dp)
                 .testTag("tasbih_phrase_text"),
         )
-        IconButton(
-            enabled = currentIndex < phrases.lastIndex,
-            onClick = { moveBy(1) },
-            modifier = Modifier.testTag("tasbih_next_phrase"),
-        ) {
-            CarouselArrow(
-                pointsRight = false,
-                contentDescription = stringResource(R.string.next_tasbih_dhikr),
-            )
-        }
+        if (textScroll.maxValue > 0) Text(stringResource(R.string.scroll_dhikr_hint),
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center)
+
     }
 }
 
 @Composable
-private fun CarouselArrow(
+internal fun CarouselArrow(
     pointsRight: Boolean,
     contentDescription: String,
 ) {
@@ -1345,8 +1226,33 @@ private fun CounterSection(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
+        if (maxHeight < 260.dp || (LocalDensity.current.fontScale > 1.2f && maxHeight < 400.dp)) {
+            val cycleCount = tasbihCycleCount(state.tasbihCount, state.tasbihTarget, showCompletionFeedback)
+            val cycleLabel = if (state.tasbihTarget == 0) stringResource(R.string.unlimited)
+                else stringResource(R.string.tasbih_cycle_count, cycleCount, state.tasbihTarget)
+            val spoken = stringResource(if (state.dailyReset.tasbihEnabled && state.dailyReset.minuteOfDay == 0) R.string.tasbih_today_count else R.string.tasbih_current_count, state.tasbihCount) + "، " + cycleLabel
+            val label = stringResource(R.string.tasbih_button)
+            Surface(Modifier.align(Alignment.Center).fillMaxWidth().testTag("tasbih_counter")
+                .clip(MaterialTheme.shapes.large).clickable(role = Role.Button, onClick = onIncrement)
+                .semantics { contentDescription = label; stateDescription = spoken },
+                shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(state.tasbihCount.toString(), style = MaterialTheme.typography.headlineLarge,
+                            modifier = Modifier.testTag("tasbih_total_count"))
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(if (state.dailyReset.tasbihEnabled && state.dailyReset.minuteOfDay == 0) R.string.tasbih_daily_total_label else R.string.tasbih_current_total_label), style = MaterialTheme.typography.labelLarge)
+                            Text(cycleLabel, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("tasbih_cycle_count"))
+                        }
+                    }
+                    ProgressLine(displayedProgress, height = 4.dp)
+                }
+            }
+            return@BoxWithConstraints
+        }
         val feedbackSpace = if (isFocusMode) 0.dp else 52.dp
-        val availableHeight = (maxHeight - feedbackSpace).coerceAtLeast(164.dp)
+        val availableHeight = (maxHeight - feedbackSpace).coerceAtLeast(80.dp)
         val maximumDialSize = if (isFocusMode) 360.dp else 286.dp
         val dialSize = minOf(maxWidth, availableHeight, maximumDialSize)
         Column(
@@ -1412,12 +1318,12 @@ private fun CounterDial(
     val targetLabel = if (state.tasbihTarget == 0) {
         stringResource(R.string.unlimited)
     } else {
-        stringResource(R.string.counter_value, cycleCount, state.tasbihTarget)
+        stringResource(R.string.tasbih_cycle_count, cycleCount, state.tasbihTarget)
     }
     val counterStateDescription = if (state.tasbihTarget == 0) {
         stringResource(R.string.counter_free_value, state.tasbihCount)
     } else {
-        stringResource(R.string.counter_value, state.tasbihCount, state.tasbihTarget)
+        stringResource(if (state.dailyReset.tasbihEnabled && state.dailyReset.minuteOfDay == 0) R.string.tasbih_today_count else R.string.tasbih_current_count, state.tasbihCount) + "، " + targetLabel
     }
     val buttonLabel = stringResource(R.string.tasbih_button)
     val tapPulseColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1500,10 +1406,11 @@ private fun CounterDial(
                     )
                 }
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
+                    Text(stringResource(if (state.dailyReset.tasbihEnabled && state.dailyReset.minuteOfDay == 0) R.string.tasbih_daily_total_label else R.string.tasbih_current_total_label), style = MaterialTheme.typography.labelMedium)
                     Text(
                         text = state.tasbihCount.toString(),
                         style = MaterialTheme.typography.displaySmall.copy(
@@ -1527,144 +1434,80 @@ private fun CounterDial(
 
 @Composable
 private fun PhraseEditorDialog(
-    phrase: TasbihPhrase?,
-    onDismiss: () -> Unit,
-    onSave: (String, Int) -> Unit,
-    onDelete: (() -> Unit)?,
+    phrase: TasbihPhrase?, onDismiss: () -> Unit, onSave: (String, Int) -> Unit, onDelete: (() -> Unit)?,
 ) {
     var text by rememberSaveable(phrase?.id) { mutableStateOf(phrase?.text.orEmpty()) }
-    var goalText by rememberSaveable(phrase?.id) {
-        mutableStateOf((phrase?.defaultGoal ?: 33).toString())
-    }
+    var goalText by rememberSaveable(phrase?.id) { mutableStateOf((phrase?.defaultGoal ?: 33).toString()) }
+    var textTouched by rememberSaveable { mutableStateOf(false) }
     val goal = goalText.toIntOrNull()
-    val canSave = text.isNotBlank() && goal != null && goal in 0..9_999
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("tasbih_phrase_editor")
-                .imePadding(),
-            shape = RectangleShape,
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 0.dp,
-        ) {
-            SakinahScreenBackground {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .widthIn(max = 720.dp)
-                        .fillMaxSize()
-                        .padding(horizontal = 22.dp, vertical = 18.dp),
-                ) {
-                    SakinahScreenHeader(
-                        title = stringResource(
-                            if (phrase == null) R.string.new_dhikr else R.string.edit_dhikr,
-                        ),
-                    )
-                if (phrase != null && !phrase.isCustom) {
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.edit_built_in_dhikr_note),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+    val invalidGoal = goal == null || goal !in 0..9_999
+    // Imported book entries can exceed the custom-entry limit. Preserve their full text when editing the goal.
+    val textLimit = maxOf(500, phrase?.text?.length ?: 0)
+    val invalidText = text.isBlank() || text.length > textLimit
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize().imePadding().testTag("tasbih_phrase_editor"), color = MaterialTheme.colorScheme.surface) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                BoxWithConstraints(Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxSize()) {
+                    // Keep the form in the same composition slot when the keyboard opens, so focus survives.
+                    val compact = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE && maxWidth > 480.dp
+                    val form: @Composable (Modifier) -> Unit = { modifier ->
+                    Column(modifier.verticalScroll(rememberScrollState()).testTag("phrase_editor_form"),
+                        verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium)) {
+                        if (compact) Text(stringResource(if (phrase == null) R.string.new_dhikr else R.string.edit_dhikr),
+                            style = MaterialTheme.typography.titleMedium)
+                        if (phrase != null && !phrase.isCustom) {
+                            Text(stringResource(R.string.edit_built_in_dhikr_note), style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 12.dp))
+                        }
+                        OutlinedTextField(
+                            value = text, onValueChange = { text = it; textTouched = true },
+                            modifier = Modifier.fillMaxWidth().testTag("custom_text"),
+                            label = { Text(stringResource(R.string.dhikr_text)) },
+                            isError = invalidText && (textTouched || text.isNotEmpty()),
+                            supportingText = {
+                                Column {
+                                    Text(stringResource(R.string.phrase_character_count, text.length, textLimit), modifier = Modifier.testTag("phrase_character_count"))
+                                    if (text.length > textLimit) Text(stringResource(R.string.phrase_too_long, textLimit))
+                                    else if (textTouched && text.isBlank()) Text(stringResource(R.string.phrase_empty_error))
+                                }
+                            },
+                            textStyle = TextStyle(fontFamily = LocalDhikrFontFamily.current,
+                                fontSize = if (compact) 18.sp else 22.sp, lineHeight = if (compact) 26.sp else 34.sp),
+                            minLines = if (compact) 1 else 3, maxLines = if (compact) 2 else 6,
                         )
+                        OutlinedTextField(
+                            value = goalText, onValueChange = { goalText = it }, modifier = Modifier.fillMaxWidth().testTag("custom_goal"),
+                            label = { Text(stringResource(R.string.default_goal)) }, isError = invalidGoal,
+                            supportingText = { Text(stringResource(if (invalidGoal) R.string.goal_invalid_error else R.string.goal_optional_hint)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true,
+                        )
+                        if (onDelete != null) TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                            Text(stringResource(R.string.delete_custom_dhikr))
+                        }
+                    }
+                    }
+                    val actions: @Composable (Modifier) -> Unit = { modifier ->
+                    Row(modifier, horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium)) {
+                        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
+                        Button(onClick = { onSave(text.trim(), requireNotNull(goal)) }, enabled = !invalidText && !invalidGoal,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("custom_save")) { Text(stringResource(R.string.save)) }
+                    }
+                    }
+                    if (compact) {
+                        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            form(Modifier.weight(1f).fillMaxHeight())
+                            actions(Modifier.width(176.dp))
+                        }
+                    } else {
+                        Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
+                            Text(stringResource(if (phrase == null) R.string.new_dhikr else R.string.edit_dhikr), style = MaterialTheme.typography.titleLarge)
+                            form(Modifier.weight(1f))
+                            actions(Modifier.fillMaxWidth().padding(top = 8.dp))
+                        }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { if (it.length <= 500) text = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .testTag("custom_text"),
-                    label = { Text(stringResource(R.string.dhikr_text)) },
-                    placeholder = { Text(stringResource(R.string.dhikr_text_hint)) },
-                    textStyle = TextStyle(
-                        fontFamily = LocalDhikrFontFamily.current,
-                        fontSize = 22.sp,
-                        lineHeight = 34.sp,
-                    ),
-                    minLines = 3,
-                    maxLines = 12,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = goalText,
-                    onValueChange = { value ->
-                        if (value.length <= 4 && value.all(Char::isDigit)) goalText = value
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("custom_goal"),
-                    label = { Text(stringResource(R.string.default_goal)) },
-                    supportingText = { Text(stringResource(R.string.goal_optional_hint)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(10.dp))
-                if (onDelete != null) {
-                    TextButton(
-                        onClick = onDelete,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
-                    ) {
-                        Icon(
-                            Icons.Outlined.DeleteOutline,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.delete_custom_dhikr),
-                            maxLines = 1,
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 50.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.cancel),
-                            maxLines = 1,
-                        )
-                    }
-                    Button(
-                        enabled = canSave,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 50.dp)
-                            .testTag("custom_save"),
-                        onClick = { onSave(text.trim(), goal ?: 33) },
-                    ) {
-                        Text(
-                            text = stringResource(R.string.save),
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
             }
         }
     }

@@ -1,7 +1,5 @@
 package com.sakinah.tasbih.ui
 
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.text.BidiFormatter
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -31,6 +29,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -42,6 +42,8 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -56,11 +58,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,12 +77,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -88,6 +95,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.DhikrCollection
 import com.sakinah.tasbih.data.DhikrEntry
@@ -95,7 +103,6 @@ import com.sakinah.tasbih.data.ReadingProgress
 import com.sakinah.tasbih.data.displayArabic
 import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
 import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 
 private fun Modifier.countUnconsumedTap(
     enabled: Boolean,
@@ -147,6 +154,9 @@ private fun Modifier.countUnconsumedTap(
 fun ReaderScreen(
     state: SakinahUiState,
     collectionId: String,
+    reviewCompleted: Boolean = false,
+    onUndo: () -> Unit = {},
+    onEntryVisible: (String) -> Unit = {},
     isFocusMode: Boolean,
     onFocusModeChange: (Boolean) -> Unit,
     onBack: () -> Unit,
@@ -170,19 +180,39 @@ fun ReaderScreen(
     val progress = state.progressFor(collectionId)
     val safeIndex = progress.entryIndex.coerceIn(0, collection.entries.lastIndex)
     val entry = collection.entries[safeIndex]
+    var reviewingCompleted by rememberSaveable(collectionId) { mutableStateOf(reviewCompleted) }
+    val showCompletion = progress.completed && !reviewingCompleted
+    val presentationProgress = if (progress.completed && reviewingCompleted) progress.copy(
+        completed = false,
+        repetitionCounts = progress.repetitionCounts + (safeIndex to entry.repetitions),
+        completedEntryIndices = collection.entries.indices.toSet(),
+    ) else progress
+    val canUndo = collectionId in state.readerUndo
+    LaunchedEffect(entry.id) { onEntryVisible(entry.id) }
+    LaunchedEffect(progress.completed) { if (!progress.completed) reviewingCompleted = false }
+    var showActions by remember { mutableStateOf(false) }
+    var showRestartDialog by remember { mutableStateOf(false) }
+
     val canIncrement = !progress.completed &&
         !progress.isEntryCompleted(safeIndex, collection)
     val isFavorite = entry.id in state.favoriteEntryIds
     val haptics = LocalHapticFeedback.current
     val countActionLabel = stringResource(R.string.tap_to_count)
+    var pendingAdvanceEntry by rememberSaveable(collectionId) { mutableStateOf<String?>(null) }
+    val isAdvancingAutomatically = pendingAdvanceEntry == entry.id &&
+        progress.isEntryCompleted(safeIndex, collection) && !progress.completed &&
+        (state.autoAdvanceDhikrEnabled || isFocusMode)
     val incrementDhikr = {
         if (canIncrement) {
             if (state.hapticsEnabled) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             }
+            pendingAdvanceEntry = entry.id
             onIncrement()
         }
     }
+    val undoLastCount = { pendingAdvanceEntry = null; onUndo() }
+    val navigateEntry: (Int) -> Unit = { direction -> pendingAdvanceEntry = null; onNavigateDhikr(direction) }
     var showAddDialog by remember(entry.id) { mutableStateOf(false) }
     var showReaderSettings by rememberSaveable { mutableStateOf(false) }
     var showReference by rememberSaveable(entry.id) {
@@ -191,11 +221,7 @@ fun ReaderScreen(
     var previousRepetitionCount by remember(entry.id) {
         mutableIntStateOf(progress.repetitionCount)
     }
-    val completionTone = remember { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 45) }
-
-    DisposableEffect(completionTone) {
-        onDispose { completionTone.release() }
-    }
+    val completionTone = rememberCompletionSoundPlayer()
 
     LaunchedEffect(entry.id, state.showReferenceByDefault) {
         showReference = state.showReferenceByDefault
@@ -208,12 +234,12 @@ fun ReaderScreen(
 
         if (justCompleted) {
             if (state.dhikrCompletionSoundEnabled) {
-                completionTone.startTone(ToneGenerator.TONE_PROP_BEEP, 130)
+                completionTone.play(state.completionSound, state.completionSoundVolume)
             }
-            if (state.autoAdvanceDhikrEnabled || isFocusMode) {
-                if (state.dhikrCompletionSoundEnabled) delay(180)
-                onAdvance()
-            }
+        }
+        if (isAdvancingAutomatically) {
+            // Keep the counter in place until the next entry arrives from storage.
+            onAdvance()
         }
     }
 
@@ -222,108 +248,96 @@ fun ReaderScreen(
     }
 
     SakinahScreenBackground(showOrnament = !isFocusMode) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+        val compactHeight = maxHeight < 480.dp
         if (isFocusMode) {
             ReaderFocusLayout(
                 state = state,
-                progress = progress,
+                progress = presentationProgress,
                 collection = collection,
                 entry = entry,
+                isAdvancingAutomatically = isAdvancingAutomatically,
+                canUndo = canUndo,
+                onUndo = undoLastCount,
+                onReview = { reviewingCompleted = true },
+                onAdvance = onAdvance,
                 currentIndex = safeIndex,
                 canIncrement = canIncrement,
                 onIncrement = incrementDhikr,
-                onAdvance = onAdvance,
                 onRestart = onRestart,
-                onNavigateDhikr = onNavigateDhikr,
+                onNavigateDhikr = navigateEntry,
                 onExitFocusMode = { onFocusModeChange(false) },
             )
         } else {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                CenterAlignedTopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
-                ),
-                title = {
-                    Text(
-                        text = displayArabic(collection.title, state.showDiacritics),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                },
-                navigationIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.back),
-                            )
-                        }
-                        IconButton(
-                            onClick = { showReaderSettings = true },
-                            modifier = Modifier.testTag("reader_settings"),
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Settings,
-                                contentDescription = stringResource(R.string.reader_options),
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (!progress.completed) {
-                        FocusModeIconButton(
-                            isExit = false,
-                            contentDescription = stringResource(R.string.reader_focus_mode),
-                            onClick = { onFocusModeChange(true) },
-                            modifier = Modifier.testTag("reader_focus_mode"),
+                val titleStyle = MaterialTheme.typography.titleMedium
+                val headerHeight = maxOf(
+                    if (compactHeight) 48.dp else 64.dp,
+                    with(LocalDensity.current) { titleStyle.lineHeight.toDp() * 2 } + 16.dp,
+                )
+                TopAppBar(
+                    modifier = Modifier.testTag("reader_top_bar"),
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    expandedHeight = headerHeight,
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                    title = {
+                        Text(
+                            displayArabic(collection.title, state.showDiacritics),
+                            modifier = Modifier.testTag("reader_title"),
+                            style = titleStyle.copy(platformStyle = PlatformTextStyle(includeFontPadding = true)),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        IconButton(
-                            onClick = { onToggleFavorite(entry.id) },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = if (isFavorite) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    Color.Transparent
-                                },
-                                contentColor = if (isFavorite) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            ),
-                        ) {
-                            Icon(
-                                imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = stringResource(
-                                    if (isFavorite) R.string.remove_favorite else R.string.favorite,
-                                ),
-                            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack, modifier = Modifier.testTag("reader_back")) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
                         }
-                        IconButton(onClick = { showAddDialog = true }) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.PlaylistAdd,
-                                contentDescription = stringResource(R.string.add_to_tasbih),
-                            )
+                    },
+                    actions = {
+                        if (!showCompletion) {
+                            FocusModeIconButton(false, stringResource(R.string.reader_focus_mode), { onFocusModeChange(true) }, Modifier.testTag("reader_focus_mode"))
                         }
-                    }
-                },
+                        Box {
+                            IconButton(onClick = { showActions = true }, modifier = Modifier.testTag("reader_actions")) {
+                                Icon(Icons.Outlined.MoreVert, stringResource(R.string.reader_actions))
+                            }
+                            DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(if (isFavorite) R.string.remove_favorite else R.string.favorite)) },
+                                    leadingIcon = { Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, null) },
+                                    onClick = { showActions = false; onToggleFavorite(entry.id) }, modifier = Modifier.testTag("reader_favorite"),
+                                )
+                                DropdownMenuItem(text = { Text(stringResource(R.string.add_to_tasbih)) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null) },
+                                    onClick = { showActions = false; showAddDialog = true })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.reader_options)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Settings, null) },
+                                    onClick = { showActions = false; showReaderSettings = true }, modifier = Modifier.testTag("reader_settings"))
+                                if (compactHeight && entry.reference.isNotBlank()) DropdownMenuItem(
+                                    text = { Text(stringResource(if (showReference) R.string.hide_source_details else R.string.show_source_details)) },
+                                    onClick = { showActions = false; showReference = !showReference })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.restart_session)) },
+                                    onClick = { showActions = false; showRestartDialog = true })
+                            }
+                        }
+                    },
                 )
             },
             bottomBar = {
                 ReaderBottomAction(
                     state = state,
-                    progress = progress,
+                    progress = presentationProgress,
                     collection = collection,
                     entry = entry,
+                    isAdvancingAutomatically = isAdvancingAutomatically,
                     onIncrement = incrementDhikr,
                     onAdvance = onAdvance,
                     onRestart = onRestart,
+                    canUndo = canUndo,
+                    onUndo = undoLastCount,
                 )
             },
         ) { innerPadding ->
@@ -358,18 +372,31 @@ fun ReaderScreen(
                             start = 20.dp,
                             top = innerPadding.calculateTopPadding(),
                             end = 20.dp,
-                            bottom = innerPadding.calculateBottomPadding() + 22.dp,
+                            bottom = innerPadding.calculateBottomPadding() + if (compactHeight) 4.dp else 22.dp,
                         ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compactHeight) 4.dp else 16.dp),
                 ) {
-                    SessionHeader(
+                    if (compactHeight && !showCompletion) {
+                        Row(Modifier.fillMaxWidth().testTag("reader_session_header"), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { navigateEntry(-1) }, enabled = safeIndex > 0, modifier = Modifier.testTag("reader_previous_dhikr")) {
+                                CarouselArrow(true, stringResource(R.string.previous_dhikr))
+                            }
+                            Text(stringResource(R.string.dhikr_position, safeIndex + 1, collection.entries.size),
+                                style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                            IconButton(onClick = { navigateEntry(1) }, enabled = safeIndex < collection.entries.lastIndex, modifier = Modifier.testTag("reader_next_dhikr")) {
+                                CarouselArrow(false, stringResource(R.string.next_dhikr))
+                            }
+                        }
+                    } else SessionHeader(
                         collection = collection,
                         progress = progress,
                         currentIndex = safeIndex,
                     )
 
-                    if (progress.completed) {
-                        SessionCompleteCard(onRestart = onRestart)
+                    if (showCompletion) {
+                        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                            SessionCompleteCard(onRestart = onRestart, onReview = { reviewingCompleted = true })
+                        }
                     } else {
                         DhikrReadingCard(
                             modifier = Modifier
@@ -378,12 +405,13 @@ fun ReaderScreen(
                             entry = entry,
                             state = state,
                             showReference = showReference,
-                            onToggleReference = entry.reference.takeIf { it.isNotBlank() }?.let {
+                            onToggleReference = entry.reference.takeIf { it.isNotBlank() && !compactHeight }?.let {
                                 { showReference = !showReference }
                             },
                             canNavigatePrevious = safeIndex > 0,
                             canNavigateNext = safeIndex < collection.entries.lastIndex,
-                            onNavigateDhikr = onNavigateDhikr,
+                            onNavigateDhikr = navigateEntry,
+                            isFocusMode = compactHeight,
                         )
                     }
                 }
@@ -391,7 +419,15 @@ fun ReaderScreen(
         }
     }
     }
+    }
 
+    if (showRestartDialog) {
+        AlertDialog(onDismissRequest = { showRestartDialog = false },
+            title = { Text(stringResource(R.string.restart_collection_title)) },
+            text = { Text(stringResource(R.string.restart_collection_message)) },
+            confirmButton = { TextButton(onClick = { showRestartDialog = false; onRestart() }) { Text(stringResource(R.string.restart_session)) } },
+            dismissButton = { TextButton(onClick = { showRestartDialog = false }) { Text(stringResource(R.string.cancel)) } })
+    }
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -518,7 +554,9 @@ private fun DhikrReadingCard(
     canNavigatePrevious: Boolean,
     canNavigateNext: Boolean,
     onNavigateDhikr: (Int) -> Unit,
+    isFocusMode: Boolean = false,
 ) {
+    val readingScrollState = key(entry.id) { rememberScrollState() }
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -529,7 +567,8 @@ private fun DhikrReadingCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .testTag("reader_dhikr_scroll")
+                .verticalScroll(readingScrollState),
         ) {
             Box(
                 modifier = Modifier
@@ -540,10 +579,11 @@ private fun DhikrReadingCard(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .fillMaxWidth()
-                        .padding(horizontal = 22.dp, vertical = 28.dp)
+                        .padding(horizontal = if (isFocusMode) 4.dp else 22.dp, vertical = if (isFocusMode) 12.dp else 28.dp)
                         .padding(bottom = if (onToggleReference != null) 40.dp else 0.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    if (!isFocusMode) {
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -556,6 +596,7 @@ private fun DhikrReadingCard(
                         )
                     }
                     Spacer(Modifier.height(22.dp))
+                    }
                     Text(
                         text = displayArabic(entry.text, state.showDiacritics),
                         style = TextStyle(
@@ -565,10 +606,11 @@ private fun DhikrReadingCard(
                             lineHeight = (49f * state.textScale).sp,
                         ),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("reader_dhikr_text"),
+                        modifier = Modifier.fillMaxWidth().testTag("reader_dhikr_text"),
                     )
                 }
 
+                if (!isFocusMode) {
                 DhikrNavigationArrow(
                     icon = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(R.string.previous_dhikr),
@@ -590,6 +632,7 @@ private fun DhikrReadingCard(
                         .padding(end = 4.dp, top = 18.dp)
                         .testTag("reader_next_dhikr"),
                 )
+                }
 
                 if (onToggleReference != null) {
                     IconButton(
@@ -847,9 +890,12 @@ private fun ReaderBottomAction(
     progress: ReadingProgress,
     collection: DhikrCollection,
     entry: DhikrEntry,
+    isAdvancingAutomatically: Boolean,
     onIncrement: () -> Unit,
     onAdvance: () -> Unit,
     onRestart: () -> Unit,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -863,27 +909,15 @@ private fun ReaderBottomAction(
         ) {
             when {
                 progress.completed -> {
-                    Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.restart_session))
-                    }
+                    ReaderUndoButton(canUndo, onUndo)
                 }
 
-                progress.isEntryCompleted(progress.entryIndex, collection) -> {
-                    if (state.autoAdvanceDhikrEnabled) {
-                        Spacer(Modifier.height(66.dp))
-                    } else {
-                        Button(onClick = onAdvance, modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                stringResource(
-                                    if (progress.completedEntries(collection) == collection.entries.size) {
-                                        R.string.finish_session
-                                    } else {
-                                        R.string.next_dhikr
-                                    },
-                                ),
-                            )
-                        }
-                    }
+                state.progressFor(collection.id).completed -> {
+                    ReaderCounterDock(progress, entry, onIncrement, canUndo, onUndo)
+                }
+
+                !isAdvancingAutomatically && progress.isEntryCompleted(progress.entryIndex, collection) -> {
+                    ReaderAdvanceAction(progress, collection, onAdvance, canUndo, onUndo)
                 }
 
                 else -> {
@@ -891,6 +925,9 @@ private fun ReaderBottomAction(
                         progress = progress,
                         entry = entry,
                         onIncrement = onIncrement,
+                        canUndo = canUndo,
+                        onUndo = onUndo,
+                        showCompletionFeedback = !isAdvancingAutomatically,
                     )
                 }
             }
@@ -904,10 +941,14 @@ private fun ReaderFocusLayout(
     progress: ReadingProgress,
     collection: DhikrCollection,
     entry: DhikrEntry,
+    isAdvancingAutomatically: Boolean,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
+    onReview: () -> Unit,
+    onAdvance: () -> Unit,
     currentIndex: Int,
     canIncrement: Boolean,
     onIncrement: () -> Unit,
-    onAdvance: () -> Unit,
     onRestart: () -> Unit,
     onNavigateDhikr: (Int) -> Unit,
     onExitFocusMode: () -> Unit,
@@ -926,11 +967,23 @@ private fun ReaderFocusLayout(
                 .align(Alignment.TopCenter)
                 .widthIn(max = SakinahReadingMaxWidth)
                 .fillMaxSize()
-                .padding(start = 16.dp, top = 58.dp, end = 16.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            FocusNavigationBar(
+                canGoPrevious = !progress.completed && currentIndex > 0,
+                canGoNext = !progress.completed && currentIndex < collection.entries.lastIndex,
+                onPrevious = { onNavigateDhikr(-1) },
+                onNext = { onNavigateDhikr(1) },
+                onExit = onExitFocusMode,
+                previousTag = "reader_previous_dhikr",
+                nextTag = "reader_next_dhikr",
+                exitTag = "reader_exit_focus_mode",
+            )
             if (progress.completed) {
-                SessionCompleteCard(onRestart = onRestart)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                    SessionCompleteCard(onRestart = onRestart, onReview = onReview)
+                }
             } else {
                 DhikrReadingCard(
                     modifier = Modifier
@@ -943,53 +996,39 @@ private fun ReaderFocusLayout(
                     canNavigatePrevious = currentIndex > 0,
                     canNavigateNext = currentIndex < collection.entries.lastIndex,
                     onNavigateDhikr = onNavigateDhikr,
+                    isFocusMode = true,
                 )
             }
 
-            ReaderFocusBottomAction(
-                progress = progress,
-                collection = collection,
-                entry = entry,
-                onIncrement = onIncrement,
-                onRestart = onRestart,
-            )
+            if (progress.completed) {
+                ReaderUndoButton(canUndo, onUndo)
+            } else if (!isAdvancingAutomatically && !state.progressFor(collection.id).completed && progress.isEntryCompleted(currentIndex, collection)) {
+                ReaderAdvanceAction(progress, collection, onAdvance, canUndo, onUndo)
+            } else {
+                ReaderCounterDock(
+                    progress = progress,
+                    entry = entry,
+                    onIncrement = onIncrement,
+                    canUndo = canUndo,
+                    onUndo = onUndo,
+                    showCompletionFeedback = !isAdvancingAutomatically,
+                )
+            }
         }
 
-        FocusModeIconButton(
-            isExit = true,
-            contentDescription = stringResource(R.string.reader_exit_focus_mode),
-            onClick = onExitFocusMode,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .testTag("reader_exit_focus_mode"),
-        )
     }
 }
 
 @Composable
-private fun ReaderFocusBottomAction(
-    progress: ReadingProgress,
-    collection: DhikrCollection,
-    entry: DhikrEntry,
-    onIncrement: () -> Unit,
-    onRestart: () -> Unit,
+private fun ReaderAdvanceAction(
+    progress: ReadingProgress, collection: DhikrCollection, onAdvance: () -> Unit, canUndo: Boolean, onUndo: () -> Unit,
 ) {
-    when {
-        progress.completed -> Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.restart_session))
+    Column {
+        Button(onClick = onAdvance, modifier = Modifier.fillMaxWidth().testTag("reader_advance")) {
+            Text(stringResource(if (progress.completedEntries(collection) == collection.entries.size)
+                R.string.finish_session else R.string.next_dhikr))
         }
-
-        progress.isEntryCompleted(progress.entryIndex, collection) ->
-            // Focus mode always advances after completion. Keep this space stable while the
-            // next entry is persisted and rendered.
-            Spacer(Modifier.height(66.dp))
-
-        else -> ReaderCounterDock(
-            progress = progress,
-            entry = entry,
-            onIncrement = onIncrement,
-        )
+        ReaderUndoButton(canUndo, onUndo)
     }
 }
 
@@ -998,75 +1037,116 @@ private fun ReaderCounterDock(
     progress: ReadingProgress,
     entry: DhikrEntry,
     onIncrement: () -> Unit,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
+    showCompletionFeedback: Boolean = true,
 ) {
     val repetitionFraction = (
         progress.repetitionCount.toFloat() / entry.repetitions.coerceAtLeast(1)
     ).coerceIn(0f, 1f)
+    val remaining = (entry.repetitions - progress.repetitionCount).coerceAtLeast(0)
+    val completed = remaining == 0
+    val showCompleted = completed && showCompletionFeedback
+    val countDescription = stringResource(R.string.reader_count_state, progress.repetitionCount, entry.repetitions, remaining)
+
+    if (LocalConfiguration.current.screenHeightDp < 480) {
+        Surface(Modifier.fillMaxWidth().testTag("reader_count_button").clip(MaterialTheme.shapes.medium)
+            .semantics { stateDescription = countDescription }
+            .clickable(enabled = !completed, role = Role.Button, onClick = onIncrement),
+            shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(progress.repetitionCount.toString(), style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.testTag("reader_repetition_count"))
+                Text(stringResource(R.string.repetition_target, entry.repetitions), style = MaterialTheme.typography.labelMedium)
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(if (showCompleted) R.string.reader_dhikr_done else R.string.reader_count_action), style = MaterialTheme.typography.labelLarge)
+                    ProgressLine(repetitionFraction, height = 4.dp)
+                }
+                Text(stringResource(R.string.reader_remaining, remaining), style = MaterialTheme.typography.labelMedium)
+                IconButton(onClick = onUndo, enabled = canUndo, modifier = Modifier.testTag("reader_undo")) {
+                    Icon(Icons.AutoMirrored.Outlined.Undo, stringResource(R.string.undo_reader_count))
+                }
+            }
+        }
+        return
+    }
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("reader_count_button")
-            .clip(MaterialTheme.shapes.extraLarge)
+            .clip(MaterialTheme.shapes.large)
+            .semantics { stateDescription = countDescription }
             .clickable(
+                enabled = !completed,
                 role = Role.Button,
-                onClickLabel = stringResource(R.string.tap_to_count),
+                onClickLabel = stringResource(R.string.reader_count_action),
                 onClick = onIncrement,
             ),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = sakinahCardBorder(0.24f),
-        shadowElevation = 2.dp,
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = progress.repetitionCount.toString(),
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontSize = 36.sp,
+                            lineHeight = 42.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .widthIn(min = 48.dp)
+                            .testTag("reader_repetition_count"),
+                    )
+                    Text(stringResource(R.string.repetition_target, entry.repetitions), style = MaterialTheme.typography.labelMedium)
+                }
+                Spacer(Modifier.width(13.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(if (showCompleted) R.string.reader_dhikr_done else R.string.reader_count_action),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.reader_remaining, remaining),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
-                    Text(
-                        text = progress.repetitionCount.toString(),
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 28.sp,
-                            lineHeight = 34.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .widthIn(min = 52.dp)
-                            .padding(horizontal = 12.dp, vertical = 7.dp)
-                            .testTag("reader_repetition_count"),
-                    )
-                }
-                Spacer(Modifier.width(13.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.repetition_target, entry.repetitions),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = stringResource(R.string.tap_to_count),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Icon(
+                        if (showCompleted) Icons.Outlined.CheckCircle else Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.padding(12.dp).size(24.dp),
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            ProgressLine(progress = repetitionFraction, height = 4.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { ProgressLine(progress = repetitionFraction, height = 4.dp) }
+                IconButton(onClick = onUndo, enabled = canUndo, modifier = Modifier.testTag("reader_undo")) {
+                    Icon(Icons.AutoMirrored.Outlined.Undo, stringResource(R.string.undo_reader_count))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SessionCompleteCard(onRestart: () -> Unit) {
+private fun SessionCompleteCard(onRestart: () -> Unit, onReview: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -1091,6 +1171,7 @@ private fun SessionCompleteCard(onRestart: () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(22.dp))
+            TextButton(onClick = onReview, modifier = Modifier.testTag("reader_review_completed")) { Text(stringResource(R.string.review_collection)) }
             Button(onClick = onRestart) { Text(stringResource(R.string.restart_session)) }
         }
     }
@@ -1107,5 +1188,14 @@ private fun MissingCollectionScreen(onBack: () -> Unit) {
         Text(stringResource(R.string.content_load_error), style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(12.dp))
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+    }
+}
+
+@Composable
+private fun ReaderUndoButton(enabled: Boolean, onUndo: () -> Unit) {
+    TextButton(onClick = onUndo, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("reader_undo")) {
+        Icon(Icons.AutoMirrored.Outlined.Undo, null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.undo_reader_count))
     }
 }

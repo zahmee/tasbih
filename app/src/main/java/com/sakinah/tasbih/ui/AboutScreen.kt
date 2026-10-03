@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Email
@@ -65,6 +68,7 @@ private const val CDIT_WEBSITE_URL = "https://cdit.co"
 private const val CDIT_CONTACT_URL = "https://cdit.co/contact.html"
 private const val CDIT_WHATSAPP_URL = "https://wa.me/966502010911"
 private const val CDIT_EMAIL_ADDRESS = "info@cdit.co"
+internal const val QuranAppStoreUrl = "https://play.google.com/store/apps/details?id=com.mushaf.reader"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,8 +104,8 @@ fun AboutScreen(onBack: () -> Unit) {
                 LazyColumn(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .fillMaxSize()
                         .widthIn(max = SakinahContentMaxWidth)
+                        .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                         .testTag("about_list"),
                     contentPadding = PaddingValues(
@@ -115,6 +119,14 @@ fun AboutScreen(onBack: () -> Unit) {
                     item {
                         AboutHero(
                             version = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
+                            releaseDate = stringResource(
+                                R.string.about_release_date,
+                                java.time.LocalDate.parse(BuildConfig.RELEASE_DATE).format(
+                                    java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG)
+                                        .withLocale(java.util.Locale.forLanguageTag("ar"))
+                                        .withDecimalStyle(java.time.format.DecimalStyle.of(java.util.Locale.forLanguageTag("ar"))),
+                                ),
+                            ),
                         )
                     }
 
@@ -123,6 +135,11 @@ fun AboutScreen(onBack: () -> Unit) {
 
                     item { SakinahSectionHeader(stringResource(R.string.about_content_title)) }
                     item { AboutContentCard() }
+
+                    item { SakinahSectionHeader(stringResource(R.string.about_our_apps)) }
+                    item {
+                        AboutQuranAppCard(onOpenStore = { context.openExternalLink(QuranAppStoreUrl) })
+                    }
 
                     item { SakinahSectionHeader(stringResource(R.string.about_developer_title)) }
                     item {
@@ -146,7 +163,7 @@ fun AboutScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun AboutHero(version: String) {
+private fun AboutHero(version: String, releaseDate: String) {
     val brand = LocalSakinahBrandColors.current
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -172,18 +189,14 @@ private fun AboutHero(version: String) {
                     contentColor = brand.onHero,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        SakinahRosette(
+                        AnaaMark(
                             modifier = Modifier.size(40.dp),
-                            color = brand.onHero.copy(alpha = 0.9f),
+                            tint = brand.onHero,
                         )
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    AnaaWordmark(Modifier.width(108.dp).height(70.dp), tint = brand.onHero)
                     Text(
                         text = stringResource(R.string.about_app_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
@@ -194,10 +207,16 @@ private fun AboutHero(version: String) {
                         style = MaterialTheme.typography.labelLarge,
                         color = brand.onHero.copy(alpha = 0.72f),
                     )
+                    Text(
+                        text = releaseDate,
+                        modifier = Modifier.testTag("about_release_date"),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = brand.onHero.copy(alpha = 0.72f),
+                    )
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AboutHeroChip(stringResource(R.string.about_tag_free))
                 AboutHeroChip(stringResource(R.string.about_tag_no_ads))
                 AboutHeroChip(stringResource(R.string.about_tag_no_account))
@@ -254,6 +273,25 @@ private fun AboutContentCard() {
             icon = Icons.Outlined.Verified,
             title = stringResource(R.string.about_hisn_title),
             body = stringResource(R.string.about_hisn_body),
+        )
+    }
+}
+
+@Composable
+private fun AboutQuranAppCard(onOpenStore: () -> Unit) {
+    AboutDetailCard {
+        AboutInformationRow(
+            icon = Icons.Outlined.AutoStories,
+            title = stringResource(R.string.about_quran_app_name),
+            body = stringResource(R.string.about_quran_app_description),
+        )
+        Spacer(Modifier.height(16.dp))
+        AboutActionButton(
+            title = stringResource(R.string.about_quran_open_store),
+            detail = stringResource(R.string.about_quran_store_detail),
+            icon = Icons.AutoMirrored.Outlined.OpenInNew,
+            tag = "about_quran_store",
+            onClick = onOpenStore,
         )
     }
 }

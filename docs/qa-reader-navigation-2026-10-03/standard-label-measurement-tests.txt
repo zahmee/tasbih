@@ -1,0 +1,183 @@
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.sakinah.tasbih.ReaderNavigationFlowTest:
+INSTRUMENTATION_STATUS: test=focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation(ReaderNavigationFlowTest.kt:147)
+
+INSTRUMENTATION_STATUS: stream=
+Error in focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation(com.sakinah.tasbih.ReaderNavigationFlowTest):
+java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation(ReaderNavigationFlowTest.kt:147)
+
+INSTRUMENTATION_STATUS: test=focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled(ReaderNavigationFlowTest.kt:110)
+
+INSTRUMENTATION_STATUS: stream=
+Error in readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled(com.sakinah.tasbih.ReaderNavigationFlowTest):
+java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled(ReaderNavigationFlowTest.kt:110)
+
+INSTRUMENTATION_STATUS: test=readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=readerOpenedFromLibraryKeepsItsMenuAndNavigationWithoutCounting
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderNavigationFlowTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=readerOpenedFromLibraryKeepsItsMenuAndNavigationWithoutCounting
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.sakinah.tasbih.ReaderAutomaticAdvanceTest:
+INSTRUMENTATION_STATUS: test=normalModeWithAutomaticAdvanceOffKeepsManualNextAction
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=normalModeWithAutomaticAdvanceOffKeepsManualNextAction
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=finalDhikrStillShowsCollectionCompletion
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=finalDhikrStillShowsCollectionCompletion
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=automaticAdvanceDoesNotFlashCompletionControls
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=automaticAdvanceDoesNotFlashCompletionControls
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=focusModeAdvancesDirectlyWithAutomaticAdvancePreferenceOff
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.ReaderAutomaticAdvanceTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=focusModeAdvancesDirectlyWithAutomaticAdvancePreferenceOff
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.SakinahCoreFlowTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.sakinah.tasbih.SakinahCoreFlowTest:
+INSTRUMENTATION_STATUS: test=readerFocusModeHidesReaderControlsAndExitsWithoutIncrementing
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.SakinahCoreFlowTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=readerFocusModeHidesReaderControlsAndExitsWithoutIncrementing
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.SakinahCoreFlowTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=tasbihFocusModeHidesNavigationAndCyclesProgressWithoutResettingTotal
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.sakinah.tasbih.SakinahCoreFlowTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=tasbihFocusModeHidesNavigationAndCyclesProgressWithoutResettingTotal
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 21.053
+There were 2 failures:
+1) focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation(com.sakinah.tasbih.ReaderNavigationFlowTest)
+java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation(ReaderNavigationFlowTest.kt:147)
+2) readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled(com.sakinah.tasbih.ReaderNavigationFlowTest)
+java.lang.AssertionError: Exit text must fit its available width: font=Sakinah, size=190 x 66, paragraphWidth=585.0
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.assertFocusChrome(ReaderNavigationFlowTest.kt:81)
+	at com.sakinah.tasbih.ReaderNavigationFlowTest.readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled(ReaderNavigationFlowTest.kt:110)
+
+FAILURES!!!
+Tests run: 9,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1

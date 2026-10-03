@@ -218,7 +218,13 @@ private fun String.isInside(startInclusive: LocalDate?, endInclusive: LocalDate?
 @Dao
 interface ActivityDao {
     @Insert
-    suspend fun insert(event: ActivityEvent)
+    suspend fun insert(event: ActivityEvent): Long
+
+    @Query("DELETE FROM activity_events WHERE id IN (:ids)")
+    suspend fun deleteEvents(ids: List<Long>)
+
+    @Query("SELECT * FROM activity_events WHERE id IN (:ids)")
+    suspend fun eventsById(ids: List<Long>): List<ActivityEvent>
 
     @Query(
         """
@@ -321,8 +327,8 @@ abstract class SakinahDatabase : RoomDatabase() {
     }
 }
 
-class ActivityRepository(context: Context) {
-    private val dao = SakinahDatabase.get(context).activityDao()
+class ActivityRepository internal constructor(private val dao: ActivityDao) {
+    constructor(context: Context) : this(SakinahDatabase.get(context).activityDao())
 
     val analytics: Flow<ActivityAnalytics> = combine(
         dao.observeDailyActivity(),
@@ -362,8 +368,8 @@ class ActivityRepository(context: Context) {
         entry: DhikrEntry,
         collectionTitle: String,
         timestampMillis: Long = System.currentTimeMillis(),
-    ) {
-        dao.insert(
+    ): Long {
+        return dao.insert(
             event(
                 timestampMillis = timestampMillis,
                 kind = ActivityKinds.Reader,
@@ -376,8 +382,8 @@ class ActivityRepository(context: Context) {
     suspend fun recordCompletion(
         collection: DhikrCollection,
         timestampMillis: Long = System.currentTimeMillis(),
-    ) {
-        dao.insert(
+    ): Long {
+        return dao.insert(
             event(
                 timestampMillis = timestampMillis,
                 kind = ActivityKinds.Completion,
@@ -386,6 +392,17 @@ class ActivityRepository(context: Context) {
                 amount = 0,
             ),
         )
+    }
+
+    internal suspend fun removeReaderAction(undo: ReaderUndo): List<ActivityEvent> {
+        val ids = listOf(undo.eventId, undo.completionEventId).filter { it > 0 }
+        val events = dao.eventsById(ids)
+        dao.deleteEvents(ids)
+        return events
+    }
+
+    internal suspend fun restoreEvents(events: List<ActivityEvent>) {
+        events.forEach { dao.insert(it) }
     }
 
     private fun event(

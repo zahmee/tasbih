@@ -1,0 +1,21 @@
+{
+  "package": "com.sakinah.tasbih",
+  "versionName": "1.3.2",
+  "versionCode": 6,
+  "releaseDate": "2026-10-03",
+  "apkSHA256": "1B5694FD2E684D7E775EE81701BA8DDAAE0584B51BBEB7BBAC9B711825617F2F",
+  "aabSHA256": "977944B1EA9E6D0C4BCCD9C333C68F91AFFC038D5FBEA714B77CC3F3FF845AC9",
+  "signingCertificateSHA256": "71E5718995852EF2B26596BF95F81552017E129763E6275F854A3AC623D588BD",
+  "unitTests": 37,
+  "instrumentedTests": 52,
+  "testFailures": 0,
+  "lintErrors": 0,
+  "lintWarnings": 48,
+  "lintHints": 1,
+  "isolatedTestAPI": 35,
+  "releaseDateVisualVerification": true,
+  "productionCountriesBefore": 178,
+  "priorProductionVersion": "1.3.1",
+  "priorProductionVersionCode": 5,
+  "targetTrack": "production"
+}

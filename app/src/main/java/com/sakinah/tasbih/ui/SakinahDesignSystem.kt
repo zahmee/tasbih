@@ -47,6 +47,14 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+internal object SakinahSpacing {
+    val Small = 8.dp
+    val Medium = 12.dp
+    val Large = 16.dp
+    val Page = 20.dp
+    val Section = 24.dp
+}
+
 internal val SakinahContentMaxWidth = 840.dp
 internal val SakinahReadingMaxWidth = 920.dp
 
@@ -100,7 +108,7 @@ internal fun FocusModeIconButton(
 @Composable
 internal fun SakinahScreenBackground(
     modifier: Modifier = Modifier,
-    showOrnament: Boolean = true,
+    showOrnament: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val brand = LocalSakinahBrandColors.current
@@ -187,7 +195,7 @@ internal fun SakinahScreenHeader(
                     Spacer(Modifier.width(12.dp))
                     trailing()
                 } else {
-                    SakinahRosette(modifier = Modifier.padding(top = 2.dp).size(42.dp))
+                    AnaaMark(modifier = Modifier.padding(top = 2.dp).size(42.dp))
                 }
             }
         }

@@ -1,10 +1,15 @@
 package com.sakinah.tasbih.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,10 +27,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -54,8 +64,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -63,8 +77,11 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sakinah.tasbih.data.dhikrQuantity
+import com.sakinah.tasbih.data.dayQuantity
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.ActivityAnalytics
 import com.sakinah.tasbih.data.ActivityEvent
@@ -95,6 +112,7 @@ fun AchievementsScreen(
     onBack: () -> Unit,
 ) {
     val analytics = state.activityAnalytics
+    var expandedSections by rememberSaveable { mutableStateOf(emptyList<String>()) }
     SakinahScreenBackground {
         Scaffold(
             modifier = Modifier.testTag("achievements_screen"),
@@ -133,23 +151,33 @@ fun AchievementsScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    item { AchievementHero(analytics) }
-                    item { SummaryMetrics(analytics) }
-                    item { SourceStatisticsSection(analytics) }
-                    item { HourlyActivityCard(analytics) }
-                    item { LongTermActivityCard(analytics) }
+                    item { ActivityOverview(analytics) }
                     item { WeeklyActivityCard(analytics) }
-                    item { ActivityCalendarCard(analytics) }
-                    item { RecentActivityHeader() }
-                    if (analytics.recent.isEmpty()) {
-                        item { EmptyActivityCard() }
-                    } else {
-                        val timeline = aggregateTimeline(analytics.recent)
-                        items(
-                            count = timeline.size,
-                            key = { timeline[it].key },
-                        ) { index ->
-                            TimelineCard(timeline[index])
+                    item { SakinahSectionHeader(stringResource(R.string.activity_more_details)) }
+                    listOf(
+                        "sources" to R.string.activity_sources, "hours" to R.string.activity_hours,
+                        "trends" to R.string.activity_trends, "calendar" to R.string.activity_calendar_details,
+                        "history" to R.string.activity_history,
+                    ).forEach { (id, label) ->
+                        item(key = "section_$id") {
+                            ActivitySectionToggle(stringResource(label), id in expandedSections, id) {
+                                expandedSections = if (id in expandedSections) expandedSections - id else expandedSections + id
+                            }
+                        }
+                        if (id in expandedSections) {
+                            when (id) {
+                                "sources" -> { item { SummaryMetrics(analytics) }; item { SourceStatisticsSection(analytics) } }
+                                "hours" -> item { HourlyActivityCard(analytics) }
+                                "trends" -> item { LongTermActivityCard(analytics) }
+                                "calendar" -> item { ActivityCalendarCard(analytics) }
+                                "history" -> {
+                                    if (analytics.recent.isEmpty()) item { EmptyActivityCard() }
+                                    else {
+                                        val timeline = aggregateTimeline(analytics.recent)
+                                        items(count = timeline.size, key = { timeline[it].key }) { index -> TimelineCard(timeline[index]) }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -159,63 +187,49 @@ fun AchievementsScreen(
 }
 
 @Composable
-private fun AchievementHero(analytics: ActivityAnalytics) {
-    val brand = LocalSakinahBrandColors.current
-    val gradientStart = brand.heroStart
-    val gradientEnd = brand.heroEnd
-    val onPrimary = brand.onHero
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.extraLarge)
-            .background(Brush.linearGradient(listOf(gradientStart, gradientEnd)))
-            .padding(horizontal = 22.dp, vertical = 24.dp),
-    ) {
-        Canvas(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(92.dp),
-        ) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val path = Path()
-            repeat(16) { index ->
-                val angle = -PI / 2 + index * PI / 8
-                val radius = if (index % 2 == 0) size.minDimension * 0.43f else size.minDimension * 0.22f
-                val point = Offset(
-                    center.x + (cos(angle) * radius).toFloat(),
-                    center.y + (sin(angle) * radius).toFloat(),
-                )
-                if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+private fun ActivityOverview(analytics: ActivityAnalytics) {
+    val today = LocalDate.now()
+    val todayCount = analytics.activityFor(today)?.totalCount ?: 0
+    val weekCount = (0L..6L).sumOf { analytics.activityFor(today.minusDays(it))?.totalCount ?: 0 }
+    Column(Modifier.fillMaxWidth().testTag("activity_overview"), verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium)) {
+        Text(stringResource(R.string.activity_overview), style = MaterialTheme.typography.titleLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Section)) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.activity_today), style = MaterialTheme.typography.bodyMedium)
+                Text(formatNumber(todayCount), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
             }
-            path.close()
-            drawPath(path, onPrimary.copy(alpha = 0.08f))
-            drawPath(path, onPrimary.copy(alpha = 0.2f), style = Stroke(1.2.dp.toPx()))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.activity_week), style = MaterialTheme.typography.bodyMedium)
+                Text(formatNumber(weekCount), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+            }
         }
-        Column(modifier = Modifier.fillMaxWidth(0.78f)) {
-            Text(
-                stringResource(R.string.achievements_eyebrow),
-                style = MaterialTheme.typography.labelLarge,
-                color = onPrimary.copy(alpha = 0.82f),
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                formatNumber(analytics.totals.totalCount),
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Bold,
-                color = onPrimary,
-            )
-            Text(
-                stringResource(R.string.lifetime_total),
-                style = MaterialTheme.typography.titleMedium,
-                color = onPrimary,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                stringResource(R.string.achievements_message),
-                style = MaterialTheme.typography.bodyMedium,
-                color = onPrimary.copy(alpha = 0.78f),
-            )
+        if (analytics.totals.totalCount == 0) Text(stringResource(R.string.empty_activity_overview),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ActivitySectionToggle(title: String, expanded: Boolean, id: String, onClick: () -> Unit) {
+    Column {
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("activity_expand_$id")
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { stateDescription = if (expanded) "مفتوح" else "مغلق" }
+            .padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
+    }
+}
+
+@Composable
+private fun ChartValues(tag: String, values: List<String>) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { visible = !visible }, modifier = Modifier.testTag("${tag}_values")) {
+        Text(stringResource(if (visible) R.string.hide_chart_values else R.string.show_chart_values))
+    }
+    if (visible) Column(verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small), modifier = Modifier.testTag("${tag}_value_list")) {
+        values.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 
@@ -230,13 +244,13 @@ private fun SummaryMetrics(analytics: ActivityAnalytics) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
                 modifier = Modifier.weight(1f),
-                value = stringResource(R.string.days_value, currentStreak),
+                value = dayQuantity(currentStreak),
                 label = stringResource(R.string.current_streak),
                 accent = MaterialTheme.colorScheme.secondaryContainer,
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
-                value = stringResource(R.string.days_value, analytics.totals.activeDays),
+                value = dayQuantity(analytics.totals.activeDays),
                 label = stringResource(R.string.active_days),
                 accent = MaterialTheme.colorScheme.primaryContainer,
             )
@@ -244,7 +258,7 @@ private fun SummaryMetrics(analytics: ActivityAnalytics) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
                 modifier = Modifier.weight(1f),
-                value = stringResource(R.string.days_value, longestStreak),
+                value = dayQuantity(longestStreak),
                 label = stringResource(R.string.longest_streak),
                 accent = MaterialTheme.colorScheme.surfaceVariant,
             )
@@ -260,19 +274,9 @@ private fun SummaryMetrics(analytics: ActivityAnalytics) {
 
 @Composable
 private fun MetricCard(modifier: Modifier, value: String, label: String, accent: Color) {
-    val contentColor = MaterialTheme.colorScheme.contentColorFor(accent)
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        color = accent,
-        contentColor = contentColor,
-        border = sakinahCardBorder(0.12f),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
-            Text(value, style = MaterialTheme.typography.titleLarge, color = contentColor)
-            Spacer(Modifier.height(3.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = contentColor.copy(alpha = 0.74f))
-        }
+    Column(modifier.padding(vertical = 8.dp)) {
+        Text(value, style = MaterialTheme.typography.titleLarge)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -302,26 +306,31 @@ private fun WeeklyActivityCard(analytics: ActivityAnalytics) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.this_week), style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        stringResource(R.string.week_total, weekTotal),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+
                 }
                 BeadMark()
             }
             Spacer(Modifier.height(18.dp))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val barWidth = (maxWidth / 7).coerceAtLeast((38 * LocalDensity.current.fontScale).dp)
+            val weekScroll = rememberScrollState()
+            androidx.compose.runtime.LaunchedEffect(weekScroll.maxValue) { weekScroll.scrollTo(weekScroll.maxValue) }
+            Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(132.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    .horizontalScroll(weekScroll)
+                    .heightIn(min = 160.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 days.forEach { (date, value) ->
+                    val spoken = stringResource(R.string.weekly_day_description,
+                        date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", ArabicLocale)), value)
                     Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
+                            .width(barWidth)
+                            .height(160.dp)
+                            .clearAndSetSemantics { contentDescription = spoken },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom,
                     ) {
@@ -343,24 +352,22 @@ private fun WeeklyActivityCard(analytics: ActivityAnalytics) {
                         )
                         Spacer(Modifier.height(7.dp))
                         Text(
-                            date.format(DateTimeFormatter.ofPattern("EE", ArabicLocale)).take(1),
+                            shortArabicWeekday(date.dayOfWeek),
                             style = MaterialTheme.typography.labelMedium,
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-            ) {
-                Text(
-                    encouragement,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
-                )
+            if (weekScroll.maxValue > 0) Text(stringResource(R.string.scroll_chart_hint),
+                style = MaterialTheme.typography.labelSmall)
             }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(encouragement, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ChartValues("weekly", days.map { (date, count) ->
+                stringResource(R.string.weekly_day_description,
+                    date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", ArabicLocale)), count)
+            })
         }
     }
 }
@@ -441,93 +448,19 @@ private fun SourceSummaryCard(
     thirdLabel: String,
     containerColor: Color,
 ) {
-    val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
-        border = sakinahCardBorder(0.12f),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ActivityGlyph(kind)
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleLarge, color = contentColor)
-                    Text(
-                        caption,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor.copy(alpha = 0.72f),
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        formatNumber(total),
-                        fontSize = 34.sp,
-                        lineHeight = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = contentColor,
-                    )
-                    Text(
-                        stringResource(R.string.since_beginning),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor.copy(alpha = 0.7f),
-                    )
-                }
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        Text(caption, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        listOf(
+            stringResource(R.string.since_beginning) to total,
+            stringResource(R.string.today_short) to today,
+            stringResource(R.string.this_month_short) to month,
+            thirdLabel to thirdValue,
+        ).forEach { (label, value) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(formatNumber(value), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             }
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SourceCompactMetric(
-                    modifier = Modifier.weight(1f),
-                    value = today,
-                    label = stringResource(R.string.today_short),
-                    contentColor = contentColor,
-                )
-                SourceCompactMetric(
-                    modifier = Modifier.weight(1f),
-                    value = month,
-                    label = stringResource(R.string.this_month_short),
-                    contentColor = contentColor,
-                )
-                SourceCompactMetric(
-                    modifier = Modifier.weight(1f),
-                    value = thirdValue,
-                    label = thirdLabel,
-                    contentColor = contentColor,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SourceCompactMetric(
-    modifier: Modifier,
-    value: Int,
-    label: String,
-    contentColor: Color,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = contentColor.copy(alpha = 0.08f),
-        contentColor = contentColor,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(formatNumber(value), style = MaterialTheme.typography.titleMedium)
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.72f),
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-            )
         }
     }
 }
@@ -599,6 +532,7 @@ private fun HourlyActivityCard(analytics: ActivityAnalytics) {
             Spacer(Modifier.height(18.dp))
             HourlyBarsChart(hours)
             HourAxisLabels()
+            ChartValues("hourly", hours.map { stringResource(R.string.hour_value_description, formatHourLabel(it.hourOfDay), it.totalCount, it.tasbihCount, it.readerCount) })
             Spacer(Modifier.height(12.dp))
             Text(
                 peak?.let { stringResource(R.string.busiest_hour, formatHourLabel(it.hourOfDay)) }
@@ -634,51 +568,19 @@ private fun HourlyActivityCard(analytics: ActivityAnalytics) {
 }
 
 @Composable
-private fun ActivityRangeSelector(
-    selected: ActivityRange,
-    onSelected: (ActivityRange) -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
-    ) {
-        Row(
-            modifier = Modifier.padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            ActivityRange.entries.forEach { range ->
-                val isSelected = range == selected
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("hour_range_${range.name}")
-                        .clip(MaterialTheme.shapes.large)
-                        .semantics { this.selected = isSelected }
-                        .clickable { onSelected(range) },
-                    shape = MaterialTheme.shapes.large,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    contentColor = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                ) {
-                    Text(
-                        range.label(),
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 9.dp),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                    )
-                }
-            }
+private fun ActivityRangeSelector(selected: ActivityRange, onSelected: (ActivityRange) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Small), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ActivityRange.entries.forEach { range ->
+            FilterChip(selected = range == selected, onClick = { onSelected(range) },
+                label = { Text(range.label()) }, modifier = Modifier.testTag("hour_range_${range.name}"))
         }
     }
 }
 
 @Composable
 private fun HourlyBarsChart(hours: List<HourlyActivityTotal>) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val spoken = hours.joinToString("، ") { "${formatHourLabel(it.hourOfDay)}: ${formatNumber(it.totalCount)}" }
     val nightColor = MaterialTheme.colorScheme.primary
     val dayColor = LocalSakinahBrandColors.current.antiqueGold
     val trackColor = MaterialTheme.colorScheme.outlineVariant
@@ -686,7 +588,7 @@ private fun HourlyBarsChart(hours: List<HourlyActivityTotal>) {
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(142.dp),
+            .height(142.dp).semantics { contentDescription = spoken },
     ) {
         val baseline = size.height - 8.dp.toPx()
         val topPadding = 10.dp.toPx()
@@ -714,7 +616,7 @@ private fun HourlyBarsChart(hours: List<HourlyActivityTotal>) {
             strokeWidth = 1.dp.toPx(),
         )
         hours.forEach { hour ->
-            val x = slotWidth * (hour.hourOfDay + 0.5f)
+            val x = size.width * hourPositionFraction(hour.hourOfDay, rtl)
             val isDay = hour.hourOfDay in 6..17
             val color = if (isDay) dayColor else nightColor
             val ratio = hour.totalCount.toFloat() / maxValue
@@ -734,17 +636,10 @@ private fun HourlyBarsChart(hours: List<HourlyActivityTotal>) {
 
 @Composable
 private fun HourAxisLabels() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         listOf(0, 6, 12, 18, 23).forEach { hour ->
-            Text(
-                formatHourLabel(hour),
-                fontSize = 10.sp,
-                lineHeight = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(formatNumber(hour), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -975,10 +870,12 @@ private fun PeriodBarChart(
     highlightIndex: Int,
 ) {
     val maxValue = periods.maxOfOrNull(PeriodActivity::totalCount)?.coerceAtLeast(1) ?: 1
+    Column {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(154.dp)
+            .horizontalScroll(rememberScrollState())
+            .height(180.dp)
             .padding(top = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -987,16 +884,15 @@ private fun PeriodBarChart(
             val barColor = if (highlighted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(56.dp)
                     .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
             ) {
                 Text(
                     if (period.totalCount > 0) formatNumber(period.totalCount) else "·",
-                    fontSize = if (periods.size > 8) 9.sp else 11.sp,
-                    lineHeight = 11.sp,
-                    maxLines = 1,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(5.dp))
@@ -1013,13 +909,14 @@ private fun PeriodBarChart(
                 )
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    labels.getOrElse(index) { "" },
-                    fontSize = if (periods.size > 8) 9.sp else 11.sp,
-                    lineHeight = 11.sp,
-                    maxLines = 1,
+                    periodLabel(period.periodKey),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
                 )
             }
         }
+    }
+    ChartValues("period", periods.map { "${periodLabel(it.periodKey)}: ${formatNumber(it.totalCount)}" })
     }
 }
 
@@ -1106,6 +1003,7 @@ private fun ActivityCalendarCard(analytics: ActivityAnalytics) {
     val maxInMonth = monthActivities.values.maxOfOrNull { it.totalCount }?.coerceAtLeast(1) ?: 1
     val firstDayOffset = (month.atDay(1).dayOfWeek.value + 1) % 7
     val slots = (((firstDayOffset + month.lengthOfMonth()) + 6) / 7) * 7
+    var listViewOverride by rememberSaveable { mutableStateOf<Boolean?>(null) }
 
     Card(
         modifier = Modifier
@@ -1154,6 +1052,24 @@ private fun ActivityCalendarCard(analytics: ActivityAnalytics) {
                     )
                 }
             }
+            BoxWithConstraints {
+            val listView = listViewOverride ?: (maxWidth < 320.dp && LocalDensity.current.fontScale > 1.3f)
+            Column {
+            TextButton(onClick = { listViewOverride = !listView }, modifier = Modifier.testTag("calendar_view_toggle")) {
+                Text(stringResource(if (listView) R.string.calendar_show_grid else R.string.calendar_show_list))
+            }
+            Column(Modifier.testTag("activity_calendar_grid")) {
+            if (listView) {
+                for (day in 1..month.lengthOfMonth()) {
+                    val date = month.atDay(day)
+                    CalendarDay(
+                        modifier = Modifier.fillMaxWidth(), date = date,
+                        count = monthActivities[date.toString()]?.totalCount ?: 0, maxCount = maxInMonth,
+                        selected = date == selectedDate, enabled = !date.isAfter(LocalDate.now()),
+                        onClick = { selectedDayKey = date.toString() }, listLayout = true,
+                    )
+                }
+            } else {
             Row(modifier = Modifier.fillMaxWidth()) {
                 listOf(
                     R.string.weekday_sat,
@@ -1197,6 +1113,10 @@ private fun ActivityCalendarCard(analytics: ActivityAnalytics) {
                     }
                 }
             }
+            }
+            }
+            }
+            }
             Spacer(Modifier.height(14.dp))
             SelectedDayDetails(selectedDate, selectedActivity)
         }
@@ -1212,29 +1132,19 @@ private fun CalendarDay(
     selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    listLayout: Boolean = false,
 ) {
-    val intensity = if (count == 0) 0f else (0.2f + 0.8f * count / maxCount).coerceIn(0.2f, 1f)
-    val color = when {
-        !enabled -> MaterialTheme.colorScheme.surface
-        count > 0 -> MaterialTheme.colorScheme.primary.copy(alpha = intensity)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    }
-    val contentColor = if (count > 0 && intensity > 0.55f) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+    val (color, contentColor) = calendarCellColors(MaterialTheme.colorScheme, count, maxCount, enabled)
     val selectionColor = MaterialTheme.colorScheme.secondary
     val spokenDate = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", ArabicLocale))
-    val spokenCount = stringResource(R.string.count_value, count)
+    val spokenCount = dhikrQuantity(count)
     val selectionState = stringResource(
         if (selected) R.string.calendar_day_selected else R.string.calendar_day_not_selected,
     )
     Box(
         modifier = modifier
-            .padding(2.5.dp)
-            .aspectRatio(0.86f)
-            .sizeIn(minHeight = 48.dp)
+            .padding(2.dp)
+            .heightIn(min = 64.dp)
             .clip(MaterialTheme.shapes.small)
             .background(color)
             .semantics(mergeDescendants = true) {
@@ -1245,19 +1155,23 @@ private fun CalendarDay(
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(formatNumber(date.dayOfMonth), style = MaterialTheme.typography.labelLarge, color = contentColor)
-            if (count > 0) {
+        Column(
+            modifier = if (listLayout) Modifier.fillMaxWidth().padding(12.dp) else Modifier,
+            horizontalAlignment = if (listLayout) Alignment.Start else Alignment.CenterHorizontally,
+        ) {
+            Text(if (listLayout) spokenDate else formatNumber(date.dayOfMonth),
+                style = if (listLayout) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.labelLarge, color = contentColor)
+            if (count > 0 || listLayout) {
                 Text(
-                    formatNumber(count),
-                    fontSize = 9.sp,
-                    lineHeight = 10.sp,
-                    color = contentColor.copy(alpha = 0.84f),
+                    if (listLayout) spokenCount else formatNumber(count),
+                    fontSize = if (listLayout) 12.sp else 11.sp,
+                    lineHeight = if (listLayout) 20.sp else 16.sp,
+                    color = contentColor,
                 )
             }
         }
         if (selected) {
-            Canvas(Modifier.fillMaxSize().padding(2.dp)) {
+            Canvas(Modifier.matchParentSize().padding(2.dp)) {
                 drawRoundRect(
                     color = selectionColor,
                     style = Stroke(1.8.dp.toPx()),
@@ -1457,4 +1371,8 @@ private fun EmptyActivityCard() {
     }
 }
 
-private fun formatNumber(value: Int): String = value.toString()
+private fun formatNumber(value: Int): String = com.sakinah.tasbih.data.arabicNumber(value)
+
+private fun periodLabel(key: String): String = if (key.length == 7) {
+    YearMonth.parse(key).format(DateTimeFormatter.ofPattern("MMM", ArabicLocale))
+} else key

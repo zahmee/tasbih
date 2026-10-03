@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,9 +23,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -55,7 +60,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sakinah.tasbih.data.dhikrQuantity
+import com.sakinah.tasbih.data.dayQuantity
 import com.sakinah.tasbih.R
+import com.sakinah.tasbih.data.DhikrEntry
+import com.sakinah.tasbih.data.DhikrSearchResult
+import com.sakinah.tasbih.data.searchEntries
 import com.sakinah.tasbih.data.DhikrCollection
 import com.sakinah.tasbih.data.DhikrGroup
 import com.sakinah.tasbih.data.displayArabic
@@ -63,46 +73,53 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+private enum class LibraryFilter { All, Favorites, Recent }
+
 @Composable
 fun LibraryScreen(
     state: SakinahUiState,
     onOpenCollection: (String) -> Unit,
+    onOpenEntry: (DhikrEntry) -> Unit,
+    onToggleFavorite: (String) -> Unit,
     onRetry: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf<DhikrGroup?>(null) }
-    val searchResults = remember(state.catalog, query) { state.catalog.search(query) }
-    val visibleCollections = remember(searchResults, selectedGroup) {
-        selectedGroup?.let { group ->
-            searchResults.filter { DhikrGroup.forOrder(it.order) == group }
-        } ?: searchResults
+    var filter by rememberSaveable { mutableStateOf(LibraryFilter.All) }
+    val matchingEntries = remember(state.catalog, query, selectedGroup) { state.catalog.searchEntries(query, selectedGroup) }
+    val entries = remember(matchingEntries, filter, state.favoriteEntryIds, state.recentEntryIds) {
+        when (filter) {
+            LibraryFilter.All -> matchingEntries
+            LibraryFilter.Favorites -> matchingEntries.filter { it.entry.id in state.favoriteEntryIds }
+            LibraryFilter.Recent -> {
+                val byId = matchingEntries.associateBy { it.entry.id }
+                state.recentEntryIds.mapNotNull(byId::get)
+            }
+        }
     }
-    val showingSections = selectedGroup == null && query.isBlank()
-
+    val showingSections = selectedGroup == null && query.isBlank() && filter == LibraryFilter.All
+    val showingCollections = selectedGroup != null && query.isBlank() && filter == LibraryFilter.All
+    val collections = remember(state.catalog, selectedGroup) {
+        state.catalog.collections.filter { selectedGroup == null || DhikrGroup.forOrder(it.order) == selectedGroup }
+    }
     BackHandler(enabled = !showingSections) {
         query = ""
         selectedGroup = null
+        filter = LibraryFilter.All
     }
-
     SakinahScreenBackground {
         LazyColumn(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = SakinahContentMaxWidth)
-                .fillMaxSize(),
+            modifier = Modifier.align(Alignment.TopCenter).widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("library_list"),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium),
         ) {
             item {
-                LibraryHeader(
-                    selectedGroup = selectedGroup,
-                    onBackToSections = {
-                        query = ""
-                        selectedGroup = null
-                    },
-                )
+                LibraryHeader(selectedGroup) {
+                    query = ""
+                    selectedGroup = null
+                    filter = LibraryFilter.All
+                }
             }
-
             if (state.isLoading || state.contentLoadFailed) {
                 item { ContentStatusCard(state = state, onRetry = onRetry) }
             } else {
@@ -110,72 +127,99 @@ fun LibraryScreen(
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag("library_search"),
                         singleLine = true,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        placeholder = { Text(stringResource(R.string.search_hint)) },
-                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                        trailingIcon = if (query.isNotEmpty()) {
-                            {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(
-                                        Icons.Outlined.Close,
-                                        contentDescription = stringResource(R.string.clear_search),
-                                    )
-                                }
-                            }
-                        } else {
-                            null
-                        },
+                        shape = MaterialTheme.shapes.large,
+                        label = { Text(stringResource(if (selectedGroup == null) R.string.search_all_adhkar else R.string.search_this_section)) },
+                        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                        trailingIcon = if (query.isNotEmpty()) {{
+                            IconButton(onClick = { query = "" }) { Icon(Icons.Outlined.Close, stringResource(R.string.clear_search)) }
+                        }} else null,
                     )
                 }
-
-                if (showingSections) {
-                    item {
-                        Column(modifier = Modifier.padding(vertical = 3.dp)) {
-                            SakinahSectionHeader(stringResource(R.string.library_sections))
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                stringResource(R.string.library_sections_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 3.dp),
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
+                        LibraryFilter.entries.forEach { option ->
+                            FilterChip(
+                                selected = filter == option,
+                                onClick = { filter = option; if (option != LibraryFilter.All) selectedGroup = null },
+                                label = { Text(stringResource(when (option) {
+                                    LibraryFilter.All -> R.string.library_all
+                                    LibraryFilter.Favorites -> R.string.library_favorites
+                                    LibraryFilter.Recent -> R.string.library_recent
+                                })) },
+                                modifier = Modifier.testTag("library_filter_${option.name.lowercase()}"),
                             )
                         }
                     }
-                    item {
-                        ResponsiveLibraryGroups(
-                            state = state,
-                            onSelect = { selectedGroup = it },
-                        )
+                    if (selectedGroup != null && query.isNotBlank()) {
+                        TextButton(onClick = { selectedGroup = null }, modifier = Modifier.testTag("library_search_everywhere")) {
+                            Text(stringResource(R.string.search_everywhere))
+                        }
                     }
-                } else {
-                    item {
-                        Text(
-                            text = stringResource(R.string.search_results_count, visibleCollections.size),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                        )
+                }
+                when {
+                    showingSections -> {
+                        item { SakinahSectionHeader(stringResource(R.string.library_sections)) }
+                        item { ResponsiveLibraryGroups(state = state, onSelect = { selectedGroup = it }) }
                     }
-                    if (visibleCollections.isEmpty()) {
-                        item { EmptySearchCard() }
-                    } else {
-                        items(
-                            count = visibleCollections.size,
-                            key = { index -> visibleCollections[index].id },
-                        ) { index ->
-                            val collection = visibleCollections[index]
-                            CollectionCard(
-                                collection = collection,
-                                state = state,
-                                onClick = { onOpenCollection(collection.id) },
-                            )
+                    showingCollections -> {
+                        item { Text(stringResource(R.string.search_results_count, collections.size), style = MaterialTheme.typography.labelLarge) }
+                        items(collections.size, key = { collections[it].id }) { index ->
+                            CollectionCard(collections[index], state) { onOpenCollection(collections[index].id) }
+                        }
+                    }
+                    else -> {
+                        item { Text(stringResource(R.string.search_results_count, entries.size), style = MaterialTheme.typography.labelLarge) }
+                        if (entries.isEmpty()) {
+                            item {
+                                Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
+                                    Text(stringResource(when {
+                                        query.isNotBlank() -> R.string.no_search_results
+                                        filter == LibraryFilter.Favorites -> R.string.no_favorites
+                                        else -> R.string.no_recent_entries
+                                    }), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(when {
+                                        query.isNotBlank() -> R.string.no_search_results_hint
+                                        filter == LibraryFilter.Favorites -> R.string.no_favorites_hint
+                                        else -> R.string.no_recent_entries_hint
+                                    }), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    TextButton(onClick = { query = ""; filter = LibraryFilter.All; selectedGroup = null }) {
+                                        Text(stringResource(R.string.browse_library))
+                                    }
+                                }
+                            }
+                        } else {
+                            items(entries.size, key = { entries[it].entry.id }) { index ->
+                                LibraryEntryRow(entries[index], state, onOpenEntry, onToggleFavorite)
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LibraryEntryRow(result: DhikrSearchResult, state: SakinahUiState, onOpenEntry: (DhikrEntry) -> Unit, onToggleFavorite: (String) -> Unit) {
+    Column {
+        Row(
+            Modifier.fillMaxWidth().testTag("library_entry_${result.entry.id}").clickable { onOpenEntry(result.entry) }.padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
+                Text(displayArabic(result.collection.title, state.showDiacritics), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                if (result.matchedReference) Text(stringResource(R.string.source_title), style = MaterialTheme.typography.labelMedium)
+                Text(displayArabic(result.excerpt, state.showDiacritics), style = MaterialTheme.typography.bodyLarge)
+            }
+            IconButton(onClick = { onToggleFavorite(result.entry.id) }, modifier = Modifier.testTag("library_favorite_${result.entry.id}")) {
+                val favorite = result.entry.id in state.favoriteEntryIds
+                Icon(if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    stringResource(if (favorite) R.string.remove_favorite else R.string.favorite), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -216,11 +260,11 @@ private fun ResponsiveLibraryGroups(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val columns = if (maxWidth >= 600.dp) 2 else 1
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium)) {
             DhikrGroup.entries.chunked(columns).forEach { rowGroups ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium),
                 ) {
                     rowGroups.forEach { group ->
                         val collections = state.catalog.collections.filter {
@@ -536,7 +580,7 @@ private fun CollectionCard(collection: DhikrCollection, state: SakinahUiState, o
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    stringResource(R.string.dhikr_items_count, collection.entries.size),
+                    dhikrQuantity(collection.entries.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

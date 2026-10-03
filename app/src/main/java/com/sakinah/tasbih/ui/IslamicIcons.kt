@@ -26,7 +26,7 @@ internal enum class IslamicNavSymbol {
     Mihrab,
     Manuscript,
     Tasbih,
-    Rosette,
+    More,
 }
 
 internal enum class HomeActionSymbol {
@@ -37,8 +37,7 @@ internal enum class HomeActionSymbol {
 }
 
 /**
- * Original navigation glyphs drawn for Sakinah. They deliberately share the same
- * pointed arch, rounded stroke and eight-fold geometry so the bar reads as one set.
+ * Compact navigation glyphs for the Anaa identity, with a shared rounded stroke.
  */
 @Composable
 internal fun IslamicNavigationIcon(
@@ -64,7 +63,11 @@ internal fun IslamicNavigationIcon(
             IslamicNavSymbol.Mihrab -> drawMihrab(color, unit, stroke, selection)
             IslamicNavSymbol.Manuscript -> drawManuscript(color, unit, stroke, selection)
             IslamicNavSymbol.Tasbih -> drawTasbih(color, unit, stroke, selection)
-            IslamicNavSymbol.Rosette -> drawRosette(color, unit, stroke, selection)
+            IslamicNavSymbol.More -> {
+                listOf(24f, 50f, 76f).forEach { x ->
+                    drawCircle(color, radius = 6f * unit, center = Offset(x * unit, 50f * unit))
+                }
+            }
         }
     }
 }
@@ -137,77 +140,35 @@ private fun DrawScope.drawDailyWird(
     }
 }
 
-private fun DrawScope.drawSleepDhikr(
-    color: Color,
-    unit: Float,
-    stroke: Float,
-) {
-    drawCrescent(color, Offset(63f * unit, 37f * unit), unit, scale = 1.05f)
-    drawEightPointStar(
-        center = Offset(28f * unit, 27f * unit),
-        outerRadius = 9f * unit,
-        innerRadius = 4f * unit,
-        color = color,
-        stroke = stroke * 0.62f,
-        fillAlpha = 0.08f,
-    )
-    val pillow = Path().apply {
-        moveTo(17f * unit, 68f * unit)
-        cubicTo(28f * unit, 60f * unit, 66f * unit, 60f * unit, 82f * unit, 69f * unit)
-        lineTo(78f * unit, 88f * unit)
-        cubicTo(59f * unit, 82f * unit, 38f * unit, 82f * unit, 20f * unit, 88f * unit)
+private fun DrawScope.drawSleepDhikr(color: Color, unit: Float, stroke: Float) {
+    val moon = Path().apply {
+        moveTo(59f * unit, 12f * unit)
+        cubicTo(31f * unit, 9f * unit, 14f * unit, 32f * unit, 16f * unit, 55f * unit)
+        cubicTo(19f * unit, 82f * unit, 47f * unit, 94f * unit, 69f * unit, 81f * unit)
+        cubicTo(79f * unit, 75f * unit, 85f * unit, 65f * unit, 88f * unit, 55f * unit)
+        cubicTo(67f * unit, 68f * unit, 42f * unit, 54f * unit, 44f * unit, 32f * unit)
+        cubicTo(45f * unit, 23f * unit, 50f * unit, 16f * unit, 59f * unit, 12f * unit)
         close()
     }
-    drawPath(
-        pillow,
-        color,
-        style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
-    drawLine(
-        color.copy(alpha = 0.62f),
-        Offset(27f * unit, 74f * unit),
-        Offset(67f * unit, 73f * unit),
-        stroke * 0.55f,
-        StrokeCap.Round,
-    )
+    drawPath(moon, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
-private fun DrawScope.drawPrayerDhikr(
-    color: Color,
-    unit: Float,
-    stroke: Float,
-) {
-    val rug = Path().apply {
-        moveTo(24f * unit, 88f * unit)
-        lineTo(24f * unit, 42f * unit)
-        cubicTo(24f * unit, 32f * unit, 39f * unit, 22f * unit, 50f * unit, 11f * unit)
-        cubicTo(61f * unit, 22f * unit, 76f * unit, 32f * unit, 76f * unit, 42f * unit)
-        lineTo(76f * unit, 88f * unit)
+private fun DrawScope.drawPrayerDhikr(color: Color, unit: Float, stroke: Float) {
+    val doorway = Path().apply {
+        moveTo(17f * unit, 90f * unit)
+        lineTo(17f * unit, 60f * unit)
+        cubicTo(17f * unit, 43f * unit, 35f * unit, 43f * unit, 39f * unit, 28f * unit)
+        cubicTo(41f * unit, 21f * unit, 48f * unit, 20f * unit, 50f * unit, 10f * unit)
+        cubicTo(52f * unit, 20f * unit, 59f * unit, 21f * unit, 61f * unit, 28f * unit)
+        cubicTo(65f * unit, 43f * unit, 83f * unit, 43f * unit, 83f * unit, 60f * unit)
+        lineTo(83f * unit, 90f * unit)
+        lineTo(60f * unit, 90f * unit)
+        lineTo(60f * unit, 72f * unit)
+        cubicTo(60f * unit, 56f * unit, 40f * unit, 56f * unit, 40f * unit, 72f * unit)
+        lineTo(40f * unit, 90f * unit)
         close()
     }
-    drawPath(rug, color.copy(alpha = 0.08f))
-    drawPath(
-        rug,
-        color,
-        style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
-    drawEightPointStar(
-        center = Offset(50f * unit, 54f * unit),
-        outerRadius = 12f * unit,
-        innerRadius = 5f * unit,
-        color = color,
-        stroke = stroke * 0.64f,
-        fillAlpha = 0.12f,
-    )
-    listOf(30f, 43f, 57f, 70f).forEach { x ->
-        drawLine(
-            color,
-            Offset(x * unit, 89f * unit),
-            Offset(x * unit, 96f * unit),
-            stroke * 0.52f,
-            StrokeCap.Round,
-        )
-    }
+    drawPath(doorway, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
 private fun DrawScope.drawCrescent(
@@ -245,33 +206,20 @@ private fun DrawScope.drawMihrab(
     stroke: Float,
     selection: Float,
 ) {
-    val arch = Path().apply {
+    val house = Path().apply {
         moveTo(18f * unit, 88f * unit)
-        lineTo(18f * unit, 49f * unit)
-        cubicTo(18f * unit, 35f * unit, 36f * unit, 22f * unit, 50f * unit, 10f * unit)
-        cubicTo(64f * unit, 22f * unit, 82f * unit, 35f * unit, 82f * unit, 49f * unit)
+        lineTo(18f * unit, 42f * unit)
+        lineTo(50f * unit, 13f * unit)
+        lineTo(82f * unit, 42f * unit)
         lineTo(82f * unit, 88f * unit)
+        lineTo(60f * unit, 88f * unit)
+        lineTo(60f * unit, 61f * unit)
+        quadraticTo(50f * unit, 50f * unit, 40f * unit, 61f * unit)
+        lineTo(40f * unit, 88f * unit)
         close()
     }
-    drawPath(arch, color.copy(alpha = 0.11f * selection))
-    drawPath(
-        path = arch,
-        color = color,
-        style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
-    drawLine(
-        color,
-        Offset(10f * unit, 88f * unit),
-        Offset(90f * unit, 88f * unit),
-        stroke,
-        StrokeCap.Round,
-    )
-    drawCircle(
-        color = color,
-        radius = (6.5f + selection * 1.2f) * unit,
-        center = Offset(50f * unit, 52f * unit),
-        style = if (selection > 0.5f) androidx.compose.ui.graphics.drawscope.Fill else Stroke(stroke),
-    )
+    drawPath(house, color.copy(alpha = selection))
+    drawPath(house, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
 private fun DrawScope.drawManuscript(

@@ -4,11 +4,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-val Emerald = Color(0xFF0B6253)
-val DeepEmerald = Color(0xFF063D34)
-val Mint = Color(0xFFDCEFE8)
-val Gold = Color(0xFFB88642)
-val Sand = Color(0xFFF8F4E9)
+val Emerald = Color(0xFF185348)
+val DeepEmerald = Color(0xFF153F36)
+val Mint = Color(0xFFE3EBDD)
+val Gold = Color(0xFF996244)
+val Sand = Color(0xFFF7F4E9)
 val Ink = Color(0xFF17231F)
 val SoftInk = Color(0xFF56645F)
 val Night = Color(0xFF081713)
@@ -18,7 +18,7 @@ val NightMint = Color(0xFF8ED8C0)
 /**
  * Brand-only colors stay stable when the user enables Android dynamic color.
  * Functional controls still use Material color roles; these values are reserved
- * for the quiet Islamic ornament, parchment glow, and antique-gold accents.
+ * for the approved Anaa lettering, flowing mark, and muted copper accents.
  */
 @Immutable
 data class SakinahBrandColors(
@@ -35,25 +35,25 @@ data class SakinahBrandColors(
 
 internal val LightSakinahBrandColors = SakinahBrandColors(
     antiqueGold = Gold,
-    onAntiqueGold = Color(0xFF2C210F),
+    onAntiqueGold = Color(0xFFFFF8F1),
     heroStart = Emerald,
-    heroEnd = Color(0xFF084B40),
+    heroEnd = Emerald,
     onHero = Color(0xFFFFFBF3),
-    backdropTop = Color(0xFFFFFCF6),
-    backdropBottom = Sand,
-    ornament = Color(0xFF9B713A),
+    backdropTop = Color(0xFFFAF8F2),
+    backdropBottom = Color(0xFFFAF8F2),
+    ornament = Color(0xFFA66E4E),
     readingPaper = Color(0xFFFFFDF9),
 )
 
 internal val DarkSakinahBrandColors = SakinahBrandColors(
-    antiqueGold = Color(0xFFE0B46D),
+    antiqueGold = Color(0xFFDCAA87),
     onAntiqueGold = Color(0xFF271A08),
     heroStart = Color(0xFF174D42),
-    heroEnd = Color(0xFF0D342C),
+    heroEnd = Color(0xFF174D42),
     onHero = Color(0xFFE4F0EB),
-    backdropTop = Color(0xFF10231D),
+    backdropTop = Night,
     backdropBottom = Night,
-    ornament = Color(0xFFD5A65F),
+    ornament = Color(0xFFDCAA87),
     readingPaper = Color(0xFF142A23),
 )
 

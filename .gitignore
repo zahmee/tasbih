@@ -14,3 +14,14 @@ dist/
 *.jks
 *.keystore
 keystore.properties
+
+# Local observations can contain account details or personal reading progress.
+docs/**/emulator-*
+docs/**/reader-before.png
+docs/**/focus-before.png
+docs/**/store-*.jpg
+docs/**/store-*.png
+
+# Local Python caches for asset generation tools.
+__pycache__/
+*.py[cod]

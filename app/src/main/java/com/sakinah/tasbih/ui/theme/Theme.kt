@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.dp
 import com.sakinah.tasbih.data.ArabicFontStyle
 import com.sakinah.tasbih.data.ThemeMode
 
-private val ColorSand = Color(0xFFF1E2C6)
+private val ColorSand = Color(0xFFF0E3D8)
 
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = Emerald,
     onPrimary = Color(0xFFFFFBF3),
     primaryContainer = Mint,
@@ -28,9 +28,9 @@ private val LightColors = lightColorScheme(
     secondary = Gold,
     onSecondary = Color(0xFFFFFBF3),
     secondaryContainer = ColorSand,
-    onSecondaryContainer = Color(0xFF3E2D12),
+    onSecondaryContainer = Color(0xFF482A1D),
     tertiary = Color(0xFF496B63),
-    onTertiary = Color(0xFFFFFFFF),
+    onTertiary = Color(0xFFFFFBF3),
     tertiaryContainer = Color(0xFFD6E8E1),
     onTertiaryContainer = Color(0xFF213E38),
     background = Sand,
@@ -43,22 +43,22 @@ private val LightColors = lightColorScheme(
     outlineVariant = Color(0xFFC5CCC7),
     surfaceDim = Color(0xFFDDD9CF),
     surfaceBright = Color(0xFFFFFCF7),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFFAF7F0),
+    surfaceContainerLowest = Color(0xFFFFFDF8),
+    surfaceContainerLow = Color(0xFFFCFAF5),
     surfaceContainer = Color(0xFFF4F1E9),
     surfaceContainerHigh = Color(0xFFEEECE4),
     surfaceContainerHighest = Color(0xFFE8E6DE),
 )
 
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = NightMint,
     onPrimary = DeepEmerald,
     primaryContainer = Color(0xFF174D42),
     onPrimaryContainer = Mint,
-    secondary = Color(0xFFE0B46D),
+    secondary = Color(0xFFDCAA87),
     onSecondary = Night,
-    secondaryContainer = Color(0xFF493719),
-    onSecondaryContainer = Color(0xFFFFDEAA),
+    secondaryContainer = Color(0xFF503729),
+    onSecondaryContainer = Color(0xFFF7DDC8),
     tertiary = Color(0xFFB9CCC4),
     onTertiary = Night,
     tertiaryContainer = Color(0xFF294840),

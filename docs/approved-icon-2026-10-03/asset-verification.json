@@ -1,0 +1,27 @@
+{
+  "approved_source": "docs\\icon-concepts-2026-10-03\\01-alif-noon-tasbih-v2.png",
+  "store_png_sha256": "22c81cc487db162139b16edd7eb43f1cfa9cbb7a3ede9ee21c35661f8c67feba",
+  "canonical_png_matches_approved_export": true,
+  "store_dimensions": [
+    512,
+    512
+  ],
+  "store_alpha_extrema": [
+    255,
+    255
+  ],
+  "vector_colors": {
+    "green": "#13594C",
+    "copper": "#AC6A46",
+    "background": "#F9F9F0"
+  },
+  "contour_counts": [
+    2,
+    7
+  ],
+  "path_vertices": 635,
+  "adaptive_scale": 0.885,
+  "maximum_logo_radius_dp": 32.81830567494875,
+  "inside_66dp_safe_circle": true,
+  "adaptive_design_reference": "https://developer.android.com/develop/ui/compose/system/icon_design_adaptive"
+}
