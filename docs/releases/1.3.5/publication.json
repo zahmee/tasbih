@@ -1,0 +1,65 @@
+{
+  "automaticPublishingAfterApproval": true,
+  "storeFeatureGraphicUpdated": true,
+  "playConsoleSection": "Changes in review",
+  "playTargetCountries": 178,
+  "aabSHA256": "FB2D6686D25EAD2561DD5F447C93B11C683C2BA65DD1C7E16713B091CB68C83F",
+  "releaseDate": "2026-10-04",
+  "playTrack": "production",
+  "playSupportedDevicesChanged": false,
+  "githubReleaseId": 402847174,
+  "managedPublishing": false,
+  "playPreliminaryChecks": "running",
+  "storeRealScreenshotAIDeclaration": false,
+  "githubAsset": "Anaa-1.3.5-local.apk",
+  "storeScreenshotOrder": [
+    "home",
+    "tasbih",
+    "library",
+    "sound"
+  ],
+  "playSubmittedChanges": 3,
+  "githubReleaseURL": "https://github.com/zahmee/tasbih/releases/tag/v1.3.5",
+  "githubAssetLabelWarnsOfDifferentPlaySignature": true,
+  "githubAssetSHA256": "6B26CE5114631ED42BE16B8D29847D92E2770C5B2DDC85634F99C7CA21179CD6",
+  "playBundleAccepted": true,
+  "preferredInstallationURL": "https://play.google.com/store/apps/details?id=com.sakinah.tasbih",
+  "githubReleasePublishedAtUTC": "2026-10-04T04:56:43Z",
+  "sourceTagMatchesCommitOnRemote": true,
+  "playRolloutPercentage": 100,
+  "storePhoneScreenshotsUpdated": 4,
+  "storeAssetHashes": [
+    {
+      "path": "store-assets/feature-graphic.png",
+      "SHA256": "279BC3D4FA73E9336CCA354928292D1BEFEE49FF9DCB12FBCFAB0A0852E9115C"
+    },
+    {
+      "path": "store-assets/screenshots/01-home.png",
+      "SHA256": "546251B99B41932644978FD90278D09C6F88EC2CE511C14BE9C0E6471012078C"
+    },
+    {
+      "path": "store-assets/screenshots/02-tasbih.png",
+      "SHA256": "7531E8712214952BF92E03D25769401E84B0210A8A9F9B427A8202916043776E"
+    },
+    {
+      "path": "store-assets/screenshots/03-library.png",
+      "SHA256": "263A93501B7D303E2D4ED18E06720AFD34BE73340574526C1E07655C9C6F8271"
+    },
+    {
+      "path": "store-assets/screenshots/04-sound.png",
+      "SHA256": "F131C76884EF34464DDB8E3CBCB5A879334E52F6C614D47A5E20F793FD0D2866"
+    }
+  ],
+  "playReleaseName": "اناء 1.3.5 — توحيد شعار التطبيق",
+  "storeFeatureGraphicAIDeclaration": true,
+  "githubAssetDigestMatchesLocal": true,
+  "versionName": "1.3.5",
+  "sourceTag": "v1.3.5",
+  "playActualReviewDispatch": "queued until preliminary checks complete successfully",
+  "versionCode": 9,
+  "observedAtUTC": "2026-10-04T05:07:09Z",
+  "storeArabicTitle": "اناء",
+  "playSubmissionRequestAccepted": true,
+  "newVersionPublicAvailabilityConfirmed": false,
+  "sourceCommit": "f1ffe903fc213d5d5e9d51c91ec47b7dbc4c0c4c"
+}
