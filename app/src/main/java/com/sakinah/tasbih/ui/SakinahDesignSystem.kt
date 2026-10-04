@@ -195,7 +195,7 @@ internal fun SakinahScreenHeader(
                     Spacer(Modifier.width(12.dp))
                     trailing()
                 } else {
-                    AnaaMark(modifier = Modifier.padding(top = 2.dp).size(42.dp))
+                    AnaaAppIcon(modifier = Modifier.padding(top = 2.dp).size(42.dp))
                 }
             }
         }

@@ -40,18 +40,6 @@ internal fun AnaaAppIcon(modifier: Modifier = Modifier) {
     }
 }
 
-/** Native vector artwork from the approved first identity concept. Never mirrors in RTL. */
-@Composable
-internal fun AnaaMark(modifier: Modifier = Modifier, tint: Color? = null) {
-    val dark = LocalSakinahBrandColors.current.readingPaper.luminance() < 0.5f
-    Image(
-        painter = painterResource(if (dark) R.drawable.anaa_mark_dark else R.drawable.anaa_mark),
-        contentDescription = null,
-        colorFilter = tint?.let { ColorFilter.tint(it) },
-        modifier = modifier,
-    )
-}
-
 @Composable
 internal fun AnaaWordmark(modifier: Modifier = Modifier, tint: Color? = null) {
     val dark = LocalSakinahBrandColors.current.readingPaper.luminance() < 0.5f

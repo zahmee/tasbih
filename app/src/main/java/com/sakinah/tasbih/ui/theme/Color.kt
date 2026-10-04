@@ -18,7 +18,7 @@ val NightMint = Color(0xFF8ED8C0)
 /**
  * Brand-only colors stay stable when the user enables Android dynamic color.
  * Functional controls still use Material color roles; these values are reserved
- * for the approved Anaa lettering, flowing mark, and muted copper accents.
+ * for the approved Anaa lettering, alif/noon icon, and muted copper accents.
  */
 @Immutable
 data class SakinahBrandColors(

@@ -496,7 +496,7 @@ private fun AppNavigationRail(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         windowInsets = WindowInsets(0, 0, 0, 0),
         header = if (compact) null else { {
-            AnaaMark(
+            AnaaAppIcon(
                 modifier = Modifier
                     .padding(vertical = 14.dp)
                     .size(44.dp),

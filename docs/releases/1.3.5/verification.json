@@ -1,0 +1,52 @@
+{
+  "updatedIconSurfaces": [
+    "shared screen headers",
+    "About hero",
+    "wide-screen navigation rail"
+  ],
+  "localAPK": "Anaa-1.3.5-local.apk",
+  "package": "com.sakinah.tasbih",
+  "initialTestEnvironmentFailures": 2,
+  "lintWarnings": 48,
+  "oldEmblemResourcesAbsentFromBundle": true,
+  "visualVerification": [
+    "light",
+    "dark",
+    "landscape",
+    "narrow-large",
+    "tablet"
+  ],
+  "versionCode": 9,
+  "testAPI": 35,
+  "storeScreenshotsSource": "direct captures from disposable test emulator",
+  "narrowSystemFontScale": 1.5,
+  "testEnvironmentIssue": "Android emulator Bluetooth crash dialog prevented IME display",
+  "localAPKSHA256": "6B26CE5114631ED42BE16B8D29847D92E2770C5B2DDC85634F99C7CA21179CD6",
+  "oldEmblemResourcesRemoved": true,
+  "uploadCertificateSHA256": "71E5718995852EF2B26596BF95F81552017E129763E6275F854A3AC623D588BD",
+  "lintHints": 1,
+  "releaseDate": "2026-10-04",
+  "aabSHA256": "FB2D6686D25EAD2561DD5F447C93B11C683C2BA65DD1C7E16713B091CB68C83F",
+  "targetTrack": "production",
+  "testEnvironmentResolution": "Disabled Bluetooth only on the disposable test AVD; all subsequent runs passed",
+  "bundleZipCRCValid": true,
+  "visibleEmulatorAvailableAtUpdateAttempt": false,
+  "storeFeatureGraphicDimensions": [
+    1024,
+    500
+  ],
+  "versionName": "1.3.5",
+  "visibleEmulatorDataModified": false,
+  "adaptiveInstrumentedFinalRuns": 5,
+  "sharedIconComponent": "AnaaAppIcon",
+  "finalTestFailures": 0,
+  "lintErrors": 0,
+  "storeFeatureGraphicAlpha": false,
+  "unitTests": 37,
+  "signingKeyChanged": false,
+  "storeScreenshotDimensions": [
+    1080,
+    1920
+  ],
+  "storeScreenshotAlpha": false
+}

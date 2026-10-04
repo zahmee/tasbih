@@ -182,19 +182,7 @@ private fun AboutHero(version: String, releaseDate: String) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Surface(
-                    modifier = Modifier.size(58.dp),
-                    shape = MaterialTheme.shapes.large,
-                    color = brand.onHero.copy(alpha = 0.13f),
-                    contentColor = brand.onHero,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        AnaaMark(
-                            modifier = Modifier.size(40.dp),
-                            tint = brand.onHero,
-                        )
-                    }
-                }
+                AnaaAppIcon(Modifier.size(58.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     AnaaWordmark(Modifier.width(108.dp).height(70.dp), tint = brand.onHero)
                     Text(
