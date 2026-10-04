@@ -1,0 +1,30 @@
+{
+  "package": "com.sakinah.tasbih",
+  "versionName": "1.3.3",
+  "versionCode": 7,
+  "releaseDate": "2026-10-04",
+  "localAPK": "Anaa-1.3.3-local.apk",
+  "localAPKSHA256": "7A52C9DA8A04BD9617CD6DCC1D828B10A669DD156F1BFA46062DB655B2D73233",
+  "aabSHA256": "C12478F532D4F8ECEDE73DA6B38031BB274F41683D5C3E201EB0553E00AF8F3D",
+  "uploadCertificateSHA256": "71E5718995852EF2B26596BF95F81552017E129763E6275F854A3AC623D588BD",
+  "playAppSigningCertificateSHA256Classical": "9257A8D4E6D6E4E02DB3ECC458194A82E398E5A78F2F568B8397D037B65512A4",
+  "unitTests": 37,
+  "adaptiveInstrumentedRuns": 3,
+  "testFailures": 0,
+  "lintErrors": 0,
+  "lintWarnings": 48,
+  "lintHints": 1,
+  "testAPI": 35,
+  "homeIconSharesLauncherArtwork": true,
+  "visualVerification": [
+    "light",
+    "dark",
+    "landscape"
+  ],
+  "play131To132PackageUpgradeWithoutUninstall": true,
+  "playToLocalPackageUpgradeRejectedForCertificateMismatch": true,
+  "phoneReportedFailureCauseConfirmed": false,
+  "targetTrack": "production",
+  "visibleDebugEmulatorUpgradedWithoutUninstall": true,
+  "visibleDebugEmulatorPreferencesPreserved": true
+}

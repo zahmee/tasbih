@@ -102,7 +102,7 @@ fun HomeScreen(
                 ) {
                     AnaaBrandLockup()
                     Spacer(Modifier.weight(1f))
-                    AnaaMark(Modifier.width(46.dp).height(62.dp))
+                    AnaaAppIcon(Modifier.size(72.dp).testTag("home_app_icon"))
                 }
               }
             }
@@ -165,7 +165,7 @@ private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String)
             HomeGreeting(Modifier.weight(1f).testTag("home_greeting"))
             HomeDate(weekday, hijri, gregorian)
         }
-        AnaaMark(Modifier.width(28.dp).height(38.dp))
+        AnaaAppIcon(Modifier.size(42.dp).testTag("home_app_icon"))
     }
 }
 

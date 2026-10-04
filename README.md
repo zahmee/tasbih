@@ -107,9 +107,11 @@
 
 ## الإصدار
 
-الإصدار الحالي هو ١.٣.٢، ورقم البناء ٦، وتاريخ الإصدار ٣ أكتوبر ٢٠٢٦.
+الإصدار الحالي هو ١.٣.٣، ورقم البناء ٧، وتاريخ الإصدار ٤ أكتوبر ٢٠٢٦.
 
 راجع [سجل التحديثات](CHANGELOG.md) للاطلاع على تغييرات هذا الإصدار.
+
+للتثبيت والتحديث على الجوال، استخدم [متجر قوقل](https://play.google.com/store/apps/details?id=com.sakinah.tasbih). ملفات التثبيت المحلية الموقعة بمفتاح الرفع تستخدم توقيعًا مختلفًا عن نسخ المتجر، ولا يمكن تبديل مصدر التثبيت بهذه الملفات كتحديث مباشر. راجع [دليل توافق التحديثات](docs/releases/update-compatibility.md) قبل استخدام ملف تثبيت مباشر.
 
 </div>
 
@@ -130,7 +132,9 @@ Anaa is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim conte
 
 ### Current release
 
-Version 1.3.2, build 6, released October 3, 2026. See [the changelog](CHANGELOG.md).
+Version 1.3.3, build 7, released October 4, 2026. See [the changelog](CHANGELOG.md).
+
+Install and update through [Google Play](https://play.google.com/store/apps/details?id=com.sakinah.tasbih). Locally built APKs use the upload key, while Play-distributed APKs use Google's app signing key; those APKs cannot replace each other as updates. See [update compatibility](docs/releases/update-compatibility.md) before using a direct APK.
 
 ### Build
 
