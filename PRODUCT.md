@@ -22,7 +22,7 @@ Keep the existing Android application ID, storage names, and persisted preferenc
 
 Calm, respectful, and focused. The interface should feel quietly reassuring and contemporary while treating the religious content with appropriate dignity.
 
-The launcher and splash icon approved on October 3, 2026 is the revised first concept: a clear green alif and noon, with copper prayer beads replacing the noon dot on an ivory background. Native vector layers follow the approved artwork's contours and provide a matching monochrome layer. The store PNG preserves the approved export unchanged. Home and About retain the existing flowing emblem and bespoke Arabic wordmark. Reading actions remain pine-green, and the home screen uses one featured reading card followed by two full-width quick links.
+The launcher and splash icon approved on October 3, 2026 is the revised first concept: a clear green alif and noon, with copper prayer beads replacing the noon dot on an ivory background. Native vector layers follow the approved artwork's contours and provide a matching monochrome layer. The store PNG preserves the approved export unchanged. Home reuses the launcher icon and a smaller bespoke Arabic wordmark; About retains the flowing emblem and wordmark. Reading actions remain pine-green, and the home screen uses one compact featured reading card followed by two full-width quick links. The featured card has rounded top-right and bottom-left corners, with sharp opposite corners, as requested on October 4, 2026.
 
 ## Anti-references
 

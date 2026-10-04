@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,14 +27,17 @@ import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
 /** Shares the approved launcher artwork and its original colors. Never mirrors in RTL. */
 @Composable
 internal fun AnaaAppIcon(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(R.drawable.ic_launcher_foreground),
-        contentDescription = null,
-        modifier = modifier.background(
-            color = colorResource(R.color.launcher_background),
-            shape = RoundedCornerShape(percent = 24),
-        ),
-    )
+    // Recreate the vector painter when the app theme changes so its cached layer stays visible.
+    key(LocalSakinahBrandColors.current.readingPaper) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = null,
+            modifier = modifier.background(
+                color = colorResource(R.color.launcher_background),
+                shape = RoundedCornerShape(percent = 24),
+            ),
+        )
+    }
 }
 
 /** Native vector artwork from the approved first identity concept. Never mirrors in RTL. */
@@ -61,8 +65,8 @@ internal fun AnaaWordmark(modifier: Modifier = Modifier, tint: Color? = null) {
 
 @Composable
 internal fun AnaaBrandLockup(modifier: Modifier = Modifier) {
-    Column(modifier = modifier.width(124.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        AnaaWordmark(Modifier.width(112.dp).height(74.dp))
+    Column(modifier = modifier.width(84.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        AnaaWordmark(Modifier.width(56.dp).height(37.dp))
         Text(
             text = stringResource(R.string.about_app_subtitle),
             style = MaterialTheme.typography.bodySmall,

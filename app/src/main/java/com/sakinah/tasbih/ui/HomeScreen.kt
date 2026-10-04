@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material3.Button
@@ -154,7 +155,7 @@ private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String)
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        AnaaWordmark(Modifier.width(76.dp).height(54.dp))
+        AnaaWordmark(Modifier.width(48.dp).height(32.dp))
         if (LocalDensity.current.fontScale > 1.3f) {
             Column(modifier = Modifier.weight(1f)) {
                 HomeGreeting(Modifier.testTag("home_greeting"))
@@ -235,14 +236,20 @@ private fun FeaturedDhikrCard(
         arabicNumber(completedEntries),
         arabicNumber(collection.entries.size),
     )
+    val cardShape = RoundedCornerShape(
+        topStart = 24.dp,
+        topEnd = 0.dp,
+        bottomEnd = 24.dp,
+        bottomStart = 0.dp,
+    )
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("home_featured")
-            .clip(MaterialTheme.shapes.large)
+            .clip(cardShape)
             .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
+        shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -250,11 +257,11 @@ private fun FeaturedDhikrCard(
     ) {
       if (compact) {
         Row(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(stringResource(R.string.today), style = MaterialTheme.typography.titleSmall)
                 Text(
                     displayArabic(collection.title, state.showDiacritics),
@@ -262,29 +269,32 @@ private fun FeaturedDhikrCard(
                     modifier = Modifier.semantics { heading() },
                 )
                 Text(progressLabel, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("home_featured_progress"))
-                ProgressLine(progressValue)
+                ProgressLine(progressValue, height = 4.dp)
             }
             HomeWirdAction(actionLabel, onClick, Modifier.width(180.dp))
         }
       } else {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(stringResource(R.string.today), style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = displayArabic(collection.title, state.showDiacritics),
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp, lineHeight = 44.sp),
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 24.sp, lineHeight = 34.sp),
                 modifier = Modifier.fillMaxWidth().semantics { heading() },
             )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = progressLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth().testTag("home_featured_progress"),
-            )
             Spacer(Modifier.height(8.dp))
-            ProgressLine(progress = progressValue, height = 6.dp)
-            Spacer(Modifier.height(18.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = progressLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("home_featured_progress"),
+                )
+                ProgressLine(progressValue, height = 4.dp, modifier = Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
             HomeWirdAction(actionLabel, onClick, Modifier.fillMaxWidth())
         }
       }
@@ -295,9 +305,9 @@ private fun FeaturedDhikrCard(
 private fun HomeWirdAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 54.dp).testTag("home_resume_wird"),
+        modifier = modifier.heightIn(min = 48.dp).testTag("home_resume_wird"),
         shape = MaterialTheme.shapes.medium,
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
     ) {
         Text(
             label,
@@ -379,6 +389,7 @@ private fun ContentStatusCard(title: String, showAction: Boolean, onAction: () -
 @Composable
 internal fun ProgressLine(
     progress: Float,
+    modifier: Modifier = Modifier,
     height: Dp = 6.dp,
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -386,7 +397,7 @@ internal fun ProgressLine(
     val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val progressColor = MaterialTheme.colorScheme.primary
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(height)
             .semantics {

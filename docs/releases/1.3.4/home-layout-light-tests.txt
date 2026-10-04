@@ -1,0 +1,5 @@
+com.sakinah.tasbih.AdaptiveDesignFlowTest:.
+
+Time: 19.92
+
+OK (1 test)
