@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.ArabicFontStyle
+import com.sakinah.tasbih.data.ReaderTextScaleRange
+import com.sakinah.tasbih.data.TasbihTextScaleRange
 import com.sakinah.tasbih.data.ThemeMode
 import com.sakinah.tasbih.ui.theme.dhikrFontFor
 import kotlin.math.roundToInt
@@ -97,13 +99,13 @@ fun SettingsDetailScreen(
         when (section) {
             SettingsSection.DailyReset -> dailyResetSettingsItems(state.dailyReset, onSetTasbihDailyReset, onSetAdhkarDailyReset, onSetDailyResetTime)
             SettingsSection.Reading -> {
-                item { TextScaleSetting(stringResource(R.string.text_size), state.textScale, dhikrFontFor(state.arabicFontStyle), 0.5f..1.4f, 8, "reader_text_scale", onSetTextScale) }
+                item { TextScaleSetting(stringResource(R.string.text_size), state.textScale, dhikrFontFor(state.arabicFontStyle), ReaderTextScaleRange, 8, "reader_text_scale", onSetTextScale) }
                 item { SettingToggleRow(stringResource(R.string.show_diacritics), stringResource(R.string.show_diacritics_description), state.showDiacritics, onSetShowDiacritics, "setting_diacritics") }
                 item { SettingToggleRow(stringResource(R.string.show_reference_by_default), stringResource(R.string.show_reference_by_default_description), state.showReferenceByDefault, onSetShowReference, "setting_reference") }
                 item { SettingToggleRow(stringResource(R.string.auto_advance_dhikr), stringResource(R.string.auto_advance_dhikr_description), state.autoAdvanceDhikrEnabled, onSetAutoAdvance, "setting_auto_advance") }
             }
             SettingsSection.Tasbih -> {
-                item { TextScaleSetting(stringResource(R.string.tasbih_text_size), state.tasbihTextScale, dhikrFontFor(state.arabicFontStyle), 0.7f..1.1f, 3, "tasbih_text_scale", onSetTasbihTextScale) }
+                item { TextScaleSetting(stringResource(R.string.tasbih_text_size), state.tasbihTextScale, dhikrFontFor(state.arabicFontStyle), TasbihTextScaleRange, 7, "tasbih_text_scale", onSetTasbihTextScale) }
                 item { SettingToggleRow(stringResource(R.string.haptics), stringResource(R.string.haptics_description), state.hapticsEnabled, onSetHaptics, "setting_haptics") }
                 item { SettingNavigationRow(stringResource(R.string.sound_settings), completionSoundName(state.completionSound), Icons.AutoMirrored.Outlined.VolumeUp, "tasbih_open_sound_settings", onOpenSoundSettings) }
             }

@@ -8,11 +8,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -225,11 +228,23 @@ private fun SakinahNavigation(
                 }
             },
         ) { innerPadding ->
+            // Full-screen reading docks its counter to the screen edge and pads for the
+            // navigation bar itself, so the bottom inset is left for it to consume.
+            val layoutDirection = LocalLayoutDirection.current
+            val contentPadding = if (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader) {
+                PaddingValues(
+                    start = innerPadding.calculateStartPadding(layoutDirection),
+                    top = innerPadding.calculateTopPadding(),
+                    end = innerPadding.calculateEndPadding(layoutDirection),
+                )
+            } else {
+                innerPadding
+            }
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding),
+                    .padding(contentPadding)
+                    .consumeWindowInsets(contentPadding),
             ) {
                 if (topLevelDestination != null && useNavigationRail && !hideTopLevelNavigation) {
                     AppNavigationRail(
@@ -282,6 +297,7 @@ private fun SakinahNavigation(
                                 onSelectPhrase = viewModel::selectPhrase,
                                 onAddCustomPhrase = viewModel::addCustomPhrase,
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
+                                onSetTextScale = viewModel::setTasbihTextScale,
                             )
                         }
 

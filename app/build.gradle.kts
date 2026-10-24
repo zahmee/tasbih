@@ -22,9 +22,9 @@ android {
         applicationId = "com.sakinah.tasbih"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "1.3.5"
-        buildConfigField("String", "RELEASE_DATE", "\"2026-10-04\"")
+        versionCode = 10
+        versionName = "1.3.6"
+        buildConfigField("String", "RELEASE_DATE", "\"2026-10-24\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

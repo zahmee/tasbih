@@ -11,6 +11,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -31,6 +32,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import com.sakinah.tasbih.ui.SakinahViewModel
 import com.sakinah.tasbih.data.CompletionSound
+import kotlin.math.abs
 import org.junit.Rule
 import org.junit.Test
 
@@ -313,8 +315,9 @@ class SakinahCoreFlowTest {
         composeRule.onNodeWithTag("nav_tasbih").performClick()
         waitForTag("tasbih_counter")
 
+        lateinit var viewModel: SakinahViewModel
         composeRule.activityRule.scenario.onActivity { activity ->
-            ViewModelProvider(activity)[SakinahViewModel::class.java].apply {
+            viewModel = ViewModelProvider(activity)[SakinahViewModel::class.java].apply {
                 resetTasbih()
                 setTasbihTarget(1)
             }
@@ -338,6 +341,14 @@ class SakinahCoreFlowTest {
         assertEquals(next.center.y, exit.center.y, 1f)
         assertTrue(phrase.top >= maxOf(previous.bottom, exit.bottom, next.bottom))
         assertEquals(header.width, phrase.width, 1f)
+        // The phrase sits above the dial, and its size changes here without counting.
+        assertTrue(phrase.bottom <= composeRule.onNodeWithTag("tasbih_counter").fetchSemanticsNode().boundsInRoot.top)
+        val tasbihTextScale = viewModel.uiState.value.tasbihTextScale
+        composeRule.onNodeWithTag("tasbih_focus_font_increase").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) { viewModel.uiState.value.tasbihTextScale > tasbihTextScale }
+        composeRule.onNodeWithTag("tasbih_focus_font_decrease").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) { abs(viewModel.uiState.value.tasbihTextScale - tasbihTextScale) < 0.001f }
+        assertEquals(0, viewModel.uiState.value.tasbihCount)
         composeRule.onNodeWithTag("tasbih_counter").assertIsDisplayed().performClick()
 
         waitForText("الدورة الحالية 1 من 1")
@@ -437,8 +448,18 @@ class SakinahCoreFlowTest {
         assertEquals(previous.center.y, exit.center.y, 1f)
         assertEquals(next.center.y, exit.center.y, 1f)
         assertTrue(text.top > exit.bottom && text.bottom < dock.top)
-        assertTrue(text.width > dock.width * 0.9f)
+        // The counter spans the full width at the screen edge; the text keeps the reading margins.
+        assertTrue(text.width > dock.width * 0.85f)
+        assertEquals(composeRule.onRoot().fetchSemanticsNode().boundsInRoot.bottom, dock.bottom, 1f)
         composeRule.onNodeWithText("المتبقي 1", useUnmergedTree = true).assertIsDisplayed()
+
+        // Text size changes without leaving focus mode, and those taps never count.
+        val textScale = viewModel.uiState.value.textScale
+        composeRule.onNodeWithTag("reader_focus_font_decrease").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) { viewModel.uiState.value.textScale < textScale }
+        composeRule.onNodeWithTag("reader_focus_font_increase").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) { abs(viewModel.uiState.value.textScale - textScale) < 0.001f }
+        assertEquals(0, viewModel.uiState.value.progressFor("hisn_001").repetitionCountFor(0))
 
         // Navigation remains navigation in focus mode and must not count a repetition.
         composeRule.onNodeWithTag("reader_next_dhikr").performClick()

@@ -25,6 +25,10 @@ import kotlinx.coroutines.flow.map
 
 private val Context.sakinahDataStore by preferencesDataStore(name = "sakinah_preferences")
 
+/** Allowed text sizes, shared by storage, the settings sliders and the full-screen buttons. */
+internal val ReaderTextScaleRange = 0.5f..1.4f
+internal val TasbihTextScaleRange = 0.7f..1.5f
+
 data class AppPreferences(
     val tasbihCount: Int = 0,
     val tasbihTarget: Int = 33,
@@ -301,16 +305,13 @@ class AppPreferencesRepository internal constructor(
 
     suspend fun setTextScale(scale: Float) {
         dataStore.edit { preferences ->
-            preferences[Keys.textScale] = scale.coerceIn(MinimumTextScale, MaximumTextScale)
+            preferences[Keys.textScale] = scale.coerceIn(ReaderTextScaleRange)
         }
     }
 
     suspend fun setTasbihTextScale(scale: Float) {
         dataStore.edit { preferences ->
-            preferences[Keys.tasbihTextScale] = scale.coerceIn(
-                MinimumTasbihTextScale,
-                MaximumTasbihTextScale,
-            )
+            preferences[Keys.tasbihTextScale] = scale.coerceIn(TasbihTextScaleRange)
         }
     }
 
@@ -413,11 +414,8 @@ class AppPreferencesRepository internal constructor(
             arabicFontStyle = ArabicFontStyle.fromStorage(this[Keys.arabicFontStyle]),
             hapticsEnabled = this[Keys.haptics] ?: true,
             showDiacritics = this[Keys.showDiacritics] ?: true,
-            textScale = (this[Keys.textScale] ?: 1f).coerceIn(MinimumTextScale, MaximumTextScale),
-            tasbihTextScale = (this[Keys.tasbihTextScale] ?: 1f).coerceIn(
-                MinimumTasbihTextScale,
-                MaximumTasbihTextScale,
-            ),
+            textScale = (this[Keys.textScale] ?: 1f).coerceIn(ReaderTextScaleRange),
+            tasbihTextScale = (this[Keys.tasbihTextScale] ?: 1f).coerceIn(TasbihTextScaleRange),
             showReferenceByDefault = this[Keys.showReferenceByDefault] ?: false,
             dhikrCompletionSoundEnabled = this[Keys.dhikrCompletionSoundEnabled] ?: true,
             tasbihCompletionSoundEnabled = this[Keys.tasbihCompletionSoundEnabled] ?: true,
@@ -516,10 +514,6 @@ class AppPreferencesRepository internal constructor(
         const val DefaultTarget = 33
         const val NoTarget = 0
         const val MaximumTarget = 9_999
-        const val MinimumTextScale = 0.5f
-        const val MaximumTextScale = 1.4f
-        const val MinimumTasbihTextScale = 0.7f
-        const val MaximumTasbihTextScale = 1.1f
         const val DefaultPhraseId = "subhan_allah"
         const val TasbihCounterKeyPrefix = "tasbih_phrase_counter_"
     }

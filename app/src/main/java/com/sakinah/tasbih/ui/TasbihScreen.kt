@@ -124,6 +124,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.TasbihPhrase
 import com.sakinah.tasbih.data.TasbihPhraseAnalytics
+import com.sakinah.tasbih.data.TasbihTextScaleRange
 import com.sakinah.tasbih.data.displayArabic
 import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
@@ -152,6 +153,7 @@ fun TasbihScreen(
     onSelectPhrase: (String) -> Unit,
     onAddCustomPhrase: (String, Int) -> Unit,
     onUpdatePhrase: (String, String, Int) -> Unit,
+    onSetTextScale: (Float) -> Unit,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
@@ -238,8 +240,8 @@ fun TasbihScreen(
     SakinahScreenBackground(showOrnament = !isFocusMode) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight && maxHeight < 500.dp
-            val textMaxHeight = if (landscape) (maxHeight - 132.dp).coerceAtLeast(64.dp)
-                else (maxHeight * if (isFocusMode) 0.38f else 0.26f).coerceAtLeast(64.dp)
+            // A modest dial at the bottom leaves everything above it to the dhikr.
+            val maximumDialSize = if (landscape) 260.dp else minOf(maxWidth * 0.54f, maxHeight * 0.3f, 210.dp)
             // Keep the convenient background gesture without exposing a duplicate
             // accessibility action; the dial below is the single announced counter.
             Box(
@@ -280,22 +282,25 @@ fun TasbihScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                 }
-                val phraseContent: @Composable () -> Unit = {
-                    if (isFocusMode) FocusPhraseHeader(state, textMaxHeight, onSelectPhrase) { onFocusModeChange(false) }
-                    else PhraseCarousel(state, textMaxHeight, onSelectPhrase)
+                val phraseContent: @Composable (Modifier) -> Unit = { modifier ->
+                    if (isFocusMode) {
+                        FocusPhraseHeader(state, onSelectPhrase, onSetTextScale, { onFocusModeChange(false) }, modifier)
+                    } else {
+                        PhraseCarousel(state, onSelectPhrase, modifier)
+                    }
                 }
                 val counterContent: @Composable (Modifier) -> Unit = { modifier ->
-                    CounterSection(state, displayedProgress, displayCompletedCycle, isFocusMode, ::count, modifier)
+                    CounterSection(state, displayedProgress, displayCompletedCycle, isFocusMode, ::count, maximumDialSize, modifier)
                 }
                 if (landscape) {
                     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(SakinahSpacing.Large)) {
-                        Column(Modifier.weight(1.2f)) { phraseContent() }
+                        phraseContent(Modifier.weight(1.2f).fillMaxHeight())
                         counterContent(Modifier.weight(1f).fillMaxHeight())
                     }
                 } else {
-                    phraseContent()
+                    phraseContent(Modifier.fillMaxWidth().weight(1f))
                     Spacer(Modifier.height(8.dp))
-                    counterContent(Modifier.fillMaxWidth().weight(1f))
+                    counterContent(Modifier.fillMaxWidth())
                 }
             }
         }
@@ -1051,10 +1056,9 @@ private fun PhraseDayBar(
 @Composable
 private fun PhraseCarousel(
     state: SakinahUiState,
-    textMaxHeight: Dp,
     onSelectPhrase: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val textScroll = key(state.selectedPhrase.id) { rememberScrollState() }
     val phrases = state.tasbihPhrases
     val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
     val position = stringResource(
@@ -1076,7 +1080,7 @@ private fun PhraseCarousel(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag("tasbih_phrase_card")
             .padding(vertical = 4.dp),
@@ -1114,20 +1118,41 @@ private fun PhraseCarousel(
                 )
             }
         }
+        CenteredPhraseText(state, fontSize = 22f, lineHeight = 32f, modifier = Modifier.weight(1f))
+    }
+}
+
+/**
+ * The phrase centred in the space above the dial. It scrolls only when it does not fit, so the
+ * empty space around a short phrase still counts a tap.
+ */
+@Composable
+private fun CenteredPhraseText(
+    state: SakinahUiState,
+    fontSize: Float,
+    lineHeight: Float,
+    modifier: Modifier = Modifier,
+) {
+    val textScroll = key(state.selectedPhrase.id) { rememberScrollState() }
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
         Text(
             text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
             style = TextStyle(
                 fontFamily = LocalDhikrFontFamily.current,
                 fontWeight = FontWeight.Bold,
-                fontSize = (22f * state.tasbihTextScale).sp,
-                lineHeight = (32f * state.tasbihTextScale).sp,
+                fontSize = (fontSize * state.tasbihTextScale).sp,
+                lineHeight = (lineHeight * state.tasbihTextScale).sp,
                 textAlign = TextAlign.Center,
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = textMaxHeight)
+                .weight(1f, fill = false)
                 .verticalScroll(textScroll)
-                .padding(horizontal = 2.dp, vertical = 6.dp)
+                .padding(vertical = 6.dp)
                 .testTag("tasbih_phrase_text"),
         )
         if (textScroll.maxValue > 0) Text(stringResource(R.string.scroll_dhikr_hint),
@@ -1139,11 +1164,11 @@ private fun PhraseCarousel(
 @Composable
 private fun FocusPhraseHeader(
     state: SakinahUiState,
-    textMaxHeight: Dp,
     onSelectPhrase: (String) -> Unit,
+    onSetTextScale: (Float) -> Unit,
     onExitFocusMode: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val textScroll = key(state.selectedPhrase.id) { rememberScrollState() }
     val phrases = state.tasbihPhrases
     val currentIndex = phrases.indexOfFirst { it.id == state.selectedPhrase.id }.coerceAtLeast(0)
 
@@ -1154,7 +1179,7 @@ private fun FocusPhraseHeader(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag("tasbih_focus_phrase_header"),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1168,27 +1193,26 @@ private fun FocusPhraseHeader(
             previousTag = "tasbih_previous_phrase",
             nextTag = "tasbih_next_phrase",
             exitTag = "tasbih_exit_focus_mode",
+            beforeExit = {
+                FocusTextSizeButton(
+                    larger = false,
+                    scale = state.tasbihTextScale,
+                    range = TasbihTextScaleRange,
+                    onSetScale = onSetTextScale,
+                    modifier = Modifier.testTag("tasbih_focus_font_decrease"),
+                )
+            },
+            afterExit = {
+                FocusTextSizeButton(
+                    larger = true,
+                    scale = state.tasbihTextScale,
+                    range = TasbihTextScaleRange,
+                    onSetScale = onSetTextScale,
+                    modifier = Modifier.testTag("tasbih_focus_font_increase"),
+                )
+            },
         )
-        Text(
-            text = displayArabic(state.selectedPhrase.text, state.showDiacritics),
-            style = TextStyle(
-                fontFamily = LocalDhikrFontFamily.current,
-                fontWeight = FontWeight.Bold,
-                fontSize = (24f * state.tasbihTextScale).sp,
-                lineHeight = (36f * state.tasbihTextScale).sp,
-                textAlign = TextAlign.Center,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = textMaxHeight)
-                .verticalScroll(textScroll)
-                .padding(vertical = 6.dp)
-                .testTag("tasbih_phrase_text"),
-        )
-        if (textScroll.maxValue > 0) Text(stringResource(R.string.scroll_dhikr_hint),
-            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center)
-
+        CenteredPhraseText(state, fontSize = 24f, lineHeight = 36f, modifier = Modifier.weight(1f))
     }
 }
 
@@ -1229,10 +1253,14 @@ private fun CounterSection(
     showCompletionFeedback: Boolean,
     isFocusMode: Boolean,
     onIncrement: () -> Unit,
+    maximumDialSize: Dp,
     modifier: Modifier = Modifier,
 ) {
-    BoxWithConstraints(modifier = modifier) {
-        if (maxHeight < 260.dp || (LocalDensity.current.fontScale > 1.2f && maxHeight < 400.dp)) {
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        val feedbackSpace = if (isFocusMode) 0.dp else 52.dp
+        val dialSize = minOf(maxWidth, (maxHeight - feedbackSpace).coerceAtLeast(80.dp), maximumDialSize)
+        // Too little room for a readable dial: fall back to a single counting row.
+        if (dialSize < 150.dp || (LocalDensity.current.fontScale > 1.2f && dialSize < 190.dp)) {
             val cycleCount = tasbihCycleCount(state.tasbihCount, state.tasbihTarget, showCompletionFeedback)
             val cycleLabel = if (state.tasbihTarget == 0) stringResource(R.string.unlimited)
                 else stringResource(R.string.tasbih_cycle_count, cycleCount, state.tasbihTarget)
@@ -1257,15 +1285,7 @@ private fun CounterSection(
             }
             return@BoxWithConstraints
         }
-        val feedbackSpace = if (isFocusMode) 0.dp else 52.dp
-        val availableHeight = (maxHeight - feedbackSpace).coerceAtLeast(80.dp)
-        val maximumDialSize = if (isFocusMode) 360.dp else 286.dp
-        val dialSize = minOf(maxWidth, availableHeight, maximumDialSize)
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CounterDial(
                 state = state,
                 displayedProgress = displayedProgress,
@@ -1275,25 +1295,28 @@ private fun CounterSection(
             )
             if (!isFocusMode) {
                 Spacer(Modifier.height(10.dp))
-                if (showCompletionFeedback) {
-                    Surface(
-                        modifier = Modifier.testTag("tasbih_completion_feedback"),
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
+                // A fixed slot keeps the bottom-anchored dial still when the completion badge appears.
+                Box(Modifier.heightIn(min = 36.dp), contentAlignment = Alignment.Center) {
+                    if (showCompletionFeedback) {
+                        Surface(
+                            modifier = Modifier.testTag("tasbih_completion_feedback"),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.completed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            )
+                        }
+                    } else {
                         Text(
-                            text = stringResource(R.string.completed),
+                            text = stringResource(R.string.tap_anywhere_to_count),
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                } else {
-                    Text(
-                        text = stringResource(R.string.tap_anywhere_to_count),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
@@ -1428,8 +1451,10 @@ private fun CounterDial(
                     )
                     Text(
                         text = targetLabel,
-                        style = MaterialTheme.typography.bodyMedium,
+                        // Smaller than body text so the cycle line fits the compact dial.
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.testTag("tasbih_cycle_count"),
                     )
                 }

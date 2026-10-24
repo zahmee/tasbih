@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.Icons
@@ -99,6 +101,7 @@ import androidx.compose.ui.semantics.stateDescription
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.DhikrCollection
 import com.sakinah.tasbih.data.DhikrEntry
+import com.sakinah.tasbih.data.ReaderTextScaleRange
 import com.sakinah.tasbih.data.ReadingProgress
 import com.sakinah.tasbih.data.displayArabic
 import com.sakinah.tasbih.ui.theme.LocalDhikrFontFamily
@@ -266,6 +269,7 @@ fun ReaderScreen(
                 onIncrement = incrementDhikr,
                 onRestart = onRestart,
                 onNavigateDhikr = navigateEntry,
+                onSetTextScale = onSetTextScale,
                 onExitFocusMode = { onFocusModeChange(false) },
             )
         } else {
@@ -778,12 +782,8 @@ private fun ReaderSettingsSheet(
             Spacer(Modifier.height(8.dp))
             ReaderTextScaleControl(
                 scale = state.textScale,
-                onDecrease = {
-                    onSetTextScale((state.textScale - 0.1f).coerceAtLeast(0.5f))
-                },
-                onIncrease = {
-                    onSetTextScale((state.textScale + 0.1f).coerceAtMost(1.4f))
-                },
+                onDecrease = { onSetTextScale(state.textScale.textScaleStep(larger = false, ReaderTextScaleRange)) },
+                onIncrease = { onSetTextScale(state.textScale.textScaleStep(larger = true, ReaderTextScaleRange)) },
             )
             Spacer(Modifier.height(8.dp))
             ReaderOptionSwitch(
@@ -861,7 +861,7 @@ private fun ReaderTextScaleControl(
                 )
             }
             IconButton(
-                enabled = scale > 0.5f,
+                enabled = scale > ReaderTextScaleRange.start,
                 onClick = onDecrease,
                 modifier = Modifier.testTag("reader_font_decrease"),
             ) {
@@ -871,7 +871,7 @@ private fun ReaderTextScaleControl(
                 )
             }
             IconButton(
-                enabled = scale < 1.4f,
+                enabled = scale < ReaderTextScaleRange.endInclusive,
                 onClick = onIncrease,
                 modifier = Modifier.testTag("reader_font_increase"),
             ) {
@@ -951,6 +951,7 @@ private fun ReaderFocusLayout(
     onIncrement: () -> Unit,
     onRestart: () -> Unit,
     onNavigateDhikr: (Int) -> Unit,
+    onSetTextScale: (Float) -> Unit,
     onExitFocusMode: () -> Unit,
 ) {
     Box(
@@ -962,50 +963,78 @@ private fun ReaderFocusLayout(
                 onTap = onIncrement,
             ),
     ) {
+        // The app leaves the navigation bar inset to this layout, so the counter can reach the screen edge.
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .widthIn(max = SakinahReadingMaxWidth)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .fillMaxSize(),
         ) {
-            FocusNavigationBar(
-                canGoPrevious = !progress.completed && currentIndex > 0,
-                canGoNext = !progress.completed && currentIndex < collection.entries.lastIndex,
-                onPrevious = { onNavigateDhikr(-1) },
-                onNext = { onNavigateDhikr(1) },
-                onExit = onExitFocusMode,
-                previousTag = "reader_previous_dhikr",
-                nextTag = "reader_next_dhikr",
-                exitTag = "reader_exit_focus_mode",
-            )
-            if (progress.completed) {
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    SessionCompleteCard(onRestart = onRestart, onReview = onReview)
-                }
-            } else {
-                DhikrReadingCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    entry = entry,
-                    state = state,
-                    showReference = false,
-                    onToggleReference = null,
-                    canNavigatePrevious = currentIndex > 0,
-                    canNavigateNext = currentIndex < collection.entries.lastIndex,
-                    onNavigateDhikr = onNavigateDhikr,
-                    isFocusMode = true,
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FocusNavigationBar(
+                    canGoPrevious = !progress.completed && currentIndex > 0,
+                    canGoNext = !progress.completed && currentIndex < collection.entries.lastIndex,
+                    onPrevious = { onNavigateDhikr(-1) },
+                    onNext = { onNavigateDhikr(1) },
+                    onExit = onExitFocusMode,
+                    previousTag = "reader_previous_dhikr",
+                    nextTag = "reader_next_dhikr",
+                    exitTag = "reader_exit_focus_mode",
+                    beforeExit = {
+                        FocusTextSizeButton(
+                            larger = false,
+                            scale = state.textScale,
+                            range = ReaderTextScaleRange,
+                            onSetScale = onSetTextScale,
+                            modifier = Modifier.testTag("reader_focus_font_decrease"),
+                        )
+                    },
+                    afterExit = {
+                        FocusTextSizeButton(
+                            larger = true,
+                            scale = state.textScale,
+                            range = ReaderTextScaleRange,
+                            onSetScale = onSetTextScale,
+                            modifier = Modifier.testTag("reader_focus_font_increase"),
+                        )
+                    },
                 )
+                if (progress.completed) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        SessionCompleteCard(onRestart = onRestart, onReview = onReview)
+                    }
+                } else {
+                    DhikrReadingCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        entry = entry,
+                        state = state,
+                        showReference = false,
+                        onToggleReference = null,
+                        canNavigatePrevious = currentIndex > 0,
+                        canNavigateNext = currentIndex < collection.entries.lastIndex,
+                        onNavigateDhikr = onNavigateDhikr,
+                        isFocusMode = true,
+                    )
+                }
             }
 
             if (progress.completed) {
-                ReaderUndoButton(canUndo, onUndo)
+                Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp)) {
+                    ReaderUndoButton(canUndo, onUndo)
+                }
             } else if (!isAdvancingAutomatically && !state.progressFor(collection.id).completed && progress.isEntryCompleted(currentIndex, collection)) {
-                ReaderAdvanceAction(progress, collection, onAdvance, canUndo, onUndo)
+                Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp)) {
+                    ReaderAdvanceAction(progress, collection, onAdvance, canUndo, onUndo)
+                }
             } else {
-                ReaderCounterDock(
+                ReaderFocusCounterDock(
                     progress = progress,
                     entry = entry,
                     onIncrement = onIncrement,
@@ -1015,7 +1044,92 @@ private fun ReaderFocusLayout(
                 )
             }
         }
+    }
+}
 
+/** A single slim row docked to the bottom edge, so full-screen reading keeps most of the height. */
+@Composable
+private fun ReaderFocusCounterDock(
+    progress: ReadingProgress,
+    entry: DhikrEntry,
+    onIncrement: () -> Unit,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
+    showCompletionFeedback: Boolean,
+) {
+    val repetitionFraction = (
+        progress.repetitionCount.toFloat() / entry.repetitions.coerceAtLeast(1)
+    ).coerceIn(0f, 1f)
+    val remaining = (entry.repetitions - progress.repetitionCount).coerceAtLeast(0)
+    val completed = remaining == 0
+    val showCompleted = completed && showCompletionFeedback
+    val countDescription = stringResource(R.string.reader_count_state, progress.repetitionCount, entry.repetitions, remaining)
+    val shape = MaterialTheme.shapes.large.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("reader_count_button")
+            .clip(shape)
+            .semantics { stateDescription = countDescription }
+            .clickable(
+                enabled = !completed,
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.reader_count_action),
+                onClick = onIncrement,
+            ),
+        shape = shape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Row(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(start = 16.dp, top = 6.dp, end = 10.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = progress.repetitionCount.toString(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .widthIn(min = 36.dp)
+                        .testTag("reader_repetition_count"),
+                )
+                Text(stringResource(R.string.repetition_target, entry.repetitions), style = MaterialTheme.typography.labelSmall)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(if (showCompleted) R.string.reader_dhikr_done else R.string.reader_count_action),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(R.string.reader_remaining, remaining),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                ProgressLine(progress = repetitionFraction, height = 4.dp)
+            }
+            IconButton(onClick = onUndo, enabled = canUndo, modifier = Modifier.testTag("reader_undo")) {
+                Icon(Icons.AutoMirrored.Outlined.Undo, stringResource(R.string.undo_reader_count))
+            }
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(
+                    if (showCompleted) Icons.Outlined.CheckCircle else Icons.Outlined.Add,
+                    contentDescription = null,
+                    modifier = Modifier.padding(9.dp).size(22.dp),
+                )
+            }
+        }
     }
 }
 
