@@ -1,3 +1,4 @@
+import com.github.triplet.gradle.androidpublisher.ReleaseStatus
 import java.util.Properties
 
 val signingProperties = Properties()
@@ -7,11 +8,15 @@ if (signingPropertiesFile.isFile) {
     signingPropertiesFile.inputStream().use(signingProperties::load)
 }
 
+// Play Developer API key, same rule as the signing key: play-service-account.json is gitignored.
+val playCredentialsFile = rootProject.file("play-service-account.json")
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("androidx.room3")
+    id("com.github.triplet.play")
 }
 
 android {
@@ -76,6 +81,20 @@ android {
 
 room3 {
     schemaDirectory("$projectDir/schemas")
+}
+
+// Uploads the signed bundle to Google Play over the Developer API, without a browser.
+// Disabled when play-service-account.json is absent, like release signing without keystore.properties.
+play {
+    enabled.set(playCredentialsFile.isFile)
+    if (playCredentialsFile.isFile) {
+        serviceAccountCredentials.set(playCredentialsFile)
+    }
+    defaultToAppBundles.set(true)
+    // Safe defaults: a draft on the internal track. A public release passes
+    // --track production --release-status completed on the command line.
+    track.set("internal")
+    releaseStatus.set(ReleaseStatus.DRAFT)
 }
 
 dependencies {

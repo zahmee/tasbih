@@ -15,6 +15,7 @@ dist/
 *.jks
 *.keystore
 keystore.properties
+play-service-account*.json
 
 # Local observations can contain account details or personal reading progress.
 docs/**/emulator-*
