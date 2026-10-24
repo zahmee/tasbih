@@ -270,6 +270,7 @@ private fun SakinahNavigation(
                         AppDestination.Tasbih -> NavEntry(destination) {
                             TasbihScreen(
                                 state = latestState.value,
+                                phraseAnalytics = viewModel.selectedTasbihPhraseAnalytics,
                                 isFocusMode = isTasbihFocusMode,
                                 onFocusModeChange = { isTasbihFocusMode = it },
                                 onIncrement = viewModel::incrementTasbih,
@@ -339,10 +340,13 @@ private fun SakinahNavigation(
                         }
 
                         AppDestination.Achievements -> NavEntry(destination) {
-                            AchievementsScreen(
-                                state = latestState.value,
-                                onBack = ::navigateBack,
-                            )
+                            val analytics by viewModel.activityAnalytics.collectAsStateWithLifecycle()
+                            analytics?.let {
+                                AchievementsScreen(
+                                    analytics = it,
+                                    onBack = ::navigateBack,
+                                )
+                            }
                         }
 
                         AppDestination.About -> NavEntry(destination) {

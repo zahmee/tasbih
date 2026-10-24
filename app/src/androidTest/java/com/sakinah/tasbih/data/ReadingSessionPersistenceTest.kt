@@ -1,8 +1,6 @@
 package com.sakinah.tasbih.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import androidx.room3.Room
-import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import kotlinx.coroutines.*
@@ -19,10 +17,7 @@ class ReadingSessionPersistenceTest {
     private val preferencesFile by lazy { File(folder.root, "reader.preferences_pb") }
     private var store = PreferenceDataStoreFactory.create(scope = scope) { preferencesFile }
     private var preferences = AppPreferencesRepository(store) { java.time.LocalDate.parse(today).atStartOfDay(java.time.ZoneId.of("Asia/Riyadh")) }
-    private val database by lazy {
-        Room.databaseBuilder(context, SakinahDatabase::class.java, File(folder.root, "events.db").absolutePath)
-            .setDriver(AndroidSQLiteDriver()).setQueryCoroutineContext(Dispatchers.IO).build()
-    }
+    private val database by lazy { SakinahDatabase.open(context, File(folder.root, "events.db").absolutePath) }
     private val dao get() = database.activityDao()
     private val activity by lazy { ActivityRepository(dao) }
     private lateinit var sessions: ReadingSessionRepository

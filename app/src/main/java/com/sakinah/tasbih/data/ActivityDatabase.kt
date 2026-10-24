@@ -1,6 +1,7 @@
 package com.sakinah.tasbih.data
 
 import android.content.Context
+import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Database
 import androidx.room3.Entity
@@ -10,7 +11,10 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.sqlite.execSQL
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -29,8 +33,7 @@ object ActivityKinds {
     tableName = "activity_events",
     indices = [
         Index(value = ["timestampMillis"]),
-        Index(value = ["dayKey"]),
-        Index(value = ["kind", "sourceId"]),
+        Index(value = ["kind", "sourceId", "timestampMillis"]),
     ],
 )
 data class ActivityEvent(
@@ -41,6 +44,29 @@ data class ActivityEvent(
     val sourceId: String,
     val title: String,
     val amount: Int = 1,
+    // Stored with the event so an undo after a time-zone change subtracts from the same hour.
+    @ColumnInfo(defaultValue = "0") val hourOfDay: Int = 0,
+)
+
+/**
+ * Running totals per local hour, kept in step with [ActivityEvent] rows by SQLite triggers.
+ * Reading statistics from here costs one row per active hour instead of one row per tap.
+ */
+@Entity(tableName = "activity_hour_summaries", primaryKeys = ["dayKey", "hourOfDay"])
+data class ActivityHourSummary(
+    val dayKey: String,
+    val hourOfDay: Int,
+    val totalCount: Int,
+    val tasbihCount: Int,
+    val readerCount: Int,
+    val completions: Int,
+)
+
+@Entity(tableName = "tasbih_phrase_day_summaries", primaryKeys = ["sourceId", "dayKey"])
+data class TasbihPhraseDaySummary(
+    val sourceId: String,
+    val dayKey: String,
+    val count: Int,
 )
 
 data class DailyActivity(
@@ -243,11 +269,11 @@ interface ActivityDao {
         """
         SELECT
             dayKey,
-            COALESCE(SUM(CASE WHEN kind != 'completion' THEN amount ELSE 0 END), 0) AS totalCount,
-            COALESCE(SUM(CASE WHEN kind = 'tasbih' THEN amount ELSE 0 END), 0) AS tasbihCount,
-            COALESCE(SUM(CASE WHEN kind = 'reader' THEN amount ELSE 0 END), 0) AS readerCount,
-            COALESCE(SUM(CASE WHEN kind = 'completion' THEN 1 ELSE 0 END), 0) AS completions
-        FROM activity_events
+            SUM(totalCount) AS totalCount,
+            SUM(tasbihCount) AS tasbihCount,
+            SUM(readerCount) AS readerCount,
+            SUM(completions) AS completions
+        FROM activity_hour_summaries
         GROUP BY dayKey
         ORDER BY dayKey ASC
         """,
@@ -256,15 +282,9 @@ interface ActivityDao {
 
     @Query(
         """
-        SELECT
-            dayKey,
-            CAST(strftime('%H', timestampMillis / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hourOfDay,
-            COALESCE(SUM(amount), 0) AS totalCount,
-            COALESCE(SUM(CASE WHEN kind = 'tasbih' THEN amount ELSE 0 END), 0) AS tasbihCount,
-            COALESCE(SUM(CASE WHEN kind = 'reader' THEN amount ELSE 0 END), 0) AS readerCount
-        FROM activity_events
-        WHERE kind != 'completion'
-        GROUP BY dayKey, hourOfDay
+        SELECT dayKey, hourOfDay, totalCount, tasbihCount, readerCount
+        FROM activity_hour_summaries
+        WHERE totalCount > 0
         ORDER BY dayKey ASC, hourOfDay ASC
         """,
     )
@@ -273,13 +293,13 @@ interface ActivityDao {
     @Query(
         """
         SELECT
-            COALESCE(SUM(CASE WHEN kind != 'completion' THEN amount ELSE 0 END), 0) AS totalCount,
-            COALESCE(SUM(CASE WHEN kind = 'tasbih' THEN amount ELSE 0 END), 0) AS tasbihCount,
-            COALESCE(SUM(CASE WHEN kind = 'reader' THEN amount ELSE 0 END), 0) AS readerCount,
-            COALESCE(SUM(CASE WHEN kind = 'completion' THEN 1 ELSE 0 END), 0) AS completions,
-            COUNT(DISTINCT CASE WHEN kind != 'completion' THEN dayKey END) AS activeDays,
-            COALESCE(MIN(timestampMillis), 0) AS firstActivityMillis
-        FROM activity_events
+            COALESCE(SUM(totalCount), 0) AS totalCount,
+            COALESCE(SUM(tasbihCount), 0) AS tasbihCount,
+            COALESCE(SUM(readerCount), 0) AS readerCount,
+            COALESCE(SUM(completions), 0) AS completions,
+            COUNT(DISTINCT CASE WHEN totalCount > 0 THEN dayKey END) AS activeDays,
+            COALESCE((SELECT MIN(timestampMillis) FROM activity_events), 0) AS firstActivityMillis
+        FROM activity_hour_summaries
         """,
     )
     fun observeTotals(): Flow<ActivityTotals>
@@ -289,12 +309,9 @@ interface ActivityDao {
 
     @Query(
         """
-        SELECT
-            dayKey,
-            COALESCE(SUM(amount), 0) AS count
-        FROM activity_events
-        WHERE kind = 'tasbih' AND sourceId = :sourceId
-        GROUP BY dayKey
+        SELECT dayKey, count
+        FROM tasbih_phrase_day_summaries
+        WHERE sourceId = :sourceId
         ORDER BY dayKey ASC
         """,
     )
@@ -302,8 +319,8 @@ interface ActivityDao {
 }
 
 @Database(
-    entities = [ActivityEvent::class],
-    version = 1,
+    entities = [ActivityEvent::class, ActivityHourSummary::class, TasbihPhraseDaySummary::class],
+    version = 2,
     exportSchema = true,
 )
 abstract class SakinahDatabase : RoomDatabase() {
@@ -314,17 +331,136 @@ abstract class SakinahDatabase : RoomDatabase() {
         private var instance: SakinahDatabase? = null
 
         fun get(context: Context): SakinahDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(
-                context.applicationContext,
-                SakinahDatabase::class.java,
-                "sakinah_activity.db",
-            )
-                .setQueryCoroutineContext(Dispatchers.IO)
-                .setDriver(AndroidSQLiteDriver())
-                .build()
-                .also { instance = it }
+            instance ?: open(context, "sakinah_activity.db").also { instance = it }
         }
+
+        /** Every database, including test copies, needs the migration and the summary triggers. */
+        internal fun open(context: Context, name: String): SakinahDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            SakinahDatabase::class.java,
+            name,
+        )
+            .setQueryCoroutineContext(Dispatchers.IO)
+            .setDriver(AndroidSQLiteDriver())
+            .addMigrations(MigrationAddActivitySummaries)
+            .addCallback(
+                object : RoomDatabase.Callback() {
+                    override suspend fun onCreate(connection: SQLiteConnection) {
+                        createActivitySummaryTriggers(connection)
+                    }
+                },
+            )
+            .build()
     }
+}
+
+/**
+ * Moves statistics from per-tap aggregation to running summaries without losing history:
+ * every existing event is kept and folded into the new summary tables in one transaction.
+ */
+internal val MigrationAddActivitySummaries = Migration(1, 2) { connection ->
+    connection.execSQL("ALTER TABLE `activity_events` ADD COLUMN `hourOfDay` INTEGER NOT NULL DEFAULT 0")
+    // Version 1 derived the hour on every read from the device time zone; freeze that same value.
+    connection.execSQL(
+        "UPDATE `activity_events` SET `hourOfDay` = " +
+            "CAST(strftime('%H', `timestampMillis` / 1000, 'unixepoch', 'localtime') AS INTEGER)",
+    )
+    connection.execSQL("DROP INDEX IF EXISTS `index_activity_events_dayKey`")
+    connection.execSQL("DROP INDEX IF EXISTS `index_activity_events_kind_sourceId`")
+    connection.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_activity_events_kind_sourceId_timestampMillis` " +
+            "ON `activity_events` (`kind`, `sourceId`, `timestampMillis`)",
+    )
+    connection.execSQL(
+        "CREATE TABLE IF NOT EXISTS `activity_hour_summaries` (`dayKey` TEXT NOT NULL, " +
+            "`hourOfDay` INTEGER NOT NULL, `totalCount` INTEGER NOT NULL, `tasbihCount` INTEGER NOT NULL, " +
+            "`readerCount` INTEGER NOT NULL, `completions` INTEGER NOT NULL, PRIMARY KEY(`dayKey`, `hourOfDay`))",
+    )
+    connection.execSQL(
+        "CREATE TABLE IF NOT EXISTS `tasbih_phrase_day_summaries` (`sourceId` TEXT NOT NULL, " +
+            "`dayKey` TEXT NOT NULL, `count` INTEGER NOT NULL, PRIMARY KEY(`sourceId`, `dayKey`))",
+    )
+    connection.execSQL(
+        """
+        INSERT INTO activity_hour_summaries (dayKey, hourOfDay, totalCount, tasbihCount, readerCount, completions)
+        SELECT
+            dayKey,
+            hourOfDay,
+            SUM(CASE WHEN kind != 'completion' THEN amount ELSE 0 END),
+            SUM(CASE WHEN kind = 'tasbih' THEN amount ELSE 0 END),
+            SUM(CASE WHEN kind = 'reader' THEN amount ELSE 0 END),
+            SUM(CASE WHEN kind = 'completion' THEN 1 ELSE 0 END)
+        FROM activity_events
+        GROUP BY dayKey, hourOfDay
+        """,
+    )
+    connection.execSQL(
+        """
+        INSERT INTO tasbih_phrase_day_summaries (sourceId, dayKey, count)
+        SELECT sourceId, dayKey, SUM(amount)
+        FROM activity_events
+        WHERE kind = 'tasbih'
+        GROUP BY sourceId, dayKey
+        """,
+    )
+    createActivitySummaryTriggers(connection)
+}
+
+/*
+ * Events are only ever inserted or deleted (undo and its restore), so these two triggers keep
+ * the summaries exact. They avoid UPSERT syntax, which the SQLite shipped with API 26-29 lacks,
+ * and INSERT OR IGNORE, because SQLite applies the firing statement's conflict policy (Room's
+ * INSERT OR ABORT) to the trigger body. Each missing row is created by a guarded insert instead.
+ * Rows that drop to zero are removed so summaries list the same days and hours as the events.
+ */
+private fun createActivitySummaryTriggers(connection: SQLiteConnection) {
+    connection.execSQL(
+        """
+        CREATE TRIGGER IF NOT EXISTS activity_events_summary_insert
+        AFTER INSERT ON activity_events
+        BEGIN
+            INSERT INTO activity_hour_summaries
+                (dayKey, hourOfDay, totalCount, tasbihCount, readerCount, completions)
+            SELECT NEW.dayKey, NEW.hourOfDay, 0, 0, 0, 0
+            WHERE NOT EXISTS (
+                SELECT 1 FROM activity_hour_summaries WHERE dayKey = NEW.dayKey AND hourOfDay = NEW.hourOfDay
+            );
+            UPDATE activity_hour_summaries SET
+                totalCount = totalCount + (CASE WHEN NEW.kind != 'completion' THEN NEW.amount ELSE 0 END),
+                tasbihCount = tasbihCount + (CASE WHEN NEW.kind = 'tasbih' THEN NEW.amount ELSE 0 END),
+                readerCount = readerCount + (CASE WHEN NEW.kind = 'reader' THEN NEW.amount ELSE 0 END),
+                completions = completions + (CASE WHEN NEW.kind = 'completion' THEN 1 ELSE 0 END)
+            WHERE dayKey = NEW.dayKey AND hourOfDay = NEW.hourOfDay;
+            INSERT INTO tasbih_phrase_day_summaries (sourceId, dayKey, count)
+            SELECT NEW.sourceId, NEW.dayKey, 0
+            WHERE NEW.kind = 'tasbih' AND NOT EXISTS (
+                SELECT 1 FROM tasbih_phrase_day_summaries WHERE sourceId = NEW.sourceId AND dayKey = NEW.dayKey
+            );
+            UPDATE tasbih_phrase_day_summaries SET count = count + NEW.amount
+            WHERE NEW.kind = 'tasbih' AND sourceId = NEW.sourceId AND dayKey = NEW.dayKey;
+        END
+        """,
+    )
+    connection.execSQL(
+        """
+        CREATE TRIGGER IF NOT EXISTS activity_events_summary_delete
+        AFTER DELETE ON activity_events
+        BEGIN
+            UPDATE activity_hour_summaries SET
+                totalCount = totalCount - (CASE WHEN OLD.kind != 'completion' THEN OLD.amount ELSE 0 END),
+                tasbihCount = tasbihCount - (CASE WHEN OLD.kind = 'tasbih' THEN OLD.amount ELSE 0 END),
+                readerCount = readerCount - (CASE WHEN OLD.kind = 'reader' THEN OLD.amount ELSE 0 END),
+                completions = completions - (CASE WHEN OLD.kind = 'completion' THEN 1 ELSE 0 END)
+            WHERE dayKey = OLD.dayKey AND hourOfDay = OLD.hourOfDay;
+            DELETE FROM activity_hour_summaries
+            WHERE dayKey = OLD.dayKey AND hourOfDay = OLD.hourOfDay AND totalCount <= 0 AND completions <= 0;
+            UPDATE tasbih_phrase_day_summaries SET count = count - OLD.amount
+            WHERE OLD.kind = 'tasbih' AND sourceId = OLD.sourceId AND dayKey = OLD.dayKey;
+            DELETE FROM tasbih_phrase_day_summaries
+            WHERE OLD.kind = 'tasbih' AND sourceId = OLD.sourceId AND dayKey = OLD.dayKey AND count <= 0;
+        END
+        """,
+    )
 }
 
 class ActivityRepository internal constructor(private val dao: ActivityDao) {
@@ -342,6 +478,11 @@ class ActivityRepository internal constructor(private val dao: ActivityDao) {
             totals = totals,
             recent = recent,
         )
+    }
+
+    /** Readers opened most recently, for installs that predate the stored recent-entries list. */
+    val recentReaderEntryIds: Flow<List<String>> = dao.observeRecent().map { recent ->
+        recent.filter { it.kind == ActivityKinds.Reader }.map(ActivityEvent::sourceId).distinct().take(12)
     }
 
     suspend fun recordTasbih(phrase: TasbihPhrase, timestampMillis: Long = System.currentTimeMillis()) {
@@ -412,16 +553,15 @@ class ActivityRepository internal constructor(private val dao: ActivityDao) {
         title: String,
         amount: Int = 1,
     ): ActivityEvent {
-        val day = Instant.ofEpochMilli(timestampMillis)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
+        val time = Instant.ofEpochMilli(timestampMillis).atZone(ZoneId.systemDefault())
         return ActivityEvent(
             timestampMillis = timestampMillis,
-            dayKey = day.toString(),
+            dayKey = time.toLocalDate().toString(),
             kind = kind,
             sourceId = sourceId,
             title = title,
             amount = amount,
+            hourOfDay = time.hour,
         )
     }
 }

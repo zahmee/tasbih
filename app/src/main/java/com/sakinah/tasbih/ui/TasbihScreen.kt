@@ -120,6 +120,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.TasbihPhrase
 import com.sakinah.tasbih.data.TasbihPhraseAnalytics
@@ -132,6 +133,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 private const val TASBIH_COMPLETION_TONE_DURATION_MILLIS = 2_000
@@ -140,6 +142,7 @@ private const val TASBIH_COMPLETION_TONE_DURATION_MILLIS = 2_000
 @Composable
 fun TasbihScreen(
     state: SakinahUiState,
+    phraseAnalytics: StateFlow<TasbihPhraseAnalytics?>,
     isFocusMode: Boolean,
     onFocusModeChange: (Boolean) -> Unit,
     onIncrement: () -> Unit,
@@ -336,12 +339,15 @@ fun TasbihScreen(
     }
 
     if (showPhraseStatistics) {
-        TasbihPhraseStatisticsSheet(
-            phrase = state.selectedPhrase,
-            analytics = state.selectedTasbihPhraseAnalytics,
-            showDiacritics = state.showDiacritics,
-            onDismiss = { showPhraseStatistics = false },
-        )
+        val analytics by phraseAnalytics.collectAsStateWithLifecycle()
+        analytics?.let {
+            TasbihPhraseStatisticsSheet(
+                phrase = state.selectedPhrase,
+                analytics = it,
+                showDiacritics = state.showDiacritics,
+                onDismiss = { showPhraseStatistics = false },
+            )
+        }
     }
 }
 

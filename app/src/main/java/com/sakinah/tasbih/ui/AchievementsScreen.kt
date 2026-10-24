@@ -108,10 +108,9 @@ private val ArabicLocale = Locale.forLanguageTag("ar-SA")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AchievementsScreen(
-    state: SakinahUiState,
+    analytics: ActivityAnalytics,
     onBack: () -> Unit,
 ) {
-    val analytics = state.activityAnalytics
     var expandedSections by rememberSaveable { mutableStateOf(emptyList<String>()) }
     SakinahScreenBackground {
         Scaffold(

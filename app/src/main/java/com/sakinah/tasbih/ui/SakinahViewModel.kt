@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -94,8 +95,6 @@ data class SakinahUiState(
     val readerUndo: Map<String, ReaderUndo> = emptyMap(),
     val recentEntryIds: List<String> = emptyList(),
     val dailyReset: DailyResetSettings = DailyResetSettings(),
-    val activityAnalytics: ActivityAnalytics = ActivityAnalytics(),
-    val selectedTasbihPhraseAnalytics: TasbihPhraseAnalytics = TasbihPhraseAnalytics(),
 ) {
     val tasbihProgress: Float
         get() = tasbihCycleProgress(tasbihCount, tasbihTarget)
@@ -111,19 +110,18 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     private val readingSessions = ReadingSessionRepository(preferencesRepository, activityRepository)
     private val contentState = MutableStateFlow<ContentState>(ContentState.Loading)
 
+    // Only consulted until the first entry is opened; afterwards the stored list is used.
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val preferencesWithPhraseAnalytics = preferencesRepository.preferences.flatMapLatest { preferences ->
-        activityRepository.observeTasbihPhraseAnalytics(preferences.selectedPhraseId).map { phraseAnalytics ->
-            preferences to phraseAnalytics
-        }
-    }
+    private val recentReaderFallback = preferencesRepository.preferences
+        .map { it.recentEntryIds.isEmpty() }
+        .distinctUntilChanged()
+        .flatMapLatest { needed -> if (needed) activityRepository.recentReaderEntryIds else flowOf(emptyList()) }
 
     val uiState: StateFlow<SakinahUiState> = combine(
-        preferencesWithPhraseAnalytics,
+        preferencesRepository.preferences,
         contentState,
-        activityRepository.analytics,
-    ) { preferencesAndPhraseAnalytics, content, analytics ->
-        val (preferences, phraseAnalytics) = preferencesAndPhraseAnalytics
+        recentReaderFallback,
+    ) { preferences, content, recentReaderEntryIds ->
         val phrases = preferences.tasbihPhrases
         val selectedPhrase = phrases.firstOrNull { it.id == preferences.selectedPhraseId }
             ?: phrases.first()
@@ -152,17 +150,37 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
             readingProgress = preferences.readingProgress,
             readerUndo = preferences.readerUndo,
             dailyReset = preferences.dailyReset,
-            recentEntryIds = preferences.recentEntryIds.ifEmpty {
-                analytics.recent.filter { it.kind == com.sakinah.tasbih.data.ActivityKinds.Reader }.map { it.sourceId }.distinct().take(12)
-            },
-            activityAnalytics = analytics,
-            selectedTasbihPhraseAnalytics = phraseAnalytics,
+            recentEntryIds = preferences.recentEntryIds.ifEmpty { recentReaderEntryIds },
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
         initialValue = SakinahUiState(),
     )
+
+    // Statistics are kept out of uiState so a tasbih tap never re-reads them; they are queried
+    // only while the activity screen or the phrase statistics sheet is collecting them.
+    // Null until the first read, so those screens do not flash an empty history.
+    val activityAnalytics: StateFlow<ActivityAnalytics?> = activityRepository.analytics.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+        initialValue = null,
+    )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedTasbihPhraseAnalytics: StateFlow<TasbihPhraseAnalytics?> = preferencesRepository.preferences
+        .map { preferences ->
+            // Resolve the phrase the same way uiState does, so the sheet always gets its own counts.
+            val phrases = preferences.tasbihPhrases
+            (phrases.firstOrNull { it.id == preferences.selectedPhraseId } ?: phrases.first()).id
+        }
+        .distinctUntilChanged()
+        .flatMapLatest(activityRepository::observeTasbihPhraseAnalytics)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+            initialValue = null,
+        )
 
     init {
         loadContent()
