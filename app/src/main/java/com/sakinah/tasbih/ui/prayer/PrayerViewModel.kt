@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sakinah.tasbih.R
+import com.sakinah.tasbih.alerts.PrayerAlarms
+import com.sakinah.tasbih.prayer.AlertSettings
+import com.sakinah.tasbih.prayer.PrayerAlert
+import com.sakinah.tasbih.widget.PrayerWidgetUpdater
 import com.sakinah.tasbih.calendar.HijriCalendar
 import com.sakinah.tasbih.data.CalendarPreferencesRepository
 import com.sakinah.tasbih.data.PrayerPreferencesRepository
@@ -53,6 +57,9 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         PrayerState(settings, settings.place?.let { PrayerSchedule(it, settings, HijriCalendar.from(calendarSettings)) })
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Null until the saved alert settings have been read once. */
+    val alerts: StateFlow<AlertSettings?> = repository.alerts.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _search = MutableStateFlow(PlaceSearchState())
     val search: StateFlow<PlaceSearchState> = _search.asStateFlow()
 
@@ -74,9 +81,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun choose(place: PrayerPlace) {
-        viewModelScope.launch { repository.setPlace(place) }
-    }
+    fun choose(place: PrayerPlace) = save { repository.setPlace(place) }
 
     /** Called once the location permission has been granted. */
     fun useDeviceLocation() {
@@ -84,7 +89,10 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             _search.update { it.copy(locating = true, locationFailed = false) }
             val app = getApplication<Application>()
             val place = DeviceLocation.currentPlace(app, app.getString(R.string.prayer_my_location))
-            if (place != null) repository.setPlace(place)
+            if (place != null) {
+                repository.setPlace(place)
+                refreshAlarms()
+            }
             _search.update { it.copy(locating = false, locationFailed = place == null) }
         }
     }
@@ -97,7 +105,35 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAdjustment(prayer: Prayer, minutes: Int) = save { repository.setAdjustment(prayer, minutes) }
 
+    fun setAlert(prayer: Prayer, alert: PrayerAlert) = save { repository.setAlert(prayer, alert) }
+
+    fun setTone(tone: String) = save { repository.setTone(tone) }
+
+    fun setAdhan(adhan: String, fajr: Boolean) = save { repository.setAdhan(adhan, fajr) }
+
+    fun setCustomAdhan(uri: String, fajr: Boolean) = save { repository.setCustomAdhan(uri, fajr) }
+
+    fun testAlert() {
+        val next = state.value?.schedule?.next()?.prayer ?: Prayer.DHUHR
+        PrayerAlarms.scheduleTest(getApplication(), next)
+    }
+
+    /** After the screen comes back, as a permission may have been granted meanwhile. */
+    fun refresh() {
+        viewModelScope.launch { refreshAlarms() }
+    }
+
+    /** Every change can move a time, so the alarms and the widgets are set again after each. */
     private fun save(block: suspend () -> Unit) {
-        viewModelScope.launch { block() }
+        viewModelScope.launch {
+            block()
+            refreshAlarms()
+        }
+    }
+
+    private suspend fun refreshAlarms() {
+        val app = getApplication<Application>()
+        PrayerAlarms.schedule(app)
+        PrayerWidgetUpdater(app).updateAll()
     }
 }

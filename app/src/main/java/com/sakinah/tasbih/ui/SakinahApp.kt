@@ -72,7 +72,9 @@ import com.sakinah.tasbih.ui.calendar.CalendarText
 import com.sakinah.tasbih.ui.calendar.CalendarViewModel
 import com.sakinah.tasbih.ui.calendar.ConverterScreen
 import com.sakinah.tasbih.ui.calendar.OccasionsScreen
+import com.sakinah.tasbih.ui.prayer.AlertSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PlaceScreen
+import com.sakinah.tasbih.ui.prayer.ReliabilityScreen
 import com.sakinah.tasbih.ui.prayer.PrayerSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PrayerText
 import com.sakinah.tasbih.ui.prayer.PrayerTimesScreen
@@ -102,6 +104,8 @@ private sealed interface AppDestination {
     data object PrayerLocation : AppDestination
     data object PrayerOptions : AppDestination
     data object Qibla : AppDestination
+    data object PrayerAlerts : AppDestination
+    data object PrayerReliability : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -123,6 +127,8 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.PrayerLocation -> "prayer-location"
     AppDestination.PrayerOptions -> "prayer-options"
     AppDestination.Qibla -> "qibla"
+    AppDestination.PrayerAlerts -> "prayer-alerts"
+    AppDestination.PrayerReliability -> "prayer-reliability"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -141,6 +147,8 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "prayer-location" -> AppDestination.PrayerLocation
     "prayer-options" -> AppDestination.PrayerOptions
     "qibla" -> AppDestination.Qibla
+    "prayer-alerts" -> AppDestination.PrayerAlerts
+    "prayer-reliability" -> AppDestination.PrayerReliability
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
@@ -270,6 +278,7 @@ private fun SakinahNavigation(
     val prayerViewModel: PrayerViewModel = viewModel()
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
     val placeSearch by prayerViewModel.search.collectAsStateWithLifecycle()
+    val prayerAlerts by prayerViewModel.alerts.collectAsStateWithLifecycle()
     val prayerText = remember(context) { PrayerText(context) }
 
     fun openPrayer() {
@@ -292,6 +301,14 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.Home)
                 backStack.add(AppDestination.Calendar(request.date.toEpochDay()))
                 if (request.showOccasions) backStack.add(AppDestination.CalendarOccasions)
+                onOpenRequestHandled()
+            }
+            AppOpenRequest.Prayer -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Prayer)
                 onOpenRequestHandled()
             }
         }
@@ -525,6 +542,8 @@ private fun SakinahNavigation(
                                     onOpenQibla = { backStack.add(AppDestination.Qibla) },
                                     onOpenSettings = { backStack.add(AppDestination.PrayerOptions) },
                                     onBack = ::navigateBack,
+                                    alerts = prayerAlerts,
+                                    onOpenAlerts = { backStack.add(AppDestination.PrayerAlerts) },
                                 )
                             }
                         }
@@ -544,6 +563,25 @@ private fun SakinahNavigation(
                             prayerState?.let { state ->
                                 PrayerSettingsScreen(state = state, viewModel = prayerViewModel, onBack = ::navigateBack)
                             }
+                        }
+
+                        AppDestination.PrayerAlerts -> NavEntry(destination) {
+                            prayerAlerts?.let { alerts ->
+                                AlertSettingsScreen(
+                                    alerts = alerts,
+                                    viewModel = prayerViewModel,
+                                    onOpenReliability = { backStack.add(AppDestination.PrayerReliability) },
+                                    onBack = ::navigateBack,
+                                )
+                            }
+                        }
+
+                        AppDestination.PrayerReliability -> NavEntry(destination) {
+                            ReliabilityScreen(
+                                toneId = prayerAlerts?.tone ?: com.sakinah.tasbih.prayer.AlertSettings.DEFAULT_TONE,
+                                viewModel = prayerViewModel,
+                                onBack = ::navigateBack,
+                            )
                         }
 
                         AppDestination.Qibla -> NavEntry(destination) {
@@ -598,6 +636,7 @@ private fun SakinahNavigation(
 /** What the app was opened to show, for example by a tap on a calendar widget. */
 sealed interface AppOpenRequest {
     data class Calendar(val date: LocalDate, val showOccasions: Boolean = false) : AppOpenRequest
+    data object Prayer : AppOpenRequest
 }
 
 private fun Any?.topLevelDestination(): AppDestination? = when (this) {

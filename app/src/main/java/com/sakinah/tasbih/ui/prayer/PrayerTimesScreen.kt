@@ -15,7 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.sakinah.tasbih.prayer.AlertSettings
+import com.sakinah.tasbih.prayer.AlertStyle
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
@@ -62,6 +68,8 @@ fun PrayerTimesScreen(
     onOpenQibla: () -> Unit,
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
+    alerts: AlertSettings? = null,
+    onOpenAlerts: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -79,6 +87,9 @@ fun PrayerTimesScreen(
         tag = "prayer_screen",
         onBack = onBack,
         actions = {
+            IconButton(onClick = onOpenAlerts, modifier = Modifier.testTag("prayer_open_alerts")) {
+                Icon(Icons.Outlined.NotificationsActive, stringResource(R.string.alert_title))
+            }
             IconButton(onClick = onOpenQibla, modifier = Modifier.testTag("prayer_open_qibla")) {
                 Icon(Icons.Outlined.Explore, stringResource(R.string.qibla_title))
             }
@@ -91,7 +102,7 @@ fun PrayerTimesScreen(
         if (schedule == null) {
             NoPlace(onChoosePlace)
         } else {
-            Times(schedule, state, text, calendarText, now, onChoosePlace)
+            Times(schedule, state, text, calendarText, now, onChoosePlace, alerts)
         }
     }
 }
@@ -131,6 +142,7 @@ private fun Times(
     calendarText: CalendarText?,
     now: Instant,
     onChoosePlace: () -> Unit,
+    alerts: AlertSettings?,
 ) {
     val date = schedule.today(now)
     val day = remember(schedule, date) { schedule.day(date) }
@@ -185,6 +197,7 @@ private fun Times(
                         time = text.time(day[prayer]),
                         isCurrent = current?.prayer == prayer && current.time.toLocalDate() == date,
                         isSunrise = prayer == Prayer.SUNRISE,
+                        alert = alerts?.alertFor(prayer)?.style ?: AlertStyle.OFF,
                     )
                 }
             }
@@ -237,7 +250,7 @@ private fun NextPrayerCard(name: String, time: String, remaining: String, tomorr
 }
 
 @Composable
-private fun PrayerRow(name: String, time: String, isCurrent: Boolean, isSunrise: Boolean) {
+private fun PrayerRow(name: String, time: String, isCurrent: Boolean, isSunrise: Boolean, alert: AlertStyle) {
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -255,6 +268,10 @@ private fun PrayerRow(name: String, time: String, isCurrent: Boolean, isSunrise:
             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f),
         )
+        alertIcon(alert)?.let { icon ->
+            Icon(icon, stringResource(alert.labelRes), tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+        }
         if (isCurrent) {
             Text(
                 stringResource(R.string.prayer_current),
@@ -270,6 +287,14 @@ private fun PrayerRow(name: String, time: String, isCurrent: Boolean, isSunrise:
             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
         )
     }
+}
+
+/** The mark beside a prayer for how it is announced, as the best prayer apps show it. */
+private fun alertIcon(style: AlertStyle): ImageVector? = when (style) {
+    AlertStyle.OFF -> null
+    AlertStyle.SILENT -> Icons.Outlined.Notifications
+    AlertStyle.SOUND -> Icons.Outlined.NotificationsActive
+    AlertStyle.ADHAN -> Icons.AutoMirrored.Outlined.VolumeUp
 }
 
 private const val TICK_MS = 15_000L

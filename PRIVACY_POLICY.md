@@ -19,6 +19,7 @@
 - أذكار المسبحة التي تضيفها أو تعدلها بنفسك، وأعدادها.
 - سجلات النشاط المرتبطة باستخدام ميزات التطبيق.
 - المكان الذي تختاره لمواقيت الصلاة، وإعدادات الحساب وتصحيحات التقويم الهجري.
+- إعدادات تنبيهات الصلاة، والنغمة والأذان اللذان تختارهما.
 
 لا يرسل التطبيق هذه البيانات إلى خادم تابع لمؤسسة إبداع التطوير والبرمجة لتقنية المعلومات، ولا يشاركها مع أطراف ثالثة.
 
@@ -29,6 +30,10 @@
 ## موقع الجهاز
 
 إذا اخترت «استخدام موقعي الحالي»، يطلب التطبيق إذن الموقع التقريبي، ثم يقرأ موقع جهازك مرة واحدة ليحسب المواقيت واتجاه القبلة. يُحفظ الموقع على جهازك فقط، ولا يُرسل إلى أي جهة، ولا يُقرأ في الخلفية. يمكنك سحب الإذن في أي وقت من إعدادات النظام، واختيار مكانك بالبحث بدلًا منه.
+
+## تنبيهات الصلاة والأذان
+
+التنبيهات اختيارية ومطفأة في البداية. إذا فعّلتها، يوضح التطبيق سبب حاجته إلى إذن الإشعارات ثم يطلبه. تُجدول التنبيهات على جهازك بمنبّه النظام، ولا يُرسل منها شيء إلى أي جهة. ويمكنك أن تسمح بالمنبهات الدقيقة من إعدادات النظام ليصل التنبيه في دقيقته. يُرفع الأذان الكامل مع إشعار ظاهر فيه زر للإيقاف، ويتوقف إذا بدأت مكالمة. وإذا اخترت ملف أذان من هاتفك، يحتفظ التطبيق بإذن قراءة ذلك الملف وحده ليشغّله، ولا ينسخه ولا يرفعه.
 
 ## النسخ الاحتياطي في نظام Android
 
@@ -62,11 +67,13 @@ Last updated: November 11, 2026
 
 Anaa is a local-first Android app for adhkar and tasbih, with the Hijri calendar, prayer times and the Qibla direction, all computed on the device. It does not require an account, and it contains no advertising, analytics, or tracking SDKs.
 
-The app may store settings, reading progress, favorites, tasbih phrases, counts, local activity records, the place chosen for prayer times, and calendar settings on the device. It does not transmit this information to CDIT servers or share it with third parties.
+The app may store settings, reading progress, favorites, tasbih phrases, counts, local activity records, the place chosen for prayer times, prayer alert settings, and calendar settings on the device. It does not transmit this information to CDIT servers or share it with third parties.
 
 Anaa uses the Internet for one purpose only: when the user types the name of a city or village on the place screen, that text alone is sent to the Open-Meteo geocoding service (open-meteo.com), which returns the place's name, coordinates and time zone. No identifier and no reading or tasbih data is sent with it. As with any Internet request, the service sees the network address, and its own privacy policy applies.
 
 If the user chooses "use my current location", the app asks for the approximate location permission and reads the device's position once to compute prayer times and the Qibla. The position is kept on the device, is never sent anywhere, and is never read in the background. The permission can be withdrawn at any time in the system settings.
+
+Prayer alerts are optional and off by default. When the user turns them on, the app explains why it needs the notification permission and then asks for it. Alerts are scheduled on the device with the system alarm service, and nothing about them is sent anywhere. The user may also allow exact alarms in the system settings so alerts arrive on the minute. The full adhan plays with a visible notification that has a stop button, and it stops when a call begins. If the user picks an adhan file from the phone, the app keeps read access to that one file to play it, and never copies or uploads it.
 
 Android may back up app data when the device owner enables the operating system backup service. This system-level backup is controlled by the device and account settings, not by Anaa.
 

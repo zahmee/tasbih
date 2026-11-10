@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The day's five prayers side by side, the next one marked. A fixed row with no list, so it
+    never scrolls. The words are set from code, and the header shows only when there is room.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/anaa_widget_background"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:id="@+id/pd_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/pd_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:textColor="@color/anaa_widget_accent"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <LinearLayout android:id="@+id/pd_cell_0" style="@style/AnaaWidgetPrayerCell">
+                <TextView android:id="@+id/pd_name_0" style="@style/AnaaWidgetPrayerName" />
+                <TextView android:id="@+id/pd_time_0" style="@style/AnaaWidgetPrayerTime" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/pd_cell_1" style="@style/AnaaWidgetPrayerCell">
+                <TextView android:id="@+id/pd_name_1" style="@style/AnaaWidgetPrayerName" />
+                <TextView android:id="@+id/pd_time_1" style="@style/AnaaWidgetPrayerTime" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/pd_cell_2" style="@style/AnaaWidgetPrayerCell">
+                <TextView android:id="@+id/pd_name_2" style="@style/AnaaWidgetPrayerName" />
+                <TextView android:id="@+id/pd_time_2" style="@style/AnaaWidgetPrayerTime" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/pd_cell_3" style="@style/AnaaWidgetPrayerCell">
+                <TextView android:id="@+id/pd_name_3" style="@style/AnaaWidgetPrayerName" />
+                <TextView android:id="@+id/pd_time_3" style="@style/AnaaWidgetPrayerTime" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/pd_cell_4" style="@style/AnaaWidgetPrayerCell">
+                <TextView android:id="@+id/pd_name_4" style="@style/AnaaWidgetPrayerName" />
+                <TextView android:id="@+id/pd_time_4" style="@style/AnaaWidgetPrayerTime" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

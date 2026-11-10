@@ -11,6 +11,20 @@
     <!-- Asked for only when the user chooses to use the phone's position for prayer times. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Prayer alerts, each asked for or explained when the user turns alerts on. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+        Granted by the user in the system's alarms screen. Not USE_EXACT_ALARM, which Google Play
+        keeps for alarm clock and calendar apps. Without it alerts may come up to ten minutes late.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- A restart clears every alarm, so the next prayer's alert is set again after it. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- The full adhan plays from a foreground service that the prayer's exact alarm starts. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Neither is required: a place can be searched for, and the Qibla shown as a bearing. -->
     <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
@@ -86,6 +100,50 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- Prayer time widgets: the next prayer, and the day's five. -->
+        <receiver
+            android:name=".widget.PrayerNextWidget"
+            android:exported="true"
+            android:label="@string/prayer_next_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_prayer_next_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PrayerDayWidget"
+            android:exported="true"
+            android:label="@string/prayer_day_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_prayer_day_widget" />
+        </receiver>
+
+        <!-- Prayer alarms ringing, and everything that clears or moves them. -->
+        <receiver
+            android:name=".alerts.PrayerAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Plays the full adhan the user chose for a prayer, with a stop button in its notification. -->
+        <service
+            android:name=".alerts.AdhanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 
 </manifest>

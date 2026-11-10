@@ -70,6 +70,9 @@ class PrayerText(private val context: Context) {
         else -> "${arabicNumber(value)} ساعة"
     }
 
+    /** «٥ دقائق»، «١٥ دقيقة», as a number of minutes is written on its own. */
+    fun minutes(value: Int): String = minutesCount(value)
+
     private fun minutesCount(value: Int): String = when {
         value == 1 -> "دقيقة"
         value == 2 -> "دقيقتين"

@@ -10,6 +10,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.sakinah.tasbih.calendar.SavedMaps
+import com.sakinah.tasbih.prayer.AlertSettings
+import com.sakinah.tasbih.prayer.AlertStyle
+import com.sakinah.tasbih.prayer.PrayerAlert
 import com.sakinah.tasbih.prayer.AsrChoice
 import com.sakinah.tasbih.prayer.HighLatitudeChoice
 import com.sakinah.tasbih.prayer.Prayer
@@ -29,6 +32,26 @@ class PrayerPreferencesRepository internal constructor(
     constructor(context: Context) : this(context.applicationContext.prayerDataStore)
 
     val settings: Flow<PrayerSettings> = dataStore.data.map(::read)
+
+    val alerts: Flow<AlertSettings> = dataStore.data.map(::readAlerts)
+
+    suspend fun currentAlerts(): AlertSettings = alerts.first()
+
+    /** Saved as "FAJR=ADHAN:10" lines: the style, then the reminder's minutes. */
+    suspend fun setAlert(prayer: Prayer, alert: PrayerAlert) = dataStore.edit { preferences ->
+        val lines = preferences[Keys.alerts].orEmpty().filterNot { it.startsWith("${prayer.name}=") }
+        preferences[Keys.alerts] = (lines + "${prayer.name}=${alert.style.name}:${alert.reminderMinutes}").toSet()
+    }
+
+    suspend fun setTone(tone: String) = dataStore.edit { it[Keys.tone] = tone }
+
+    suspend fun setAdhan(adhan: String, fajr: Boolean) = dataStore.edit { it[if (fajr) Keys.fajrAdhan else Keys.adhan] = adhan }
+
+    /** A file from the phone, kept by its address; the app holds a lasting permission to read it. */
+    suspend fun setCustomAdhan(uri: String, fajr: Boolean) = dataStore.edit {
+        it[Keys.customAdhanUri] = uri
+        it[if (fajr) Keys.fajrAdhan else Keys.adhan] = AlertSettings.CUSTOM_ADHAN
+    }
 
     suspend fun current(): PrayerSettings = settings.first()
 
@@ -88,6 +111,20 @@ class PrayerPreferencesRepository internal constructor(
         )
     }
 
+    private fun readAlerts(preferences: Preferences) = AlertSettings(
+        alerts = preferences[Keys.alerts].orEmpty().mapNotNull { line ->
+            val prayer = Prayer.entries.firstOrNull { it.name == line.substringBefore('=') } ?: return@mapNotNull null
+            val value = line.substringAfter('=')
+            val style = AlertStyle.entries.firstOrNull { it.name == value.substringBefore(':') } ?: return@mapNotNull null
+            val minutes = value.substringAfter(':', "0").toIntOrNull()?.takeIf { it in AlertSettings.REMINDER_CHOICES } ?: 0
+            prayer to PrayerAlert(style, minutes)
+        }.toMap(),
+        tone = preferences[Keys.tone] ?: AlertSettings.DEFAULT_TONE,
+        adhan = preferences[Keys.adhan] ?: AlertSettings.DEFAULT_ADHAN,
+        fajrAdhan = preferences[Keys.fajrAdhan] ?: AlertSettings.DEFAULT_ADHAN,
+        customAdhanUri = preferences[Keys.customAdhanUri],
+    )
+
     private object Keys {
         val name = stringPreferencesKey("place_name")
         val region = stringPreferencesKey("place_region")
@@ -101,5 +138,10 @@ class PrayerPreferencesRepository internal constructor(
         val asr = stringPreferencesKey("asr")
         val highLatitude = stringPreferencesKey("high_latitude")
         val adjustments = stringSetPreferencesKey("adjustments")
+        val alerts = stringSetPreferencesKey("alerts")
+        val tone = stringPreferencesKey("alert_tone")
+        val adhan = stringPreferencesKey("alert_adhan")
+        val fajrAdhan = stringPreferencesKey("alert_fajr_adhan")
+        val customAdhanUri = stringPreferencesKey("alert_custom_adhan_uri")
     }
 }

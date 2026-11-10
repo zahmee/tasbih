@@ -1,6 +1,11 @@
 package com.sakinah.tasbih.ui.prayer
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.OutlinedButton
+import com.sakinah.tasbih.widget.PrayerWidgetKind
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -159,6 +164,29 @@ fun PrayerSettingsScreen(
             )
         }
         item { CalendarHint(stringResource(R.string.prayer_high_latitude_hint)) }
+
+        item { SakinahSectionHeader(stringResource(R.string.cal_section_widgets)) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    PrayerWidgetKind.NEXT to R.string.prayer_add_next_widget,
+                    PrayerWidgetKind.DAY to R.string.prayer_add_day_widget,
+                ).forEach { (kind, label) ->
+                    OutlinedButton(
+                        onClick = {
+                            val manager = AppWidgetManager.getInstance(context)
+                            val asked = manager.isRequestPinAppWidgetSupported &&
+                                manager.requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
+                            if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Outlined.Add, null)
+                        Text(stringResource(label), Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        }
     }
 }
 

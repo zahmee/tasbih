@@ -43,4 +43,31 @@
     <style name="AnaaWidgetOtherDay" parent="AnaaWidgetDay">
         <item name="android:textColor">@color/anaa_widget_text_soft</item>
     </style>
+    <style name="AnaaWidgetPrayerCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_margin">2dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <style name="AnaaWidgetPrayerName">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/anaa_widget_text_soft</item>
+    </style>
+
+    <style name="AnaaWidgetPrayerTime">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/anaa_widget_text</item>
+    </style>
 </resources>
