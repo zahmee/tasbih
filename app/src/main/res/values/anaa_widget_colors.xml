@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calendar widgets, in Anaa's palette: ivory paper with pine-green ink and copper occasions. -->
+<resources>
+    <color name="anaa_widget_surface">#F2FAF8F2</color>
+    <color name="anaa_widget_text">#FF17231F</color>
+    <color name="anaa_widget_text_soft">#FF56645F</color>
+    <color name="anaa_widget_accent">#FF185348</color>
+    <color name="anaa_widget_occasion">#FF996244</color>
+    <color name="anaa_widget_today">#FF185348</color>
+    <color name="anaa_widget_on_today">#FFFFFBF3</color>
+    <color name="anaa_widget_preview_line">#33185348</color>
+</resources>

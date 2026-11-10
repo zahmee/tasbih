@@ -12,6 +12,8 @@ Arabic-speaking Muslims using a phone during short, focused moments of daily dhi
 
 Anaa provides offline-first access to daily adhkar, Hisn al-Muslim, and a personal tasbih. Success means the user can begin, count, resume, and complete remembrance with minimal friction while their progress stays private on the device.
 
+On November 10, 2026 the user widened the scope to the day's other anchors: the Hijri and Gregorian dates and month calendars, then prayer times and the Qibla direction. They serve the same daily practice and follow the same rules. Everything is computed on the device with no internet permission, no account and no tracking, each permission is asked for only when the feature that needs it is turned on, and the remembrance flows stay primary. The research and phased plan are in `reports/`.
+
 ## Product Name
 
 The approved Arabic name inside the application is «آناء», with «أذكار ومسبحة» as its descriptor. Use the short name in the launcher and screen headings, and the full name «آناء — أذكار ومسبحة» in descriptive material. The Google Play listing title is «اناء», without the alif madda, as explicitly requested on October 3, 2026. The English transliteration is Anaa.
@@ -26,7 +28,7 @@ The launcher and splash icon approved on October 3, 2026 is the revised first co
 
 ## Anti-references
 
-- Cluttered portal-style screens or unrelated feature sections.
+- Cluttered portal-style screens or unrelated feature sections. The calendar, prayer times and Qibla are part of the scope, but they open from quiet entry points and never crowd the reading and tasbih screens.
 - Loud gamification, celebratory effects, or competitive mechanics.
 - Advertising-led layouts, promotional interruptions, and account pressure.
 - Ornamental treatments that compete with Arabic reading or obscure controls.

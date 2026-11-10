@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the widget picker shows for the date widgets: lines of text on the widget's paper. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/anaa_widget_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <ImageView
+        android:layout_width="60dp"
+        android:layout_height="6dp"
+        android:layout_margin="3dp"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/anaa_widget_preview_line" />
+
+    <ImageView
+        android:layout_width="110dp"
+        android:layout_height="10dp"
+        android:layout_margin="3dp"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/anaa_widget_preview_line" />
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="6dp"
+        android:layout_margin="3dp"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/anaa_widget_preview_line" />
+</LinearLayout>

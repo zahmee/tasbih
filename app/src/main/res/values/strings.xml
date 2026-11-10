@@ -394,4 +394,99 @@
     <string name="weekday_wed">أرب</string>
     <string name="weekday_thu">خمي</string>
     <string name="weekday_fri">جمع</string>
+
+    <!-- Calendar: Hijri and Gregorian dates, occasions and widgets -->
+    <string name="cal_title">التقويم</string>
+    <string name="cal_entry_summary">التاريخ الهجري والميلادي، والمناسبات، ومحوّل التاريخ</string>
+    <string name="cal_open">فتح التقويم</string>
+    <string name="cal_go_today">الذهاب إلى اليوم</string>
+    <string name="cal_occasions">المناسبات</string>
+    <string name="cal_converter">محوّل التاريخ</string>
+    <string name="cal_settings">إعدادات التقويم</string>
+    <string name="cal_hijri">هجري</string>
+    <string name="cal_gregorian">ميلادي</string>
+    <string name="cal_hijri_date">%1$s %2$s %3$s هـ</string>
+    <string name="cal_gregorian_date">%1$s %2$s %3$s م</string>
+    <string name="cal_hijri_month_year">%1$s %2$s هـ</string>
+    <string name="cal_gregorian_month_year">%1$s %2$s م</string>
+    <string name="cal_range">%1$s – %2$s</string>
+    <string name="cal_previous_month">الشهر السابق</string>
+    <string name="cal_next_month">الشهر التالي</string>
+    <string name="cal_this_month">العودة إلى الشهر الحالي</string>
+    <string name="cal_today">اليوم</string>
+    <string name="cal_tomorrow">غدًا</string>
+    <string name="cal_yesterday">أمس</string>
+    <string name="cal_in_days">بعد %1$s</string>
+    <string name="cal_days_ago">قبل %1$s</string>
+    <string name="cal_next_occasion">%1$s: %2$s</string>
+    <string name="cal_occasion_new_year">رأس السنة الهجرية</string>
+    <string name="cal_occasion_tasua">يوم تاسوعاء</string>
+    <string name="cal_occasion_ashura">يوم عاشوراء</string>
+    <string name="cal_occasion_mawlid">المولد النبوي</string>
+    <string name="cal_occasion_isra_miraj">الإسراء والمعراج</string>
+    <string name="cal_occasion_mid_shaban">النصف من شعبان</string>
+    <string name="cal_occasion_ramadan">بداية شهر رمضان</string>
+    <string name="cal_occasion_last_ten_nights">العشر الأواخر من رمضان</string>
+    <string name="cal_occasion_eid_al_fitr">عيد الفطر</string>
+    <string name="cal_occasion_six_of_shawwal">صيام الست من شوال</string>
+    <string name="cal_occasion_first_ten_dhul_hijjah">العشر الأوائل من ذي الحجة</string>
+    <string name="cal_occasion_arafah">يوم عرفة</string>
+    <string name="cal_occasion_eid_al_adha">عيد الأضحى</string>
+    <string name="cal_occasion_tashreeq">أيام التشريق</string>
+    <string name="cal_white_day">من الأيام البيض، الثالث عشر والرابع عشر والخامس عشر من الشهر.</string>
+    <string name="cal_next_white_days">الأيام البيض القادمة</string>
+    <string name="cal_occasions_note">التواريخ محسوبة بتقويم أم القرى. بداية رمضان والعيدين وسائر الشهور تُعلن بعد رؤية الهلال، وقد تختلف بيوم بين بلد وآخر. لتصحيح شهر، اضغط على أحد أيامه في التقويم.</string>
+    <string name="cal_correct_title">متى بدأ شهر %1$s؟</string>
+    <string name="cal_correct_earlier">أبكر بيوم</string>
+    <string name="cal_correct_computed">كما حُسب</string>
+    <string name="cal_correct_later">متأخرًا بيوم</string>
+    <string name="cal_correct_hint">تبدأ الشهور برؤية الهلال، فقد يختلف الإعلان الرسمي عن التقويم المحسوب بيوم. اختر ما أُعلن في بلدك، فيتغير هذا الشهر وحده.</string>
+    <string name="cal_from_gregorian">من ميلادي</string>
+    <string name="cal_from_hijri">من هجري</string>
+    <string name="cal_day">اليوم</string>
+    <string name="cal_month">الشهر</string>
+    <string name="cal_year">السنة</string>
+    <string name="cal_invalid_date">هذا التاريخ غير موجود. يمكن تحويل السنوات من %1$s إلى %2$s.</string>
+    <string name="cal_automatic">تلقائي</string>
+    <string name="cal_section_display">العرض</string>
+    <string name="cal_main_calendar">التقويم الأساسي</string>
+    <string name="cal_week_start">أول أيام الأسبوع</string>
+    <string name="cal_section_adjust">تصحيح التاريخ الهجري</string>
+    <string name="cal_offset">تحريك كل التواريخ الهجرية</string>
+    <string name="cal_offset_hint">إذا كانت التواريخ الهجرية في بلدك تختلف دائمًا بيوم أو يومين عن تقويم أم القرى.</string>
+    <string name="cal_corrected_months">الشهور المصححة</string>
+    <string name="cal_corrected_months_none">لم يُصحَّح أي شهر. لتصحيح شهر، اضغط على أحد أيامه في التقويم.</string>
+    <string name="cal_began_later">بدأ بعد الحساب بيوم</string>
+    <string name="cal_began_earlier">بدأ قبل الحساب بيوم</string>
+    <string name="cal_undo">تراجع</string>
+    <string name="cal_show_white_days">تمييز الأيام البيض</string>
+    <string name="cal_show_white_days_hint">علامة تحت الثالث عشر والرابع عشر والخامس عشر من كل شهر، عدا رمضان وأيام التشريق.</string>
+    <string name="cal_show_other">إظهار مناسبات أخرى</string>
+    <string name="cal_show_other_hint">المولد النبوي، والإسراء والمعراج، والنصف من شعبان. لا يحتفي بها كل المسلمين، فهي مخفية ما لم تفعّلها.</string>
+    <string name="cal_section_widgets">أدوات الشاشة الرئيسية</string>
+    <string name="cal_widgets_hint">تتبع ألوان آناء والوضع الليلي في الهاتف، وتتغير وحدها بعد منتصف الليل.</string>
+    <string name="cal_add_date_widget">إضافة أداة التاريخ</string>
+    <string name="cal_add_month_widget">إضافة أداة الشهر</string>
+    <string name="cal_add_occasion_widget">إضافة أداة المناسبة القادمة</string>
+    <string name="cal_add_widget_manually">اضغط مطولًا على مكان فارغ في شاشتك الرئيسية، ثم اختر الأدوات وابحث عن آناء.</string>
+    <string name="cal_date_widget_label">التاريخ الهجري والميلادي</string>
+    <string name="cal_date_widget_description">تاريخ اليوم بالتقويمين.</string>
+    <string name="cal_month_widget_label">تقويم الشهر</string>
+    <string name="cal_month_widget_description">شهر كامل بالأيام الهجرية والميلادية، مع سهمين للتنقل بين الشهور.</string>
+    <string name="cal_occasion_widget_label">المناسبة القادمة</string>
+    <string name="cal_occasion_widget_description">الأيام الباقية على رمضان والعيدين وسائر المناسبات الكبرى.</string>
+    <string-array name="cal_hijri_months">
+        <item>محرم</item>
+        <item>صفر</item>
+        <item>ربيع الأول</item>
+        <item>ربيع الآخر</item>
+        <item>جمادى الأولى</item>
+        <item>جمادى الآخرة</item>
+        <item>رجب</item>
+        <item>شعبان</item>
+        <item>رمضان</item>
+        <item>شوال</item>
+        <item>ذو القعدة</item>
+        <item>ذو الحجة</item>
+    </string-array>
 </resources>

@@ -21,6 +21,57 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Calendar widgets. They need no setup screen and no permission. -->
+        <receiver
+            android:name=".widget.CalendarDateWidget"
+            android:exported="true"
+            android:label="@string/cal_date_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_calendar_date_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.CalendarMonthWidget"
+            android:exported="true"
+            android:label="@string/cal_month_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_calendar_month_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.CalendarOccasionWidget"
+            android:exported="true"
+            android:label="@string/cal_occasion_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_calendar_occasion_widget" />
+        </receiver>
+
+        <!--
+            Turns the calendar widgets' day: their own midnight alarm, or the clock or time zone
+            changing. None of these broadcasts needs a permission.
+        -->
+        <receiver
+            android:name=".widget.CalendarRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

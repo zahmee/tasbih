@@ -66,6 +66,15 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.ThemeMode
 import com.sakinah.tasbih.ui.theme.SakinahTheme
 import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
+import com.sakinah.tasbih.ui.calendar.CalendarScreen
+import com.sakinah.tasbih.ui.calendar.CalendarSettingsScreen
+import com.sakinah.tasbih.ui.calendar.CalendarText
+import com.sakinah.tasbih.ui.calendar.CalendarViewModel
+import com.sakinah.tasbih.ui.calendar.ConverterScreen
+import com.sakinah.tasbih.ui.calendar.OccasionsScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import java.time.LocalDate
 
 private sealed interface AppDestination {
     data object Home : AppDestination
@@ -78,6 +87,11 @@ private sealed interface AppDestination {
     data object Achievements : AppDestination
     data object About : AppDestination
     data class Reader(val collectionId: String, val reviewCompleted: Boolean = false) : AppDestination
+    /** [startEpochDay] is the day whose month opens first; null opens today's month. */
+    data class Calendar(val startEpochDay: Long? = null) : AppDestination
+    data object CalendarOccasions : AppDestination
+    data object CalendarConverter : AppDestination
+    data object CalendarSettings : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -91,6 +105,10 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.About -> "about"
     is AppDestination.SettingsDetail -> "settings:${section.name}"
     is AppDestination.Reader -> "reader:$collectionId:$reviewCompleted"
+    is AppDestination.Calendar -> "calendar:${startEpochDay ?: ""}"
+    AppDestination.CalendarOccasions -> "calendar-occasions"
+    AppDestination.CalendarConverter -> "calendar-converter"
+    AppDestination.CalendarSettings -> "calendar-settings"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -102,18 +120,26 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "sound" -> AppDestination.SoundSettings
     "achievements" -> AppDestination.Achievements
     "about" -> AppDestination.About
+    "calendar-occasions" -> AppDestination.CalendarOccasions
+    "calendar-converter" -> AppDestination.CalendarConverter
+    "calendar-settings" -> AppDestination.CalendarSettings
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
             "reader" -> AppDestination.Reader(parts[1], parts.getOrNull(2).toBoolean())
             "settings" -> AppDestination.SettingsDetail(SettingsSection.valueOf(parts[1]))
+            "calendar" -> AppDestination.Calendar(parts.getOrNull(1)?.toLongOrNull())
             else -> null
         }
     }.getOrNull()
 }
 
 @Composable
-fun SakinahApp(viewModel: SakinahViewModel = viewModel()) {
+fun SakinahApp(
+    viewModel: SakinahViewModel = viewModel(),
+    openRequest: AppOpenRequest? = null,
+    onOpenRequestHandled: () -> Unit = {},
+) {
     LifecycleResumeEffect(viewModel) {
         viewModel.refreshDailyState()
         onPauseOrDispose { }
@@ -154,6 +180,8 @@ fun SakinahApp(viewModel: SakinahViewModel = viewModel()) {
                 SakinahNavigation(
                     state = state,
                     viewModel = viewModel,
+                    openRequest = openRequest,
+                    onOpenRequestHandled = onOpenRequestHandled,
                 )
             }
         }
@@ -164,6 +192,8 @@ fun SakinahApp(viewModel: SakinahViewModel = viewModel()) {
 private fun SakinahNavigation(
     state: SakinahUiState,
     viewModel: SakinahViewModel,
+    openRequest: AppOpenRequest?,
+    onOpenRequestHandled: () -> Unit,
 ) {
     val backStack = rememberSaveable(saver = listSaver<SnapshotStateList<AppDestination>, String>(
         save = { stack -> stack.map(AppDestination::route) },
@@ -199,6 +229,43 @@ private fun SakinahNavigation(
             viewModel.openReaderEntry(entry).join()
             isReaderFocusMode = false
             backStack.add(AppDestination.Reader(entry.collectionId, latestState.value.progressFor(entry.collectionId).completed))
+        }
+    }
+
+    val calendarViewModel: CalendarViewModel = viewModel()
+    val calendarSettings by calendarViewModel.settings.collectAsStateWithLifecycle()
+    val calendarJump by calendarViewModel.jump.collectAsStateWithLifecycle()
+    var today by remember { mutableStateOf(LocalDate.now()) }
+    // The day can turn while the app waits in the background, as at midnight.
+    LifecycleResumeEffect(Unit) {
+        today = LocalDate.now()
+        calendarViewModel.refreshWidgets()
+        onPauseOrDispose { }
+    }
+    val context = LocalContext.current
+    // Read through a state: the navigation keeps each page's content once made, so a plain value
+    // would stay as it was when the page opened, before the settings had even been read.
+    val calendarText by rememberUpdatedState(
+        remember(calendarSettings, context) { calendarSettings?.let { CalendarText(context, it) } },
+    )
+
+    fun openCalendar(date: LocalDate? = null) {
+        isReaderFocusMode = false
+        backStack.add(AppDestination.Calendar(date?.toEpochDay()))
+    }
+
+    LaunchedEffect(openRequest) {
+        when (val request = openRequest) {
+            null -> Unit
+            is AppOpenRequest.Calendar -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Calendar(request.date.toEpochDay()))
+                if (request.showOccasions) backStack.add(AppDestination.CalendarOccasions)
+                onOpenRequestHandled()
+            }
         }
     }
 
@@ -269,6 +336,8 @@ private fun SakinahNavigation(
                                 state = latestState.value,
                                 onOpenCollection = ::openReader,
                                 onRetry = viewModel::retryContentLoad,
+                                hijriDateLabel = calendarText?.hijriDate(today),
+                                onOpenCalendar = { openCalendar() },
                             )
                         }
 
@@ -320,6 +389,7 @@ private fun SakinahNavigation(
                                 onOpenAchievements = { backStack.add(AppDestination.Achievements) },
                                 onOpenAbout = { backStack.add(AppDestination.About) },
                                 onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
+                                onOpenCalendar = { openCalendar() },
                             )
                         }
 
@@ -369,6 +439,55 @@ private fun SakinahNavigation(
                             AboutScreen(onBack = ::navigateBack)
                         }
 
+                        is AppDestination.Calendar -> NavEntry(destination) {
+                            calendarText?.let { text ->
+                                CalendarScreen(
+                                    text = text,
+                                    today = today,
+                                    startDate = destination.startEpochDay?.let(LocalDate::ofEpochDay) ?: today,
+                                    jump = calendarJump,
+                                    onSetPrimary = calendarViewModel::setPrimary,
+                                    onCorrect = calendarViewModel::setCorrection,
+                                    onOpenOccasions = { backStack.add(AppDestination.CalendarOccasions) },
+                                    onOpenConverter = { backStack.add(AppDestination.CalendarConverter) },
+                                    onOpenSettings = { backStack.add(AppDestination.CalendarSettings) },
+                                    onBack = ::navigateBack,
+                                )
+                            }
+                        }
+
+                        AppDestination.CalendarOccasions -> NavEntry(destination) {
+                            calendarText?.let { text ->
+                                OccasionsScreen(
+                                    text = text,
+                                    today = today,
+                                    onShowDate = { date ->
+                                        // Back to the month view, moved to the occasion's month.
+                                        if (backStack.getOrNull(backStack.lastIndex - 1) is AppDestination.Calendar) {
+                                            calendarViewModel.showDate(date)
+                                            navigateBack()
+                                        } else {
+                                            backStack.removeAt(backStack.lastIndex)
+                                            openCalendar(date)
+                                        }
+                                    },
+                                    onBack = ::navigateBack,
+                                )
+                            }
+                        }
+
+                        AppDestination.CalendarConverter -> NavEntry(destination) {
+                            calendarText?.let { text ->
+                                ConverterScreen(text = text, today = today, onBack = ::navigateBack)
+                            }
+                        }
+
+                        AppDestination.CalendarSettings -> NavEntry(destination) {
+                            calendarText?.let { text ->
+                                CalendarSettingsScreen(text = text, viewModel = calendarViewModel, onBack = ::navigateBack)
+                            }
+                        }
+
                         is AppDestination.Reader -> NavEntry(destination) {
                             ReaderScreen(
                                 state = latestState.value,
@@ -402,6 +521,11 @@ private fun SakinahNavigation(
             }
         }
     }
+}
+
+/** What the app was opened to show, for example by a tap on a calendar widget. */
+sealed interface AppOpenRequest {
+    data class Calendar(val date: LocalDate, val showOccasions: Boolean = false) : AppOpenRequest
 }
 
 private fun Any?.topLevelDestination(): AppDestination? = when (this) {

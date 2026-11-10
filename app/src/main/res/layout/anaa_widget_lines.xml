@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Three lines of text, for the date widget and the next occasion widget. The words are set from
+    code, and nothing in it reacts to a touch beyond opening the calendar, so it stays still.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/anaa_widget_background"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:id="@+id/cal_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp">
+
+        <TextView
+            android:id="@+id/cal_line_top"
+            style="@style/AnaaWidgetLine"
+            android:layout_weight="0.8"
+            android:autoSizeMaxTextSize="15sp"
+            android:textColor="@color/anaa_widget_accent" />
+
+        <TextView
+            android:id="@+id/cal_line_main"
+            style="@style/AnaaWidgetLine"
+            android:layout_weight="1.2"
+            android:autoSizeMaxTextSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/cal_line_sub"
+            style="@style/AnaaWidgetLine"
+            android:layout_weight="0.8"
+            android:autoSizeMaxTextSize="15sp"
+            android:textColor="@color/anaa_widget_text_soft" />
+    </LinearLayout>
+</FrameLayout>

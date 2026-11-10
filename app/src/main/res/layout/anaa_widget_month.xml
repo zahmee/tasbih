@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A month in a fixed grid of six weeks, with no list or grid view: nothing scrolls, so no
+    launcher can take a swipe from it. The weeks are added from code, one small layout each.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/anaa_widget_background"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/cal_previous"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/cal_previous_month"
+                android:scaleType="center"
+                android:src="@drawable/anaa_widget_previous" />
+
+            <LinearLayout
+                android:id="@+id/cal_title_box"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:contentDescription="@string/cal_this_month"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/cal_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:singleLine="true"
+                    android:textColor="@color/anaa_widget_accent"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/cal_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:singleLine="true"
+                    android:textColor="@color/anaa_widget_text_soft"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/cal_next"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/cal_next_month"
+                android:scaleType="center"
+                android:src="@drawable/anaa_widget_next" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/cal_weekday_0" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_1" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_2" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_3" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_4" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_5" style="@style/AnaaWidgetWeekday" />
+            <TextView android:id="@+id/cal_weekday_6" style="@style/AnaaWidgetWeekday" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cal_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/cal_open"
+            android:orientation="vertical" />
+    </LinearLayout>
+</FrameLayout>

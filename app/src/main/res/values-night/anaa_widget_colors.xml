@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calendar widgets, in Anaa's palette: the night surface with mint ink and light copper occasions. -->
+<resources>
+    <color name="anaa_widget_surface">#F210251F</color>
+    <color name="anaa_widget_text">#FFE4F0EB</color>
+    <color name="anaa_widget_text_soft">#FFA9BDB5</color>
+    <color name="anaa_widget_accent">#FF8ED8C0</color>
+    <color name="anaa_widget_occasion">#FFDCAA87</color>
+    <color name="anaa_widget_today">#FF8ED8C0</color>
+    <color name="anaa_widget_on_today">#FF081713</color>
+    <color name="anaa_widget_preview_line">#338ED8C0</color>
+</resources>

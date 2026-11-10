@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One week of the month widget: the leading calendar's day, with the other calendar's under it. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:layoutDirection="rtl"
+    android:orientation="horizontal">
+
+    <LinearLayout android:id="@+id/cal_cell_0" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_0" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_0" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_1" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_1" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_1" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_2" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_2" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_2" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_3" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_3" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_3" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_4" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_4" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_4" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_5" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_5" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_5" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/cal_cell_6" style="@style/AnaaWidgetCell">
+        <TextView android:id="@+id/cal_day_6" style="@style/AnaaWidgetDay" />
+        <TextView android:id="@+id/cal_other_6" style="@style/AnaaWidgetOtherDay" />
+    </LinearLayout>
+</LinearLayout>

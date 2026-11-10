@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +42,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -66,6 +68,8 @@ fun HomeScreen(
     state: SakinahUiState,
     onOpenCollection: (String) -> Unit,
     onRetry: () -> Unit,
+    hijriDateLabel: String? = null,
+    onOpenCalendar: () -> Unit = {},
 ) {
     val today = LocalDate.now()
     val arabicLocale = remember { Locale.forLanguageTag("ar") }
@@ -77,7 +81,8 @@ fun HomeScreen(
             .withDecimalStyle(DecimalStyle.of(arabicLocale))
     }
     val gregorianDateLabel = remember(today) { dateFormatter.format(today) }
-    val hijriDateLabel = remember(today) { dateFormatter.format(HijrahDate.from(today)) }
+    val hijriDate = hijriDateLabel?.takeIf { it.isNotEmpty() }
+        ?: remember(today) { dateFormatter.format(HijrahDate.from(today)) }
     val featuredOrder = if (LocalTime.now().hour in 4..15) 27 else 28
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }
 
@@ -95,7 +100,7 @@ fun HomeScreen(
         ) {
             item(key = "identity") {
               if (compact) {
-                HomeCompactHeader(weekdayLabel, hijriDateLabel, gregorianDateLabel)
+                HomeCompactHeader(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar)
               } else {
                 Row(
                     modifier = Modifier.fillMaxWidth().testTag("home_brand"),
@@ -109,7 +114,7 @@ fun HomeScreen(
             }
             if (!compact) {
                 item(key = "greeting") {
-                    HomeDateAndGreeting(weekdayLabel, hijriDateLabel, gregorianDateLabel)
+                    HomeDateAndGreeting(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar)
                 }
             }
             when {
@@ -149,7 +154,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String) {
+private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String, onOpenCalendar: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().testTag("home_brand"),
         verticalAlignment = Alignment.CenterVertically,
@@ -159,30 +164,32 @@ private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String)
         if (LocalDensity.current.fontScale > 1.3f) {
             Column(modifier = Modifier.weight(1f)) {
                 HomeGreeting(Modifier.testTag("home_greeting"))
-                Text("$weekday · $hijri", style = MaterialTheme.typography.bodySmall)
-                Text(gregorian, style = MaterialTheme.typography.bodySmall)
+                Column(Modifier.testTag("home_open_calendar").clickable(role = Role.Button, onClick = onOpenCalendar)) {
+                    Text("$weekday، $hijri", style = MaterialTheme.typography.bodySmall)
+                    Text(gregorian, style = MaterialTheme.typography.bodySmall)
+                }
             }
         } else {
             HomeGreeting(Modifier.weight(1f).testTag("home_greeting"))
-            HomeDate(weekday, hijri, gregorian)
+            HomeDate(weekday, hijri, gregorian, onOpenCalendar)
         }
         AnaaAppIcon(Modifier.size(42.dp).testTag("home_app_icon"))
     }
 }
 
 @Composable
-private fun HomeDateAndGreeting(weekday: String, hijri: String, gregorian: String) {
+private fun HomeDateAndGreeting(weekday: String, hijri: String, gregorian: String, onOpenCalendar: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("home_greeting")) {
         if (maxWidth < 330.dp || LocalDensity.current.fontScale > 1.3f) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HomeGreeting()
-                HomeDate(weekday, hijri, gregorian, Modifier.fillMaxWidth())
+                HomeDate(weekday, hijri, gregorian, onOpenCalendar, Modifier.fillMaxWidth())
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HomeGreeting(Modifier.weight(1f))
                 Spacer(Modifier.width(16.dp))
-                HomeDate(weekday, hijri, gregorian)
+                HomeDate(weekday, hijri, gregorian, onOpenCalendar)
             }
         }
     }
@@ -203,10 +210,27 @@ private fun HomeDate(
     weekday: String,
     hijri: String,
     gregorian: String,
+    onOpenCalendar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
-        Text(weekday, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    val openLabel = stringResource(R.string.cal_open)
+    Column(
+        modifier = modifier
+            .testTag("home_open_calendar")
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClickLabel = openLabel, onClick = onOpenCalendar)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(weekday, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Icon(
+                Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
         Text(hijri, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         Text(
             gregorian,
