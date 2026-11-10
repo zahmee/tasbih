@@ -12,7 +12,7 @@ Arabic-speaking Muslims using a phone during short, focused moments of daily dhi
 
 Anaa provides offline-first access to daily adhkar, Hisn al-Muslim, and a personal tasbih. Success means the user can begin, count, resume, and complete remembrance with minimal friction while their progress stays private on the device.
 
-On November 10, 2026 the user widened the scope to the day's other anchors: the Hijri and Gregorian dates and month calendars, then prayer times and the Qibla direction. They serve the same daily practice and follow the same rules. Everything is computed on the device with no internet permission, no account and no tracking, each permission is asked for only when the feature that needs it is turned on, and the remembrance flows stay primary. The research and phased plan are in `reports/`.
+On November 10, 2026 the user widened the scope to the day's other anchors: the Hijri and Gregorian dates and month calendars, then prayer times and the Qibla direction. They serve the same daily practice and follow the same rules. Everything is computed on the device, with no account and no tracking, each permission is asked for only when the feature that needs it is turned on, and the remembrance flows stay primary. On November 11, 2026 the user chose the hybrid approach: the internet is used for one thing only, searching a city or village by name, and prayer times are still worked out on the phone so they keep working offline. The research and phased plan are in `reports/`.
 
 ## Product Name
 

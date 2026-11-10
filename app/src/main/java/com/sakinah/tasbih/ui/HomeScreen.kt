@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +32,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,7 +61,9 @@ import com.sakinah.tasbih.data.DhikrCollection
 import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.data.dhikrQuantity
 import com.sakinah.tasbih.data.displayArabic
+import java.time.Instant
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.chrono.HijrahDate
 import java.time.format.DateTimeFormatter
@@ -70,7 +77,19 @@ fun HomeScreen(
     onRetry: () -> Unit,
     hijriDateLabel: String? = null,
     onOpenCalendar: () -> Unit = {},
+    nextPrayerLabel: (Instant) -> String? = { null },
+    onOpenPrayer: () -> Unit = {},
 ) {
+    var now by remember { mutableStateOf(Instant.now()) }
+    // The next prayer changes as its time passes, while the home screen stays open.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            now = Instant.now()
+        }
+    }
+    val nextPrayer = nextPrayerLabel(now) ?: stringResource(R.string.prayer_home_choose)
+    val prayerLine: @Composable () -> Unit = { NextPrayerLine(nextPrayer, onOpenPrayer) }
     val today = LocalDate.now()
     val arabicLocale = remember { Locale.forLanguageTag("ar") }
     val weekdayLabel = remember(today) {
@@ -100,7 +119,7 @@ fun HomeScreen(
         ) {
             item(key = "identity") {
               if (compact) {
-                HomeCompactHeader(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar)
+                HomeCompactHeader(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar, prayerLine)
               } else {
                 Row(
                     modifier = Modifier.fillMaxWidth().testTag("home_brand"),
@@ -114,7 +133,7 @@ fun HomeScreen(
             }
             if (!compact) {
                 item(key = "greeting") {
-                    HomeDateAndGreeting(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar)
+                    HomeDateAndGreeting(weekdayLabel, hijriDate, gregorianDateLabel, onOpenCalendar, prayerLine)
                 }
             }
             when {
@@ -154,7 +173,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String, onOpenCalendar: () -> Unit) {
+private fun HomeCompactHeader(
+    weekday: String,
+    hijri: String,
+    gregorian: String,
+    onOpenCalendar: () -> Unit,
+    prayerLine: @Composable () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().testTag("home_brand"),
         verticalAlignment = Alignment.CenterVertically,
@@ -168,28 +193,42 @@ private fun HomeCompactHeader(weekday: String, hijri: String, gregorian: String,
                     Text("$weekday، $hijri", style = MaterialTheme.typography.bodySmall)
                     Text(gregorian, style = MaterialTheme.typography.bodySmall)
                 }
+                prayerLine()
             }
         } else {
             HomeGreeting(Modifier.weight(1f).testTag("home_greeting"))
-            HomeDate(weekday, hijri, gregorian, onOpenCalendar)
+            Column(horizontalAlignment = Alignment.End) {
+                HomeDate(weekday, hijri, gregorian, onOpenCalendar)
+                prayerLine()
+            }
         }
         AnaaAppIcon(Modifier.size(42.dp).testTag("home_app_icon"))
     }
 }
 
 @Composable
-private fun HomeDateAndGreeting(weekday: String, hijri: String, gregorian: String, onOpenCalendar: () -> Unit) {
+private fun HomeDateAndGreeting(
+    weekday: String,
+    hijri: String,
+    gregorian: String,
+    onOpenCalendar: () -> Unit,
+    prayerLine: @Composable () -> Unit,
+) {
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("home_greeting")) {
         if (maxWidth < 330.dp || LocalDensity.current.fontScale > 1.3f) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HomeGreeting()
                 HomeDate(weekday, hijri, gregorian, onOpenCalendar, Modifier.fillMaxWidth())
+                prayerLine()
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HomeGreeting(Modifier.weight(1f))
                 Spacer(Modifier.width(16.dp))
-                HomeDate(weekday, hijri, gregorian, onOpenCalendar)
+                Column(horizontalAlignment = Alignment.End) {
+                    HomeDate(weekday, hijri, gregorian, onOpenCalendar)
+                    prayerLine()
+                }
             }
         }
     }
@@ -237,6 +276,23 @@ private fun HomeDate(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** The next prayer and its time under the date, or a way to set up prayer times. */
+@Composable
+private fun NextPrayerLine(label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .testTag("home_next_prayer")
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+    ) {
+        Icon(Icons.Outlined.Schedule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
     }
 }
 

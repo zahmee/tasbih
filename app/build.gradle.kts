@@ -113,9 +113,14 @@ dependencies {
     implementation("androidx.navigation3:navigation3-ui:1.1.6")
     implementation("androidx.room3:room3-runtime:3.0.1")
     implementation("androidx.sqlite:sqlite-framework:2.7.0")
+    // Prayer times and the Qibla, computed on the device. MIT licensed, no dependencies, Java 8 bytecode.
+    // Its Kotlin successor, adhan2, is built for Java 21, which this project's unit tests cannot run.
+    implementation("com.batoulapps.adhan:adhan:1.2.1")
     ksp("androidx.room3:room3-compiler:3.0.1")
 
     testImplementation("junit:junit:4.13.2")
+    // The real org.json, as the copy in the Android library is only a stub on the desktop.
+    testImplementation("org.json:json:20260814")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

@@ -1,6 +1,6 @@
 # سياسة الخصوصية لتطبيق آناء
 
-آخر تحديث: ١١ سبتمبر ٢٠٢٦
+آخر تحديث: ١١ نوفمبر ٢٠٢٦
 
 <div dir="rtl">
 
@@ -10,7 +10,7 @@
 
 ## البيانات التي يتعامل معها التطبيق
 
-صُمم آناء ليعمل محليًا على جهازك. لا يطلب إنشاء حساب، ولا يطلب صلاحية الإنترنت، ولا يتضمن إعلانات أو أدوات تحليلات أو خدمات تتبع.
+صُمم آناء ليعمل محليًا على جهازك. لا يطلب إنشاء حساب، ولا يتضمن إعلانات أو أدوات تحليلات أو خدمات تتبع. تُحسب مواقيت الصلاة واتجاه القبلة والتقويم الهجري على جهازك.
 
 قد يحفظ التطبيق محليًا على جهازك ما يلي:
 
@@ -18,8 +18,17 @@
 - تقدم القراءة والتكرارات والمفضلة.
 - أذكار المسبحة التي تضيفها أو تعدلها بنفسك، وأعدادها.
 - سجلات النشاط المرتبطة باستخدام ميزات التطبيق.
+- المكان الذي تختاره لمواقيت الصلاة، وإعدادات الحساب وتصحيحات التقويم الهجري.
 
 لا يرسل التطبيق هذه البيانات إلى خادم تابع لمؤسسة إبداع التطوير والبرمجة لتقنية المعلومات، ولا يشاركها مع أطراف ثالثة.
+
+## البحث عن المكان عبر الإنترنت
+
+يستخدم آناء الإنترنت لغرض واحد: البحث عن مدينة أو قرية بالاسم حين تكتبه بنفسك في شاشة المكان. يُرسَل النص الذي تكتبه وحده إلى خدمة البحث الجغرافي من أوبن ميتيو (open-meteo.com)، فتعيد اسم المكان وإحداثياته ومنطقته الزمنية. لا يُرسل معه أي معرّف لك أو لجهازك، ولا شيء من أذكارك أو تقدمك. وكأي اتصال بالإنترنت، تصل إلى الخدمة عنوان شبكتك، وتسري عليها سياسة الخصوصية الخاصة بها. لا يتصل التطبيق بالإنترنت في غير ذلك.
+
+## موقع الجهاز
+
+إذا اخترت «استخدام موقعي الحالي»، يطلب التطبيق إذن الموقع التقريبي، ثم يقرأ موقع جهازك مرة واحدة ليحسب المواقيت واتجاه القبلة. يُحفظ الموقع على جهازك فقط، ولا يُرسل إلى أي جهة، ولا يُقرأ في الخلفية. يمكنك سحب الإذن في أي وقت من إعدادات النظام، واختيار مكانك بالبحث بدلًا منه.
 
 ## النسخ الاحتياطي في نظام Android
 
@@ -49,11 +58,15 @@
 
 # Privacy Policy for Anaa
 
-Last updated: September 11, 2026
+Last updated: November 11, 2026
 
-Anaa is a local-first Android app for adhkar and tasbih. It does not require an account or Internet permission, and it contains no advertising, analytics, or tracking SDKs.
+Anaa is a local-first Android app for adhkar and tasbih, with the Hijri calendar, prayer times and the Qibla direction, all computed on the device. It does not require an account, and it contains no advertising, analytics, or tracking SDKs.
 
-The app may store settings, reading progress, favorites, tasbih phrases, counts, and local activity records on the device. It does not transmit this information to CDIT servers or share it with third parties.
+The app may store settings, reading progress, favorites, tasbih phrases, counts, local activity records, the place chosen for prayer times, and calendar settings on the device. It does not transmit this information to CDIT servers or share it with third parties.
+
+Anaa uses the Internet for one purpose only: when the user types the name of a city or village on the place screen, that text alone is sent to the Open-Meteo geocoding service (open-meteo.com), which returns the place's name, coordinates and time zone. No identifier and no reading or tasbih data is sent with it. As with any Internet request, the service sees the network address, and its own privacy policy applies.
+
+If the user chooses "use my current location", the app asks for the approximate location permission and reads the device's position once to compute prayer times and the Qibla. The position is kept on the device, is never sent anywhere, and is never read in the background. The permission can be withdrawn at any time in the system settings.
 
 Android may back up app data when the device owner enables the operating system backup service. This system-level backup is controlled by the device and account settings, not by Anaa.
 

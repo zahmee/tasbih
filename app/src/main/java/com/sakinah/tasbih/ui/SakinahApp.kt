@@ -72,6 +72,12 @@ import com.sakinah.tasbih.ui.calendar.CalendarText
 import com.sakinah.tasbih.ui.calendar.CalendarViewModel
 import com.sakinah.tasbih.ui.calendar.ConverterScreen
 import com.sakinah.tasbih.ui.calendar.OccasionsScreen
+import com.sakinah.tasbih.ui.prayer.PlaceScreen
+import com.sakinah.tasbih.ui.prayer.PrayerSettingsScreen
+import com.sakinah.tasbih.ui.prayer.PrayerText
+import com.sakinah.tasbih.ui.prayer.PrayerTimesScreen
+import com.sakinah.tasbih.ui.prayer.PrayerViewModel
+import com.sakinah.tasbih.ui.prayer.QiblaScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
@@ -92,6 +98,10 @@ private sealed interface AppDestination {
     data object CalendarOccasions : AppDestination
     data object CalendarConverter : AppDestination
     data object CalendarSettings : AppDestination
+    data object Prayer : AppDestination
+    data object PrayerLocation : AppDestination
+    data object PrayerOptions : AppDestination
+    data object Qibla : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -109,6 +119,10 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.CalendarOccasions -> "calendar-occasions"
     AppDestination.CalendarConverter -> "calendar-converter"
     AppDestination.CalendarSettings -> "calendar-settings"
+    AppDestination.Prayer -> "prayer"
+    AppDestination.PrayerLocation -> "prayer-location"
+    AppDestination.PrayerOptions -> "prayer-options"
+    AppDestination.Qibla -> "qibla"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -123,6 +137,10 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "calendar-occasions" -> AppDestination.CalendarOccasions
     "calendar-converter" -> AppDestination.CalendarConverter
     "calendar-settings" -> AppDestination.CalendarSettings
+    "prayer" -> AppDestination.Prayer
+    "prayer-location" -> AppDestination.PrayerLocation
+    "prayer-options" -> AppDestination.PrayerOptions
+    "qibla" -> AppDestination.Qibla
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
@@ -249,6 +267,16 @@ private fun SakinahNavigation(
         remember(calendarSettings, context) { calendarSettings?.let { CalendarText(context, it) } },
     )
 
+    val prayerViewModel: PrayerViewModel = viewModel()
+    val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
+    val placeSearch by prayerViewModel.search.collectAsStateWithLifecycle()
+    val prayerText = remember(context) { PrayerText(context) }
+
+    fun openPrayer() {
+        isReaderFocusMode = false
+        backStack.add(AppDestination.Prayer)
+    }
+
     fun openCalendar(date: LocalDate? = null) {
         isReaderFocusMode = false
         backStack.add(AppDestination.Calendar(date?.toEpochDay()))
@@ -338,6 +366,10 @@ private fun SakinahNavigation(
                                 onRetry = viewModel::retryContentLoad,
                                 hijriDateLabel = calendarText?.hijriDate(today),
                                 onOpenCalendar = { openCalendar() },
+                                nextPrayerLabel = { now ->
+                                    prayerState?.schedule?.next(now)?.let { "${prayerText.name(it.prayer, it.time)} ${prayerText.time(it.time)}" }
+                                },
+                                onOpenPrayer = ::openPrayer,
                             )
                         }
 
@@ -390,6 +422,8 @@ private fun SakinahNavigation(
                                 onOpenAbout = { backStack.add(AppDestination.About) },
                                 onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
                                 onOpenCalendar = { openCalendar() },
+                                onOpenPrayer = ::openPrayer,
+                                onOpenQibla = { backStack.add(AppDestination.Qibla) },
                             )
                         }
 
@@ -480,6 +514,44 @@ private fun SakinahNavigation(
                             calendarText?.let { text ->
                                 ConverterScreen(text = text, today = today, onBack = ::navigateBack)
                             }
+                        }
+
+                        AppDestination.Prayer -> NavEntry(destination) {
+                            prayerState?.let { state ->
+                                PrayerTimesScreen(
+                                    state = state,
+                                    calendarText = calendarText,
+                                    onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
+                                    onOpenQibla = { backStack.add(AppDestination.Qibla) },
+                                    onOpenSettings = { backStack.add(AppDestination.PrayerOptions) },
+                                    onBack = ::navigateBack,
+                                )
+                            }
+                        }
+
+                        AppDestination.PrayerLocation -> NavEntry(destination) {
+                            PlaceScreen(
+                                current = prayerState?.settings?.place,
+                                search = placeSearch,
+                                onSearch = prayerViewModel::search,
+                                onChoose = prayerViewModel::choose,
+                                onUseDeviceLocation = prayerViewModel::useDeviceLocation,
+                                onBack = ::navigateBack,
+                            )
+                        }
+
+                        AppDestination.PrayerOptions -> NavEntry(destination) {
+                            prayerState?.let { state ->
+                                PrayerSettingsScreen(state = state, viewModel = prayerViewModel, onBack = ::navigateBack)
+                            }
+                        }
+
+                        AppDestination.Qibla -> NavEntry(destination) {
+                            QiblaScreen(
+                                schedule = prayerState?.schedule,
+                                onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
+                                onBack = ::navigateBack,
+                            )
                         }
 
                         AppDestination.CalendarSettings -> NavEntry(destination) {

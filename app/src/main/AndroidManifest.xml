@@ -2,6 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        Used only to search for a city or village by name, then the times are worked out on the
+        phone. Nothing about the user, their reading or their tasbih is ever sent.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Asked for only when the user chooses to use the phone's position for prayer times. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Neither is required: a place can be searched for, and the Qibla shown as a bearing. -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
