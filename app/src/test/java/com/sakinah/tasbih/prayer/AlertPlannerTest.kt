@@ -58,4 +58,42 @@ class AlertPlannerTest {
         val night = AlertPlanner.nextBoundary(riyadh, at("20:00"))
         assertEquals(date.plusDays(1), night.toLocalDate())
     }
+
+    @Test
+    fun `an alert at the widgets' change wakes once for both`() {
+        val settings = AlertSettings(alerts = mapOf(Prayer.DHUHR to PrayerAlert(AlertStyle.ADHAN)))
+        val wake = AlertPlanner.nextWake(riyadh, settings, at("10:00"), widgetsPlaced = true)!!
+        assertEquals(LocalTime.parse("11:37"), wake.at.toLocalTime())
+        assertEquals(Prayer.DHUHR, wake.event?.prayer)
+        assertEquals(false, wake.urgent)
+    }
+
+    @Test
+    fun `the widgets wake alone when their change comes before any alert`() {
+        val settings = AlertSettings(alerts = mapOf(Prayer.MAGHRIB to PrayerAlert(AlertStyle.SOUND)))
+        val wake = AlertPlanner.nextWake(riyadh, settings, at("10:00"), widgetsPlaced = true)!!
+        assertEquals(LocalTime.parse("11:37"), wake.at.toLocalTime())
+        assertNull(wake.event)
+        val alone = AlertPlanner.nextWake(riyadh, settings, at("10:00"), widgetsPlaced = false)!!
+        assertEquals(Prayer.MAGHRIB, alone.event?.prayer)
+    }
+
+    @Test
+    fun `nothing wakes with no alert and no widget`() {
+        assertNull(AlertPlanner.nextWake(riyadh, AlertSettings(), at("10:00"), widgetsPlaced = false))
+    }
+
+    @Test
+    fun `a prayer close behind its reminder rings as an alarm clock`() {
+        val close = AlertSettings(alerts = mapOf(Prayer.ASR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 5)))
+        val reminder = AlertPlanner.nextWake(riyadh, close, at("12:00"), widgetsPlaced = false)!!
+        assertEquals(AlertKind.REMINDER, reminder.event?.kind)
+        assertEquals(false, reminder.urgent)
+        val prayer = AlertPlanner.nextWake(riyadh, close, reminder.at.toInstant().plusSeconds(1), widgetsPlaced = false)!!
+        assertEquals(AlertKind.PRAYER, prayer.event?.kind)
+        assertEquals(true, prayer.urgent)
+        val far = AlertSettings(alerts = mapOf(Prayer.ASR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 15)))
+        val calm = AlertPlanner.nextWake(riyadh, far, at("14:40"), widgetsPlaced = false)!!
+        assertEquals(false, calm.urgent)
+    }
 }

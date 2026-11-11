@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.sp
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.prayer.PrayerSchedule
+import com.sakinah.tasbih.prayer.SunPosition
+import com.sakinah.tasbih.prayer.turnFromShadow
 import com.sakinah.tasbih.ui.calendar.CalendarPage
 import com.sakinah.tasbih.ui.sakinahCardBorder
 import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
@@ -174,6 +176,8 @@ fun QiblaScreen(
                 }
             }
 
+            SunCheck(schedule, text)
+
             if (compass.available && compass.accuracy <= SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -194,6 +198,62 @@ fun QiblaScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A second way to the Qibla, by one's shadow. It needs no compass and no metal can sway it,
+ * so it also serves phones that have no compass at all. It moves on every minute.
+ */
+@Composable
+private fun SunCheck(schedule: PrayerSchedule, text: PrayerText) {
+    var now by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            now = java.time.Instant.now()
+        }
+    }
+    val place = schedule.place
+    val sun = remember(now.epochSecond / 60) { SunPosition.at(now, place.latitude, place.longitude) }
+    val overKaaba = remember(now.epochSecond / 3600) {
+        val year = now.atZone(schedule.zone).year
+        (SunPosition.overKaaba(year) + SunPosition.overKaaba(year + 1)).firstOrNull { it.isAfter(now) }
+    }
+    val sentence = if (sun.elevation < SUN_LOW_DEGREES) {
+        stringResource(R.string.qibla_sun_low)
+    } else {
+        val turn = turnFromShadow(sun, schedule.qiblaBearing)
+        val step = roundToFive(abs(turn).toFloat())
+        when {
+            step <= FACING_DEGREES -> stringResource(R.string.qibla_sun_along)
+            step >= 180 - FACING_DEGREES -> stringResource(R.string.qibla_sun_toward)
+            turn > 0 -> stringResource(R.string.qibla_sun_turn_right, arabicNumber(step))
+            else -> stringResource(R.string.qibla_sun_turn_left, arabicNumber(step))
+        }
+    }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = sakinahCardBorder(),
+        modifier = Modifier.fillMaxWidth().testTag("qibla_sun"),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.qibla_sun_title), style = MaterialTheme.typography.titleMedium)
+            Text(sentence, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.qibla_sun_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            overKaaba?.atZone(schedule.zone)?.let { moment ->
+                Text(
+                    stringResource(R.string.qibla_sun_kaaba, text.date(moment.toLocalDate()), text.time(moment)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -374,3 +434,6 @@ private fun roundToFive(degrees: Float): Int = ((degrees / 5f).roundToInt() * 5)
 /** Within this many degrees the phone is taken to face the Qibla. */
 private const val FACING_DEGREES = 5f
 private const val SMOOTHING = 0.15f
+
+/** Below this height the shadow is too long and faint to follow. */
+private const val SUN_LOW_DEGREES = 5.0

@@ -43,11 +43,36 @@ enum class AlertKind { REMINDER, PRAYER }
 data class AlertEvent(val prayer: Prayer, val kind: AlertKind, val at: ZonedDateTime, val prayerTime: ZonedDateTime)
 
 /**
+ * The one moment the app must wake next. [event] is the alert to raise then, or null when only
+ * the widgets move on. [urgent] asks for an alarm clock, which Doze never holds back: it is
+ * kept for a prayer that follows its own reminder by less than [AlertPlanner.DOZE_GAP_MINUTES],
+ * where a second idle alarm so soon could be delayed by Android's limit on them.
+ */
+data class Wake(val at: ZonedDateTime, val event: AlertEvent?, val urgent: Boolean = false)
+
+/**
  * Finds the next moment the app must wake: the next alert, and the next prayer time, at which
  * the widgets move on to the following prayer. Only one alarm is ever set, for whichever comes
  * first, and each alarm sets the next one, so a change of day or time zone cannot be missed.
  */
 object AlertPlanner {
+    /** Below this gap after a reminder, the prayer's own alarm is set as an alarm clock. */
+    const val DOZE_GAP_MINUTES = 10L
+
+    /**
+     * The next wake after [now]. An alert at the very time the widgets change wakes once for
+     * both, since raising an alert redraws the widgets too.
+     */
+    fun nextWake(schedule: PrayerSchedule, settings: AlertSettings, now: Instant, widgetsPlaced: Boolean): Wake? {
+        val alert = nextAlert(schedule, settings, now)
+        val boundary = if (widgetsPlaced) nextBoundary(schedule, now) else null
+        if (alert == null) return boundary?.let { Wake(it, null) }
+        if (boundary != null && boundary.toInstant().isBefore(alert.at.toInstant())) return Wake(boundary, null)
+        val reminder = settings.alertFor(alert.prayer).reminderMinutes
+        val urgent = alert.kind == AlertKind.PRAYER && reminder in 1 until DOZE_GAP_MINUTES
+        return Wake(alert.at, alert, urgent)
+    }
+
     /** The next alert after [now], within the next two days, or null when every alert is off. */
     fun nextAlert(schedule: PrayerSchedule, settings: AlertSettings, now: Instant): AlertEvent? {
         if (!settings.anyOn) return null

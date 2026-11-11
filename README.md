@@ -24,9 +24,9 @@
 - بحث عربي يتسامح مع اختلاف الهمزات والتشكيل.
 - مسبحة حرة بأهداف جاهزة أو هدف يحدده المستخدم.
 - إدارة مستقلة لأذكار المسبحة: إضافة وتعديل وحذف، مع توقف التنقل عند أول ذكر وآخره.
-- التقويم الهجري والميلادي بأشهره ومناسباته، مع محوّل للتاريخ وودجات للشاشة الرئيسية.
-- مواقيت الصلاة لأي مدينة أو قرية بعشرين طريقة حساب، واتجاه القبلة بالبوصلة.
-- تنبيهات الصلاة بإشعار أو نغمة أو أذان كامل، مع تذكير قبلها، وودجتان للصلاة القادمة ومواقيت اليوم.
+- التقويم الهجري والميلادي بأشهره ومناسباته ومناسباتك الخاصة، مع محوّل للتاريخ وودجات للشاشة الرئيسية، وخيار بدء اليوم الهجري من المغرب.
+- مواقيت الصلاة لأي مدينة أو قرية بعشرين طريقة حساب، وجدول الشهر وإمساكية رمضان، واتجاه القبلة بالبوصلة أو بالظل دون بوصلة.
+- تنبيهات الصلاة بإشعار أو نغمة أو أذان كامل، مع تذكير قبلها، وودجات للصلاة القادمة ومواقيت اليوم والقبلة.
 - واجهة عربية من اليمين إلى اليسار، وخطوط مناسبة للنصوص العربية، وخيار الألوان الديناميكية والوضع الداكن.
 
 يبقى نطاق آناء مقصودًا ومركزًا: الذكر والقراءة والتسبيح، ومعها ما يرتبط بيوم المسلم من التقويم الهجري ومواقيت الصلاة والقبلة، من دون أقسام جانبية مشتتة.
@@ -131,9 +131,9 @@ Anaa is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim conte
 - 133 chapters and 302 adhkar and du'a entries.
 - Focused reader with progress, repetition, favorites, tashkeel, and text-size controls.
 - Arabic-aware search.
-- Hijri and Gregorian month calendars with occasions, a date converter, and home screen widgets.
-- Prayer times for any city or village with twenty calculation methods, and a Qibla compass.
-- Prayer alerts as a notification, a short tone, or the full adhan, with reminders and two prayer widgets.
+- Hijri and Gregorian month calendars with occasions and personal occasions, a date converter, home screen widgets, and an option to start the Hijri day at Maghrib.
+- Prayer times for any city or village with twenty calculation methods, a monthly timetable and Ramadan timetable, and the Qibla by compass or by one's shadow.
+- Prayer alerts as a notification, a short tone, or the full adhan, with reminders, and widgets for the next prayer, the day's times and the Qibla.
 - A flexible tasbih with editable phrases and bounded previous/next navigation.
 - Local-first settings and progress storage.
 - RTL-first interface built with Kotlin and Jetpack Compose.

@@ -84,6 +84,7 @@ fun CalendarScreen(
     onOpenConverter: () -> Unit,
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
+    hijriToday: LocalDate = today,
 ) {
     val calendar = text.calendar
     val primary = text.settings.primary
@@ -128,7 +129,7 @@ fun CalendarScreen(
                 }
             },
         ) {
-            MonthContent(text, today, first, pagerState, onSetPrimary, onSelect = { selected = it }, onOpenOccasions)
+            MonthContent(text, today, hijriToday, first, pagerState, onSetPrimary, onSelect = { selected = it }, onOpenOccasions)
         }
     }
 
@@ -146,6 +147,7 @@ fun CalendarScreen(
 private fun MonthContent(
     text: CalendarText,
     today: LocalDate,
+    hijriToday: LocalDate,
     first: CalendarMonth,
     pagerState: PagerState,
     onSetPrimary: (PrimaryCalendar) -> Unit,
@@ -232,7 +234,7 @@ private fun MonthContent(
             }
         }
 
-        TodaySummary(text, today, onOpenOccasions)
+        TodaySummary(text, hijriToday, onOpenOccasions)
     }
 }
 
@@ -241,7 +243,8 @@ private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick:
     val hijriFirst = text.settings.primary == PrimaryCalendar.HIJRI
     val hijriDay = cell.hijri?.let { text.number(it.day) }.orEmpty()
     val gregorianDay = text.number(cell.date.dayOfMonth)
-    val hasOccasion = cell.hijri?.let { Occasions.on(it, text.settings.showOtherOccasions).isNotEmpty() } == true
+    val hasOccasion = cell.hijri?.let { Occasions.on(it, text.settings.showOtherOccasions).isNotEmpty() } == true ||
+        text.personalOn(cell.date).isNotEmpty()
     val isWhiteDay = text.settings.showWhiteDays && cell.hijri?.let(Occasions::isWhiteDay) == true
     val colors = MaterialTheme.colorScheme
     val copper = LocalSakinahBrandColors.current.antiqueGold
@@ -356,6 +359,13 @@ private fun DaySheet(
                     Icon(Icons.Outlined.Celebration, null, tint = LocalSakinahBrandColors.current.antiqueGold, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(text.occasionName(occasion), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            text.personalOn(date).forEach { personal ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(Icons.Outlined.Celebration, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(personal.name, style = MaterialTheme.typography.bodyLarge)
                 }
             }
             if (hijri != null && text.settings.showWhiteDays && Occasions.isWhiteDay(hijri)) {

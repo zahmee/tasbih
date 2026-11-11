@@ -88,6 +88,10 @@ class CalendarText(private val context: Context, val settings: CalendarSettings)
 
     fun occasionName(occasion: Occasion): String = context.getString(occasion.nameRes)
 
+    /** The user's own occasions that fall on [date]. */
+    fun personalOn(date: LocalDate): List<com.sakinah.tasbih.calendar.PersonalOccasion> =
+        com.sakinah.tasbih.calendar.PersonalOccasions.on(calendar, date, settings.personalOccasions)
+
     /** «اليوم» or «غدًا» or «بعد ١٢ يومًا». */
     fun countdown(daysAway: Long): String = when (daysAway) {
         0L -> context.getString(R.string.cal_today)

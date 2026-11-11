@@ -101,7 +101,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Prayer time widgets: the next prayer, and the day's five. -->
+        <!-- Prayer widgets: the next prayer, the day's five, and the Qibla. -->
         <receiver
             android:name=".widget.PrayerNextWidget"
             android:exported="true"
@@ -124,6 +124,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/anaa_prayer_day_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PrayerQiblaWidget"
+            android:exported="true"
+            android:label="@string/prayer_qibla_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_qibla_widget" />
         </receiver>
 
         <!-- Prayer alarms ringing, and everything that clears or moves them. -->

@@ -41,6 +41,18 @@ class CalendarPreferencesRepository internal constructor(
 
     suspend fun setShowWhiteDays(show: Boolean) = dataStore.edit { it[Keys.showWhiteDays] = show }
 
+    suspend fun setHijriDayFromMaghrib(on: Boolean) = dataStore.edit { it[Keys.hijriDayFromMaghrib] = on }
+
+    suspend fun addPersonalOccasion(occasion: com.sakinah.tasbih.calendar.PersonalOccasion) = dataStore.edit {
+        val saved = com.sakinah.tasbih.calendar.PersonalOccasions.decode(it[Keys.personalOccasions].orEmpty())
+        it[Keys.personalOccasions] = com.sakinah.tasbih.calendar.PersonalOccasions.encode(saved + occasion)
+    }
+
+    suspend fun removePersonalOccasion(id: String) = dataStore.edit {
+        val saved = com.sakinah.tasbih.calendar.PersonalOccasions.decode(it[Keys.personalOccasions].orEmpty())
+        it[Keys.personalOccasions] = com.sakinah.tasbih.calendar.PersonalOccasions.encode(saved.filterNot { o -> o.id == id })
+    }
+
     /** Zero clears the correction, so the month follows the computed calendar again. */
     suspend fun setCorrection(month: HijriMonth, days: Int) = dataStore.edit { preferences ->
         val corrections = SavedMaps.decodeStrings(preferences[Keys.monthCorrections])
@@ -76,6 +88,8 @@ class CalendarPreferencesRepository internal constructor(
         weekStart = enumOrDefault(preferences[Keys.weekStart], WeekStart.AUTO),
         showOtherOccasions = preferences[Keys.showOtherOccasions] ?: false,
         showWhiteDays = preferences[Keys.showWhiteDays] ?: true,
+        hijriDayFromMaghrib = preferences[Keys.hijriDayFromMaghrib] ?: false,
+        personalOccasions = com.sakinah.tasbih.calendar.PersonalOccasions.decode(preferences[Keys.personalOccasions].orEmpty()),
         monthWidgetPages = SavedMaps.decodeInts(preferences[Keys.monthWidgetPages]),
         monthWidgetPagesDay = preferences[Keys.monthWidgetPagesDay] ?: 0,
     )
@@ -90,6 +104,8 @@ class CalendarPreferencesRepository internal constructor(
         val weekStart = stringPreferencesKey("week_start")
         val showOtherOccasions = booleanPreferencesKey("show_other_occasions")
         val showWhiteDays = booleanPreferencesKey("show_white_days")
+        val hijriDayFromMaghrib = booleanPreferencesKey("hijri_day_from_maghrib")
+        val personalOccasions = stringSetPreferencesKey("personal_occasions")
         val monthWidgetPages = stringSetPreferencesKey("month_widget_pages")
         val monthWidgetPagesDay = longPreferencesKey("month_widget_pages_day")
     }

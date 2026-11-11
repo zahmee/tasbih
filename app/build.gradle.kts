@@ -60,6 +60,14 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // A trial build for the developer's own phone. Its own package installs beside the
+        // Play-signed Anaa instead of over it, so that copy's counts and settings stay untouched.
+        create("preview") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {

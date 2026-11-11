@@ -24,17 +24,24 @@ import com.sakinah.tasbih.ui.calendar.CalendarText
 import com.sakinah.tasbih.ui.prayer.PrayerText
 import java.time.Instant
 
-/** The prayer time widgets: the next prayer, and the day's five. */
-enum class PrayerWidgetKind(val receiver: Class<out AppWidgetProvider>) {
-    NEXT(PrayerNextWidget::class.java),
-    DAY(PrayerDayWidget::class.java),
+/**
+ * The prayer widgets: the next prayer, the day's five, and the Qibla. Only the first two change
+ * with the prayer times; the Qibla changes only when the place does.
+ */
+enum class PrayerWidgetKind(val receiver: Class<out AppWidgetProvider>, val followsPrayers: Boolean) {
+    NEXT(PrayerNextWidget::class.java, followsPrayers = true),
+    DAY(PrayerDayWidget::class.java, followsPrayers = true),
+    QIBLA(PrayerQiblaWidget::class.java, followsPrayers = false),
     ;
 
     fun placedIds(context: Context): List<Int> =
         AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, receiver)).toList()
 
     companion object {
-        fun anyPlaced(context: Context): Boolean = entries.any { it.placedIds(context).isNotEmpty() }
+        /** Whether a widget on the home screen needs waking at each prayer's time. */
+        fun anyPlaced(context: Context): Boolean = entries.any { it.followsPrayers && it.placedIds(context).isNotEmpty() }
+
+        fun anyAtAll(context: Context): Boolean = entries.any { it.placedIds(context).isNotEmpty() }
     }
 }
 
@@ -65,6 +72,8 @@ class PrayerNextWidget : BasePrayerWidget()
 
 class PrayerDayWidget : BasePrayerWidget()
 
+class PrayerQiblaWidget : BasePrayerWidget()
+
 /**
  * Draws the prayer widgets: text on Anaa's paper, nothing that moves. The next prayer changes at
  * each prayer's time, when the alarm chain redraws them, so no countdown has to tick here.
@@ -74,7 +83,7 @@ class PrayerWidgetUpdater(context: Context) {
     private val manager get() = AppWidgetManager.getInstance(app)
 
     suspend fun updateAll() {
-        if (!PrayerWidgetKind.anyPlaced(app)) return
+        if (!PrayerWidgetKind.anyAtAll(app)) return
         val settings = PrayerPreferencesRepository(app).current()
         val calendarSettings = CalendarPreferencesRepository(app).current()
         val schedule = settings.place?.let { PrayerSchedule(it, settings, HijriCalendar.from(calendarSettings)) }
@@ -82,7 +91,27 @@ class PrayerWidgetUpdater(context: Context) {
         val text = PrayerText(app)
         PrayerWidgetKind.NEXT.placedIds(app).forEach { manager.updateAppWidget(it, nextViews(it, schedule, text)) }
         PrayerWidgetKind.DAY.placedIds(app).forEach { manager.updateAppWidget(it, dayViews(it, schedule, text, calendarText)) }
+        PrayerWidgetKind.QIBLA.placedIds(app).forEach { manager.updateAppWidget(it, qiblaViews(it, schedule, text)) }
     }
+
+    private fun qiblaViews(appWidgetId: Int, schedule: PrayerSchedule?, text: PrayerText): RemoteViews =
+        RemoteViews(app.packageName, R.layout.anaa_widget_qibla).apply {
+            val bearing = schedule?.let { text.degrees(it.qiblaBearing) }
+            setTextViewText(R.id.qb_bearing, bearing ?: app.getString(R.string.qibla_title))
+            setContentDescription(
+                R.id.qb_root,
+                bearing?.let { app.getString(R.string.qibla_bearing, it) } ?: app.getString(R.string.prayer_choose_place),
+            )
+            setOnClickPendingIntent(
+                R.id.qb_root,
+                PendingIntent.getActivity(
+                    app,
+                    appWidgetId,
+                    MainActivity.qiblaIntent(app).setData(Uri.parse("anaa://qibla/$appWidgetId")),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }
 
     private fun nextViews(appWidgetId: Int, schedule: PrayerSchedule?, text: PrayerText): RemoteViews =
         RemoteViews(app.packageName, R.layout.anaa_widget_lines).apply {

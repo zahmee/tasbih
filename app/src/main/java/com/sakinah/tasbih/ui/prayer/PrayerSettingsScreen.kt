@@ -171,6 +171,7 @@ fun PrayerSettingsScreen(
                 listOf(
                     PrayerWidgetKind.NEXT to R.string.prayer_add_next_widget,
                     PrayerWidgetKind.DAY to R.string.prayer_add_day_widget,
+                    PrayerWidgetKind.QIBLA to R.string.prayer_add_qibla_widget,
                 ).forEach { (kind, label) ->
                     OutlinedButton(
                         onClick = {

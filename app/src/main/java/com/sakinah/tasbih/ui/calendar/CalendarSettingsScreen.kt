@@ -123,6 +123,16 @@ fun CalendarSettingsScreen(
             }
         }
 
+        item {
+            SettingToggleRow(
+                stringResource(R.string.cal_day_from_maghrib),
+                stringResource(R.string.cal_day_from_maghrib_hint),
+                settings.hijriDayFromMaghrib,
+                viewModel::setHijriDayFromMaghrib,
+                "calendar_day_from_maghrib",
+            )
+        }
+
         item { SakinahSectionHeader(stringResource(R.string.cal_occasions)) }
         item {
             SettingToggleRow(

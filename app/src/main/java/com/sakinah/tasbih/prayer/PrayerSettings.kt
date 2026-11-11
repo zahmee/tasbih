@@ -18,7 +18,16 @@ data class PrayerPlace(
     /** An IANA zone such as "Asia/Riyadh", so a place abroad shows its own local times. */
     val timeZone: String,
     val fromDevice: Boolean = false,
-)
+) {
+    /**
+     * True when the phone's clock no longer keeps this place's time, which after a time zone
+     * change most likely means the user has travelled and the times are for where they left.
+     */
+    fun keepsOtherTimeThan(deviceZone: java.time.ZoneId, now: java.time.Instant): Boolean {
+        val own = runCatching { java.time.ZoneId.of(timeZone) }.getOrNull() ?: return false
+        return own.rules.getOffset(now) != deviceZone.rules.getOffset(now)
+    }
+}
 
 enum class AsrChoice { AUTO, SHAFI, HANAFI }
 

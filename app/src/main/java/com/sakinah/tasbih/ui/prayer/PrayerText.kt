@@ -26,11 +26,22 @@ class PrayerText(private val context: Context) {
 
     /** «٣:١٦ م», or «١٥:١٦» when the phone uses a 24-hour clock. */
     fun time(time: ZonedDateTime): String {
-        val minute = arabicNumber(time.minute).padStart(2, '٠')
-        if (use24Hour) return "${arabicNumber(time.hour)}:$minute"
-        val hour = (time.hour % 12).let { if (it == 0) 12 else it }
+        if (use24Hour) return clock(time)
         val half = context.getString(if (time.hour < 12) R.string.prayer_am else R.string.prayer_pm)
-        return "${arabicNumber(hour)}:$minute $half"
+        return "${clock(time)} $half"
+    }
+
+    /** «٢٧ مايو ٢٠٢٧». */
+    fun date(date: java.time.LocalDate): String {
+        val month = date.month.getDisplayName(java.time.format.TextStyle.FULL_STANDALONE, java.util.Locale.forLanguageTag("ar"))
+        return "${arabicNumber(date.dayOfMonth)} $month ${arabicNumber(date.year)}"
+    }
+
+    /** «٣:١٦» alone, for a table whose column already names the prayer. */
+    fun clock(time: ZonedDateTime): String {
+        val minute = arabicNumber(time.minute).padStart(2, '٠')
+        val hour = if (use24Hour) time.hour else (time.hour % 12).let { if (it == 0) 12 else it }
+        return "${arabicNumber(hour)}:$minute"
     }
 
     /** «بعد ساعة و٢٠ دقيقة», counted in whole minutes and rounded up. */

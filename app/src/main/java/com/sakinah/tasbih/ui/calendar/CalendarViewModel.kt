@@ -45,6 +45,20 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     fun setShowWhiteDays(show: Boolean) = save { repository.setShowWhiteDays(show) }
 
+    fun addPersonalOccasion(name: String, month: Int, day: Int) = save {
+        repository.addPersonalOccasion(
+            com.sakinah.tasbih.calendar.PersonalOccasion(java.util.UUID.randomUUID().toString().take(8), name, month, day),
+        )
+    }
+
+    fun removePersonalOccasion(id: String) = save { repository.removePersonalOccasion(id) }
+
+    /** The prayer alarm also wakes at Maghrib for the date widget while this is on. */
+    fun setHijriDayFromMaghrib(on: Boolean) = save {
+        repository.setHijriDayFromMaghrib(on)
+        com.sakinah.tasbih.alerts.PrayerAlarms.schedule(getApplication())
+    }
+
     fun setCorrection(month: HijriMonth, days: Int) = save { repository.setCorrection(month, days) }
 
     /** Opening the app also brings the widgets up to date, in case an alarm was held back. */

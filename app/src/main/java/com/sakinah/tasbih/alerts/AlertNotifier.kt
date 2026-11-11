@@ -27,6 +27,8 @@ object AlertNotifier {
     const val CHANNEL_SILENT = "prayer_silent"
     const val CHANNEL_REMINDER = "prayer_reminder"
     const val CHANNEL_ADHAN = "prayer_adhan_playing"
+    private const val CHANNEL_TRAVEL = "prayer_travel"
+    private const val TRAVEL_ID = 4300
     private const val TONE_PREFIX = "prayer_tone_"
     private const val NOTIFICATION_ID = 4100
 
@@ -56,6 +58,9 @@ object AlertNotifier {
             NotificationChannel(CHANNEL_REMINDER, context.getString(R.string.alert_channel_reminder), NotificationManager.IMPORTANCE_DEFAULT),
             // The adhan itself plays from the service; its notification only carries the stop button.
             NotificationChannel(CHANNEL_ADHAN, context.getString(R.string.alert_channel_adhan), NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(null, null)
+            },
+            NotificationChannel(CHANNEL_TRAVEL, context.getString(R.string.alert_channel_travel), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 setSound(null, null)
             },
         )
@@ -105,6 +110,22 @@ object AlertNotifier {
             .build()
         @Suppress("MissingPermission")
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID + prayer.ordinal, notification)
+    }
+
+    /** A quiet word after a time zone change, since the times shown are still for [placeName]. */
+    fun postTravel(context: Context, placeName: String) {
+        if (!canPost(context)) return
+        ensureChannels(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_TRAVEL)
+            .setSmallIcon(R.drawable.ic_stat_prayer)
+            .setContentTitle(context.getString(R.string.alert_travel_title))
+            .setContentText(context.getString(R.string.alert_travel_text, placeName))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.alert_travel_text, placeName)))
+            .setAutoCancel(true)
+            .setContentIntent(openPrayerTimes(context))
+            .build()
+        @Suppress("MissingPermission")
+        NotificationManagerCompat.from(context).notify(TRAVEL_ID, notification)
     }
 
     fun openPrayerTimes(context: Context): PendingIntent = PendingIntent.getActivity(

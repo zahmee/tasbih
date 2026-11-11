@@ -75,7 +75,7 @@ fun HomeScreen(
     state: SakinahUiState,
     onOpenCollection: (String) -> Unit,
     onRetry: () -> Unit,
-    hijriDateLabel: String? = null,
+    hijriDateLabel: (Instant) -> String? = { null },
     onOpenCalendar: () -> Unit = {},
     nextPrayerLabel: (Instant) -> String? = { null },
     onOpenPrayer: () -> Unit = {},
@@ -100,7 +100,7 @@ fun HomeScreen(
             .withDecimalStyle(DecimalStyle.of(arabicLocale))
     }
     val gregorianDateLabel = remember(today) { dateFormatter.format(today) }
-    val hijriDate = hijriDateLabel?.takeIf { it.isNotEmpty() }
+    val hijriDate = hijriDateLabel(now)?.takeIf { it.isNotEmpty() }
         ?: remember(today) { dateFormatter.format(HijrahDate.from(today)) }
     val featuredOrder = if (LocalTime.now().hour in 4..15) 27 else 28
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }

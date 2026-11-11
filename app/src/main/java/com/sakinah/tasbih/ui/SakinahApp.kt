@@ -75,6 +75,7 @@ import com.sakinah.tasbih.ui.calendar.OccasionsScreen
 import com.sakinah.tasbih.ui.prayer.AlertSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PlaceScreen
 import com.sakinah.tasbih.ui.prayer.ReliabilityScreen
+import com.sakinah.tasbih.ui.prayer.PrayerMonthScreen
 import com.sakinah.tasbih.ui.prayer.PrayerSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PrayerText
 import com.sakinah.tasbih.ui.prayer.PrayerTimesScreen
@@ -106,6 +107,7 @@ private sealed interface AppDestination {
     data object Qibla : AppDestination
     data object PrayerAlerts : AppDestination
     data object PrayerReliability : AppDestination
+    data object PrayerMonth : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -129,6 +131,7 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.Qibla -> "qibla"
     AppDestination.PrayerAlerts -> "prayer-alerts"
     AppDestination.PrayerReliability -> "prayer-reliability"
+    AppDestination.PrayerMonth -> "prayer-month"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -149,6 +152,7 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "qibla" -> AppDestination.Qibla
     "prayer-alerts" -> AppDestination.PrayerAlerts
     "prayer-reliability" -> AppDestination.PrayerReliability
+    "prayer-month" -> AppDestination.PrayerMonth
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
@@ -311,6 +315,14 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.Prayer)
                 onOpenRequestHandled()
             }
+            AppOpenRequest.Qibla -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Qibla)
+                onOpenRequestHandled()
+            }
         }
     }
 
@@ -381,7 +393,12 @@ private fun SakinahNavigation(
                                 state = latestState.value,
                                 onOpenCollection = ::openReader,
                                 onRetry = viewModel::retryContentLoad,
-                                hijriDateLabel = calendarText?.hijriDate(today),
+                                hijriDateLabel = { now ->
+                                    calendarText?.let { text ->
+                                        val maghrib = prayerState?.schedule?.day(today)?.get(com.sakinah.tasbih.prayer.Prayer.MAGHRIB)?.toInstant()
+                                        text.hijriDate(com.sakinah.tasbih.calendar.hijriDayFor(today, now, maghrib, text.settings.hijriDayFromMaghrib))
+                                    }
+                                },
                                 onOpenCalendar = { openCalendar() },
                                 nextPrayerLabel = { now ->
                                     prayerState?.schedule?.next(now)?.let { "${prayerText.name(it.prayer, it.time)} ${prayerText.time(it.time)}" }
@@ -492,9 +509,11 @@ private fun SakinahNavigation(
 
                         is AppDestination.Calendar -> NavEntry(destination) {
                             calendarText?.let { text ->
+                                val maghrib = prayerState?.schedule?.day(today)?.get(com.sakinah.tasbih.prayer.Prayer.MAGHRIB)?.toInstant()
                                 CalendarScreen(
                                     text = text,
                                     today = today,
+                                    hijriToday = com.sakinah.tasbih.calendar.hijriDayFor(today, java.time.Instant.now(), maghrib, text.settings.hijriDayFromMaghrib),
                                     startDate = destination.startEpochDay?.let(LocalDate::ofEpochDay) ?: today,
                                     jump = calendarJump,
                                     onSetPrimary = calendarViewModel::setPrimary,
@@ -522,6 +541,8 @@ private fun SakinahNavigation(
                                             openCalendar(date)
                                         }
                                     },
+                                    onAddPersonal = calendarViewModel::addPersonalOccasion,
+                                    onRemovePersonal = calendarViewModel::removePersonalOccasion,
                                     onBack = ::navigateBack,
                                 )
                             }
@@ -544,7 +565,16 @@ private fun SakinahNavigation(
                                     onBack = ::navigateBack,
                                     alerts = prayerAlerts,
                                     onOpenAlerts = { backStack.add(AppDestination.PrayerAlerts) },
+                                    onOpenMonth = { backStack.add(AppDestination.PrayerMonth) },
                                 )
+                            }
+                        }
+
+                        AppDestination.PrayerMonth -> NavEntry(destination) {
+                            val schedule = prayerState?.schedule
+                            val text = calendarText
+                            if (schedule != null && text != null) {
+                                PrayerMonthScreen(schedule = schedule, calendarText = text, onBack = ::navigateBack)
                             }
                         }
 
@@ -637,6 +667,7 @@ private fun SakinahNavigation(
 sealed interface AppOpenRequest {
     data class Calendar(val date: LocalDate, val showOccasions: Boolean = false) : AppOpenRequest
     data object Prayer : AppOpenRequest
+    data object Qibla : AppOpenRequest
 }
 
 private fun Any?.topLevelDestination(): AppDestination? = when (this) {

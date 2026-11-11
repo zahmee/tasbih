@@ -41,14 +41,25 @@ class CalendarWidgetUpdater(context: Context) {
     suspend fun updateAll() {
         if (!CalendarWidgetKind.anyPlaced(appContext)) return
         val text = CalendarText(appContext, repository.current())
+        val maghrib = maghribToday(text)
         CalendarWidgetKind.entries.forEach { kind ->
-            kind.placedIds(appContext).forEach { draw(kind, it, text) }
+            kind.placedIds(appContext).forEach { draw(kind, it, text, maghrib) }
         }
+    }
+
+    /** Today's Maghrib, needed only when the user lets the Hijri date turn at it. */
+    private suspend fun maghribToday(text: CalendarText): java.time.Instant? {
+        if (!text.settings.hijriDayFromMaghrib) return null
+        val prayer = com.sakinah.tasbih.data.PrayerPreferencesRepository(appContext).current()
+        val place = prayer.place ?: return null
+        return com.sakinah.tasbih.prayer.PrayerSchedule(place, prayer, text.calendar)
+            .day(LocalDate.now())[com.sakinah.tasbih.prayer.Prayer.MAGHRIB].toInstant()
     }
 
     suspend fun update(appWidgetId: Int) {
         val kind = kindOf(appWidgetId) ?: return
-        draw(kind, appWidgetId, CalendarText(appContext, repository.current()))
+        val text = CalendarText(appContext, repository.current())
+        draw(kind, appWidgetId, text, maghribToday(text))
     }
 
     suspend fun turnMonth(appWidgetId: Int, direction: Int) {
@@ -63,18 +74,18 @@ class CalendarWidgetUpdater(context: Context) {
         return CalendarWidgetKind.entries.firstOrNull { it.receiver.name == provider.className }
     }
 
-    private fun draw(kind: CalendarWidgetKind, appWidgetId: Int, text: CalendarText) {
+    private fun draw(kind: CalendarWidgetKind, appWidgetId: Int, text: CalendarText, maghrib: java.time.Instant?) {
         val views = when (kind) {
-            CalendarWidgetKind.DATE -> dateViews(appWidgetId, text)
+            CalendarWidgetKind.DATE -> dateViews(appWidgetId, text, maghrib)
             CalendarWidgetKind.OCCASION -> occasionViews(appWidgetId, text)
             CalendarWidgetKind.MONTH -> monthViews(appWidgetId, text)
         }
         manager.updateAppWidget(appWidgetId, views)
     }
 
-    private fun dateViews(appWidgetId: Int, text: CalendarText): RemoteViews {
+    private fun dateViews(appWidgetId: Int, text: CalendarText, maghrib: java.time.Instant?): RemoteViews {
         val today = LocalDate.now()
-        val hijri = text.hijriDate(today)
+        val hijri = text.hijriDate(com.sakinah.tasbih.calendar.hijriDayFor(today, java.time.Instant.now(), maghrib, text.settings.hijriDayFromMaghrib))
         val gregorian = text.gregorianDate(today)
         val hijriFirst = text.settings.primary == PrimaryCalendar.HIJRI && hijri.isNotEmpty()
         return lineViews(

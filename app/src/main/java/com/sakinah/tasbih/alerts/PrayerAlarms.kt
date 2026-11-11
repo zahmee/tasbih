@@ -25,59 +25,48 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * Keeps one alarm for the next prayer alert and one for the widgets' next change. Each alarm,
- * when it rings, sets the one after it, so the chain survives a new day or a new time zone.
+ * Keeps a single alarm, for the next prayer alert or the widgets' next change, whichever comes
+ * first. One alarm rather than two spares Android's limit on alarms that ring in Doze. Each
+ * alarm, when it rings, sets the one after it, so the chain survives a new day or time zone.
  * With the user's leave to set exact alarms they ring on the minute, even in Doze. Without it
  * they ring within ten minutes, and the full adhan gives way to a notification tone.
  */
 object PrayerAlarms {
-    private const val ACTION_ALERT = "com.sakinah.tasbih.action.PRAYER_ALERT"
-    private const val ACTION_BOUNDARY = "com.sakinah.tasbih.action.PRAYER_BOUNDARY"
+    private const val ACTION_WAKE = "com.sakinah.tasbih.action.PRAYER_WAKE"
     private const val ACTION_TEST = "com.sakinah.tasbih.action.PRAYER_TEST"
     private const val EXTRA_PRAYER = "prayer"
     private const val EXTRA_KIND = "kind"
     private const val EXTRA_TIME = "time"
-    private const val REQUEST_ALERT = 1
-    private const val REQUEST_BOUNDARY = 2
+    private const val REQUEST_WAKE = 1
     private const val REQUEST_TEST = 3
     private val WINDOW = Duration.ofMinutes(10)
-    private val AFTER_BOUNDARY = Duration.ofSeconds(5)
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     suspend fun schedule(context: Context) {
         val app = context.applicationContext
-        val (schedule, alerts) = load(app) ?: run {
-            cancel(app, REQUEST_ALERT, ACTION_ALERT)
-            cancel(app, REQUEST_BOUNDARY, ACTION_BOUNDARY)
+        val wake = load(app)?.let { (schedule, alerts) ->
+            AlertPlanner.nextWake(schedule, alerts, Instant.now(), PrayerWidgetKind.anyPlaced(app) || dateTurnsAtMaghrib(app))
+        }
+        if (wake == null) {
+            cancel(app, REQUEST_WAKE, ACTION_WAKE)
             return
         }
-        val now = Instant.now()
-        val next = AlertPlanner.nextAlert(schedule, alerts, now)
-        if (next == null) {
-            cancel(app, REQUEST_ALERT, ACTION_ALERT)
-        } else {
-            set(app, REQUEST_ALERT, next.at, intent(app, ACTION_ALERT, REQUEST_ALERT, next.prayer, next.kind, next.prayerTime))
-        }
-        if (PrayerWidgetKind.anyPlaced(app)) {
-            val boundary = AlertPlanner.nextBoundary(schedule, now).plus(AFTER_BOUNDARY)
-            set(app, REQUEST_BOUNDARY, boundary, intent(app, ACTION_BOUNDARY, REQUEST_BOUNDARY, null, null, null))
-        } else {
-            cancel(app, REQUEST_BOUNDARY, ACTION_BOUNDARY)
-        }
+        val event = wake.event
+        set(app, wake.at, intent(app, ACTION_WAKE, REQUEST_WAKE, event?.prayer, event?.kind, event?.prayerTime), wake.urgent)
     }
 
     /** A trial in one minute, so the user can lock the screen and hear what a prayer will sound like. */
     fun scheduleTest(context: Context, prayer: Prayer) {
         val at = ZonedDateTime.now().plusMinutes(1)
-        set(context, REQUEST_TEST, at, intent(context, ACTION_TEST, REQUEST_TEST, prayer, AlertKind.PRAYER, at))
+        set(context, at, intent(context, ACTION_TEST, REQUEST_TEST, prayer, AlertKind.PRAYER, at))
     }
 
     internal suspend fun handle(context: Context, intent: Intent) {
         val app = context.applicationContext
         when (intent.action) {
-            ACTION_ALERT, ACTION_TEST -> {
+            ACTION_WAKE, ACTION_TEST -> {
                 val prayer = Prayer.entries.getOrNull(intent.getIntExtra(EXTRA_PRAYER, -1))
                 val kind = AlertKind.entries.getOrNull(intent.getIntExtra(EXTRA_KIND, -1))
                 val time = intent.getLongExtra(EXTRA_TIME, 0)
@@ -89,7 +78,14 @@ object PrayerAlarms {
             }
         }
         PrayerWidgetUpdater(app).updateAll()
+        if (dateTurnsAtMaghrib(app)) com.sakinah.tasbih.widget.CalendarWidgetUpdater(app).updateAll()
         if (intent.action != ACTION_TEST) schedule(app)
+        if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
+            val place = PrayerPreferencesRepository(app).current().place
+            if (place != null && place.keepsOtherTimeThan(ZoneId.systemDefault(), Instant.now())) {
+                AlertNotifier.postTravel(app, place.name)
+            }
+        }
     }
 
     private fun raise(context: Context, prayer: Prayer, kind: AlertKind, style: AlertStyle, time: ZonedDateTime, alerts: AlertSettings) {
@@ -119,6 +115,11 @@ object PrayerAlarms {
         return listOf(AlertStyle.ADHAN, AlertStyle.SOUND, AlertStyle.SILENT).firstOrNull { it in styles } ?: AlertStyle.SOUND
     }
 
+    /** The date widget must also wake at Maghrib when the user lets the Hijri date turn then. */
+    private suspend fun dateTurnsAtMaghrib(context: Context): Boolean =
+        CalendarPreferencesRepository(context).current().hijriDayFromMaghrib &&
+            com.sakinah.tasbih.widget.CalendarWidgetKind.DATE.placedIds(context).isNotEmpty()
+
     private suspend fun load(context: Context): Pair<PrayerSchedule, AlertSettings>? {
         val repository = PrayerPreferencesRepository(context)
         val settings = repository.current()
@@ -127,13 +128,17 @@ object PrayerAlarms {
         return PrayerSchedule(place, settings, calendar) to repository.currentAlerts()
     }
 
-    private fun set(context: Context, request: Int, at: ZonedDateTime, operation: PendingIntent) {
+    /**
+     * An [urgent] alarm is an alarm clock: Doze never delays it, at the cost of an alarm icon in
+     * the status bar until it rings, so it is kept for a prayer that comes right after its reminder.
+     */
+    private fun set(context: Context, at: ZonedDateTime, operation: PendingIntent, urgent: Boolean = false) {
         val manager = context.getSystemService(AlarmManager::class.java)
         val millis = at.toInstant().toEpochMilli()
-        if (canScheduleExact(context)) {
-            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, operation)
-        } else {
-            manager.setWindow(AlarmManager.RTC_WAKEUP, millis, WINDOW.toMillis(), operation)
+        when {
+            !canScheduleExact(context) -> manager.setWindow(AlarmManager.RTC_WAKEUP, millis, WINDOW.toMillis(), operation)
+            urgent -> manager.setAlarmClock(AlarmManager.AlarmClockInfo(millis, AlertNotifier.openPrayerTimes(context)), operation)
+            else -> manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, operation)
         }
     }
 

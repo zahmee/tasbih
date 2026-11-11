@@ -16,6 +16,10 @@ data class CalendarSettings(
     /** Occasions that not all Muslims mark, such as the Mawlid. Off unless chosen. */
     val showOtherOccasions: Boolean = false,
     val showWhiteDays: Boolean = true,
+    /** The Islamic day begins with its night, so the user may let the Hijri date turn at Maghrib. */
+    val hijriDayFromMaghrib: Boolean = false,
+    /** The user's own occasions, each on a Hijri day that returns every year. */
+    val personalOccasions: List<PersonalOccasion> = emptyList(),
     /** Month widget to how many months it was moved from the current one, on [monthWidgetPagesDay]. */
     val monthWidgetPages: Map<Int, Int> = emptyMap(),
     /** The day, as an epoch day, the pages were last turned. On any other day they start again. */
@@ -42,3 +46,11 @@ internal object SavedMaps {
         key.toIntOrNull()?.let { it to value }
     }.toMap()
 }
+
+/**
+ * The day whose Hijri date is today's. After [maghribToday], when the user lets the Hijri day
+ * begin at sunset, it is already tomorrow's. Without a known Maghrib, as before a place is
+ * chosen for prayer times, the date turns at midnight as usual.
+ */
+fun hijriDayFor(today: java.time.LocalDate, now: java.time.Instant, maghribToday: java.time.Instant?, fromMaghrib: Boolean): java.time.LocalDate =
+    if (fromMaghrib && maghribToday != null && !now.isBefore(maghribToday)) today.plusDays(1) else today

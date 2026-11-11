@@ -70,6 +70,7 @@ fun PrayerTimesScreen(
     onBack: () -> Unit,
     alerts: AlertSettings? = null,
     onOpenAlerts: () -> Unit = {},
+    onOpenMonth: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -102,7 +103,7 @@ fun PrayerTimesScreen(
         if (schedule == null) {
             NoPlace(onChoosePlace)
         } else {
-            Times(schedule, state, text, calendarText, now, onChoosePlace, alerts)
+            Times(schedule, state, text, calendarText, now, onChoosePlace, alerts, onOpenMonth)
         }
     }
 }
@@ -143,6 +144,7 @@ private fun Times(
     now: Instant,
     onChoosePlace: () -> Unit,
     alerts: AlertSettings?,
+    onOpenMonth: () -> Unit,
 ) {
     val date = schedule.today(now)
     val day = remember(schedule, date) { schedule.day(date) }
@@ -167,8 +169,9 @@ private fun Times(
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 calendarText?.let {
+                    val hijriDay = com.sakinah.tasbih.calendar.hijriDayFor(date, now, day[Prayer.MAGHRIB].toInstant(), it.settings.hijriDayFromMaghrib)
                     Text(
-                        listOf(it.hijriDate(date), it.gregorianDate(date)).filter(String::isNotEmpty).joinToString(" – "),
+                        listOf(it.hijriDate(hijriDay), it.gregorianDate(date)).filter(String::isNotEmpty).joinToString(" – "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -200,6 +203,15 @@ private fun Times(
                         alert = alerts?.alertFor(prayer)?.style ?: AlertStyle.OFF,
                     )
                 }
+            }
+        }
+
+        if (calendarText != null) {
+            OutlinedButton(
+                onClick = onOpenMonth,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("prayer_open_month"),
+            ) {
+                Text(stringResource(R.string.prayer_month_open))
             }
         }
 

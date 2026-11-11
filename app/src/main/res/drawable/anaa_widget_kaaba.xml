@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Kaaba as the Qibla widget draws it: a dark cube with a copper band. The outline takes the
+    widget's text colour, so the cube still shows on the dark paper of night mode.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF1B1B1B"
+        android:pathData="M4,4h16v16h-16z"
+        android:strokeColor="@color/anaa_widget_text"
+        android:strokeWidth="0.8" />
+    <path
+        android:fillColor="#FFB8893E"
+        android:pathData="M4.4,7.6h15.2v2.4h-15.2z" />
+</vector>
