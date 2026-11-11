@@ -1,6 +1,7 @@
 package com.sakinah.tasbih
 
 import android.graphics.Bitmap
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -41,7 +42,7 @@ class TasbihHeaderFlowTest {
     }
 
     @Test fun overflowEditsCurrentPhraseAndUndoesOneCountWithoutLosingProgress() {
-        waitTag("nav_tasbih")
+        waitTag("nav_home")
         lateinit var vm: SakinahViewModel
         val theme = if (InstrumentationRegistry.getArguments().getString("gallery", "").contains("dark")) ThemeMode.Dark else ThemeMode.Light
         rule.activityRule.scenario.onActivity {
@@ -53,7 +54,7 @@ class TasbihHeaderFlowTest {
         }
         rule.waitUntil(10_000) { vm.uiState.value.selectedPhrase.isCustom && vm.uiState.value.selectedPhrase.text == "الحمد لله" }
         val phraseId = vm.uiState.value.selectedPhrase.id
-        rule.onNodeWithTag("nav_tasbih").performClick()
+        rule.onNodeWithTag("nav_home").performClick(); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitTag("tasbih_counter")
         rule.onNodeWithTag("tasbih_manage_phrases").assertDoesNotExist()
         rule.onNodeWithTag("tasbih_undo").assertDoesNotExist()

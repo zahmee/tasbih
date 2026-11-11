@@ -83,7 +83,7 @@ fun CalendarScreen(
     onOpenOccasions: () -> Unit,
     onOpenConverter: () -> Unit,
     onOpenSettings: () -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     hijriToday: LocalDate = today,
 ) {
     val calendar = text.calendar

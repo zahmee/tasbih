@@ -3,6 +3,7 @@ package com.sakinah.tasbih
 import android.graphics.Bitmap
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -87,7 +88,7 @@ class AdaptiveDesignFlowTest {
         val longText = "سبحان الله والحمد لله ".repeat(22) + "نهاية الذكر"
         rule.activityRule.scenario.onActivity { vm.addCustomPhrase(longText, 33) }
         rule.waitUntil(10_000) { vm.uiState.value.selectedPhrase.text == longText }
-        tap("nav_tasbih"); waitTag("tasbih_counter"); capture("tasbih")
+        tap("nav_home"); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick(); waitTag("tasbih_counter"); capture("tasbih")
         tap("tasbih_focus_mode"); waitTag("tasbih_focus_screen")
         rule.onNodeWithTag("tasbih_counter").assertIsDisplayed(); capture("tasbih-focus")
         tap("tasbih_exit_focus_mode"); tap("tasbih_actions"); tap("tasbih_manage_phrases")

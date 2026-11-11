@@ -44,7 +44,7 @@ class SakinahCoreFlowTest {
     fun homeKeepsTheCompactGreetingAndMovesTheFullBookToTheLibrary() {
         waitForTag("home_featured")
 
-        composeRule.onNodeWithTag("home_greeting").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_open_calendar").assertIsDisplayed()
         composeRule.onNodeWithText("السلام عليكم").assertIsDisplayed()
         waitForAbsentText("حصن المسلم كاملًا")
         composeRule.onNodeWithTag("nav_library").assertIsDisplayed()
@@ -86,8 +86,8 @@ class SakinahCoreFlowTest {
         composeRule.activityRule.scenario.onActivity {
             it.onBackPressedDispatcher.onBackPressed()
         }
-        waitForTag("nav_tasbih")
-        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        waitForTag("nav_home")
+        composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTag("tasbih_counter")
 
         composeRule.onNodeWithTag("tasbih_actions").performClick()
@@ -213,7 +213,7 @@ class SakinahCoreFlowTest {
         val updatedPhrase = "ذِكْرُ اختبارِ الجدول المعدّل"
 
         waitForTag("home_featured")
-        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTag("tasbih_counter")
         composeRule.onNodeWithTag("tasbih_actions").performClick()
         composeRule.onNodeWithTag("tasbih_manage_phrases").performClick()
@@ -264,7 +264,7 @@ class SakinahCoreFlowTest {
     @Test
     fun tasbihCountsSurvivePhraseAndTabNavigationAndRecreation() {
         waitForTag("home_featured")
-        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTag("tasbih_counter")
         lateinit var viewModel: SakinahViewModel
         composeRule.activityRule.scenario.onActivity { activity ->
@@ -292,7 +292,7 @@ class SakinahCoreFlowTest {
         waitForTasbihTotal(2)
         composeRule.onNodeWithTag("nav_home").performClick()
         waitForTag("home_featured")
-        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTasbihTotal(2)
         composeRule.activityRule.scenario.recreate()
         waitForTag("tasbih_counter")
@@ -312,7 +312,7 @@ class SakinahCoreFlowTest {
     @Test
     fun tasbihFocusModeHidesNavigationAndCyclesProgressWithoutResettingTotal() {
         waitForTag("home_featured")
-        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTag("tasbih_counter")
 
         lateinit var viewModel: SakinahViewModel

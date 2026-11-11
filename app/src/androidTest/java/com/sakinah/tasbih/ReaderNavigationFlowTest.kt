@@ -2,6 +2,7 @@ package com.sakinah.tasbih
 
 import android.graphics.Bitmap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
@@ -48,7 +49,7 @@ class ReaderNavigationFlowTest {
         rule.onNodeWithTag("reader_focus_mode").assertIsDisplayed()
         rule.onNodeWithTag("reader_actions").assertIsDisplayed()
         rule.onNodeWithTag("reader_dhikr_text").assertIsDisplayed()
-        listOf("nav_home", "nav_library", "nav_tasbih", "nav_settings").forEach {
+        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_settings").forEach {
             rule.onNodeWithTag(it).assertIsDisplayed()
         }
         rule.onNodeWithTag(selectedTag).assertIsSelected()
@@ -69,7 +70,7 @@ class ReaderNavigationFlowTest {
         waitTag("reader_focus_screen")
         rule.onNodeWithTag("reader_top_bar").assertDoesNotExist()
         rule.onNodeWithTag("reader_actions").assertDoesNotExist()
-        listOf("nav_home", "nav_library", "nav_tasbih", "nav_settings").forEach {
+        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_settings").forEach {
             rule.onNodeWithTag(it).assertDoesNotExist()
         }
         rule.onNodeWithTag("reader_count_button").assertIsDisplayed()
@@ -132,7 +133,7 @@ class ReaderNavigationFlowTest {
         rule.onNodeWithTag("reader_settings").assertIsDisplayed()
         Espresso.pressBack()
         assertNormalChrome("nav_library")
-        rule.onNodeWithTag("nav_tasbih").performClick()
+        rule.onNodeWithTag("nav_home").performClick(); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitTag("tasbih_counter")
         assertEquals(progress, vm.uiState.value.progressFor("hisn_001"))
     }

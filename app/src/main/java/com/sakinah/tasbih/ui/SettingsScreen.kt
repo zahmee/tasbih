@@ -14,9 +14,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.TouchApp
@@ -53,8 +51,6 @@ fun SettingsScreen(
     onOpenAchievements: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenSoundSettings: () -> Unit,
-    onOpenCalendar: () -> Unit = {},
-    onOpenPrayer: () -> Unit = {},
     onOpenQibla: () -> Unit = {},
 ) {
     SakinahScreenBackground {
@@ -70,9 +66,7 @@ fun SettingsScreen(
             item { SettingNavigationRow(stringResource(R.string.daily_reset_settings), dailyResetSummary(state.dailyReset), Icons.Outlined.Update, "open_daily_reset_settings") { onOpenSection(SettingsSection.DailyReset) } }
             item { SettingNavigationRow(stringResource(R.string.appearance), stringResource(R.string.appearance_settings_summary), Icons.Outlined.Palette, "open_appearance_settings") { onOpenSection(SettingsSection.Appearance) } }
             item { Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp)) }
-            item { SettingNavigationRow(stringResource(R.string.prayer_title), stringResource(R.string.prayer_entry_summary), Icons.Outlined.Schedule, "open_prayer", onOpenPrayer) }
             item { SettingNavigationRow(stringResource(R.string.qibla_title), stringResource(R.string.qibla_entry_summary), Icons.Outlined.Explore, "open_qibla", onOpenQibla) }
-            item { SettingNavigationRow(stringResource(R.string.cal_title), stringResource(R.string.cal_entry_summary), Icons.Outlined.CalendarMonth, "open_calendar", onOpenCalendar) }
             item { SettingNavigationRow(stringResource(R.string.achievements), stringResource(R.string.activity_entry_summary), Icons.Outlined.BarChart, "open_achievements", onOpenAchievements) }
             item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
         }

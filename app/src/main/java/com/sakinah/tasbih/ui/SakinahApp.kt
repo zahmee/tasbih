@@ -49,7 +49,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -77,7 +76,6 @@ import com.sakinah.tasbih.ui.prayer.PlaceScreen
 import com.sakinah.tasbih.ui.prayer.ReliabilityScreen
 import com.sakinah.tasbih.ui.prayer.PrayerMonthScreen
 import com.sakinah.tasbih.ui.prayer.PrayerSettingsScreen
-import com.sakinah.tasbih.ui.prayer.PrayerText
 import com.sakinah.tasbih.ui.prayer.PrayerTimesScreen
 import com.sakinah.tasbih.ui.prayer.PrayerViewModel
 import com.sakinah.tasbih.ui.prayer.QiblaScreen
@@ -241,7 +239,7 @@ private fun SakinahNavigation(
     }
 
     fun navigateTopLevel(destination: AppDestination) {
-        if (destination != AppDestination.Tasbih) isTasbihFocusMode = false
+        isTasbihFocusMode = false
         isReaderFocusMode = false
         backStack.clear()
         backStack.add(destination)
@@ -283,11 +281,11 @@ private fun SakinahNavigation(
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
     val placeSearch by prayerViewModel.search.collectAsStateWithLifecycle()
     val prayerAlerts by prayerViewModel.alerts.collectAsStateWithLifecycle()
-    val prayerText = remember(context) { PrayerText(context) }
 
-    fun openPrayer() {
+    fun openTasbih() {
+        isTasbihFocusMode = false
         isReaderFocusMode = false
-        backStack.add(AppDestination.Prayer)
+        backStack.add(AppDestination.Tasbih)
     }
 
     fun openCalendar(date: LocalDate? = null) {
@@ -336,12 +334,14 @@ private fun SakinahNavigation(
         }
     }
 
+    /** A tab page shows a way back only when something lies under it, as after a widget tap. */
+    fun backFor(destination: AppDestination): (() -> Unit)? =
+        if (backStack.indexOf(destination) > 0) ::navigateBack else null
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavigationRail = maxWidth >= 600.dp
         val compactNavigationRail = maxHeight < 480.dp
-        val hideTopLevelNavigation = (isTasbihFocusMode &&
-            topLevelDestination == AppDestination.Tasbih) ||
-            (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader)
+        val hideTopLevelNavigation = isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader
         Scaffold(
             bottomBar = {
                 if (topLevelDestination != null && !useNavigationRail && !hideTopLevelNavigation) {
@@ -391,19 +391,16 @@ private fun SakinahNavigation(
                         AppDestination.Home -> NavEntry(destination) {
                             HomeScreen(
                                 state = latestState.value,
+                                schedule = prayerState?.schedule,
+                                calendarText = calendarText,
                                 onOpenCollection = ::openReader,
                                 onRetry = viewModel::retryContentLoad,
-                                hijriDateLabel = { now ->
-                                    calendarText?.let { text ->
-                                        val maghrib = prayerState?.schedule?.day(today)?.get(com.sakinah.tasbih.prayer.Prayer.MAGHRIB)?.toInstant()
-                                        text.hijriDate(com.sakinah.tasbih.calendar.hijriDayFor(today, now, maghrib, text.settings.hijriDayFromMaghrib))
-                                    }
-                                },
-                                onOpenCalendar = { openCalendar() },
-                                nextPrayerLabel = { now ->
-                                    prayerState?.schedule?.next(now)?.let { "${prayerText.name(it.prayer, it.time)} ${prayerText.time(it.time)}" }
-                                },
-                                onOpenPrayer = ::openPrayer,
+                                onOpenPrayer = { navigateTopLevel(AppDestination.Prayer) },
+                                onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
+                                onOpenCalendar = { navigateTopLevel(CalendarTab) },
+                                onOpenQibla = { backStack.add(AppDestination.Qibla) },
+                                onOpenMonth = { backStack.add(AppDestination.PrayerMonth) },
+                                onOpenTasbih = ::openTasbih,
                             )
                         }
 
@@ -414,6 +411,7 @@ private fun SakinahNavigation(
                                 onOpenEntry = ::openEntry,
                                 onToggleFavorite = viewModel::toggleFavorite,
                                 onRetry = viewModel::retryContentLoad,
+                                onOpenTasbih = ::openTasbih,
                             )
                         }
 
@@ -433,6 +431,7 @@ private fun SakinahNavigation(
                                 onAddCustomPhrase = viewModel::addCustomPhrase,
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
                                 onSetTextScale = viewModel::setTasbihTextScale,
+                                onBack = ::navigateBack,
                             )
                         }
 
@@ -455,8 +454,6 @@ private fun SakinahNavigation(
                                 onOpenAchievements = { backStack.add(AppDestination.Achievements) },
                                 onOpenAbout = { backStack.add(AppDestination.About) },
                                 onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
-                                onOpenCalendar = { openCalendar() },
-                                onOpenPrayer = ::openPrayer,
                                 onOpenQibla = { backStack.add(AppDestination.Qibla) },
                             )
                         }
@@ -521,7 +518,7 @@ private fun SakinahNavigation(
                                     onOpenOccasions = { backStack.add(AppDestination.CalendarOccasions) },
                                     onOpenConverter = { backStack.add(AppDestination.CalendarConverter) },
                                     onOpenSettings = { backStack.add(AppDestination.CalendarSettings) },
-                                    onBack = ::navigateBack,
+                                    onBack = backFor(destination),
                                 )
                             }
                         }
@@ -562,7 +559,7 @@ private fun SakinahNavigation(
                                     onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
                                     onOpenQibla = { backStack.add(AppDestination.Qibla) },
                                     onOpenSettings = { backStack.add(AppDestination.PrayerOptions) },
-                                    onBack = ::navigateBack,
+                                    onBack = backFor(destination),
                                     alerts = prayerAlerts,
                                     onOpenAlerts = { backStack.add(AppDestination.PrayerAlerts) },
                                     onOpenMonth = { backStack.add(AppDestination.PrayerMonth) },
@@ -670,13 +667,36 @@ sealed interface AppOpenRequest {
     data object Qibla : AppOpenRequest
 }
 
+/** Every calendar page belongs to the calendar tab, whichever month it opened on. */
+private val CalendarTab = AppDestination.Calendar()
+
 private fun Any?.topLevelDestination(): AppDestination? = when (this) {
     AppDestination.Home -> AppDestination.Home
+    AppDestination.Prayer -> AppDestination.Prayer
+    is AppDestination.Calendar -> CalendarTab
     AppDestination.Library -> AppDestination.Library
-    AppDestination.Tasbih -> AppDestination.Tasbih
     AppDestination.Settings -> AppDestination.Settings
     else -> null
 }
+
+/**
+ * The bottom bar since November 11, 2026: the day, prayer and the calendar first, then the
+ * adhkar, which hold the tasbih, and more.
+ */
+private data class AppTab(
+    val destination: AppDestination,
+    val symbol: IslamicNavSymbol,
+    @androidx.annotation.StringRes val label: Int,
+    val tag: String,
+)
+
+private val AppTabs = listOf(
+    AppTab(AppDestination.Home, IslamicNavSymbol.Mihrab, R.string.home, "nav_home"),
+    AppTab(AppDestination.Prayer, IslamicNavSymbol.Dome, R.string.nav_prayer, "nav_prayer"),
+    AppTab(CalendarTab, IslamicNavSymbol.Calendar, R.string.cal_title, "nav_calendar"),
+    AppTab(AppDestination.Library, IslamicNavSymbol.Manuscript, R.string.nav_adhkar, "nav_library"),
+    AppTab(AppDestination.Settings, IslamicNavSymbol.More, R.string.more, "nav_settings"),
+)
 
 @Composable
 private fun AppNavigationBar(
@@ -708,58 +728,16 @@ private fun AppNavigationBar(
         containerColor = navigationContainer,
         tonalElevation = 0.dp,
     ) {
-        NavigationBarItem(
-            modifier = Modifier.testTag("nav_home"),
-            selected = selected == AppDestination.Home,
-            onClick = { onNavigate(AppDestination.Home) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Mihrab,
-                    selected = selected == AppDestination.Home,
-                )
-            },
-            label = { IslamicNavigationLabel(R.string.home) },
-            colors = itemColors,
-        )
-        NavigationBarItem(
-            modifier = Modifier.testTag("nav_library"),
-            selected = selected == AppDestination.Library,
-            onClick = { onNavigate(AppDestination.Library) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Manuscript,
-                    selected = selected == AppDestination.Library,
-                )
-            },
-            label = { IslamicNavigationLabel(R.string.library) },
-            colors = itemColors,
-        )
-        NavigationBarItem(
-            modifier = Modifier.testTag("nav_tasbih"),
-            selected = selected == AppDestination.Tasbih,
-            onClick = { onNavigate(AppDestination.Tasbih) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Tasbih,
-                    selected = selected == AppDestination.Tasbih,
-                )
-            },
-            label = { IslamicNavigationLabel(if (LocalDensity.current.fontScale > 1.5f) R.string.tasbih_short_label else R.string.tasbih) },
-            colors = itemColors,
-        )
-        NavigationBarItem(
-            modifier = Modifier.testTag("nav_settings"),
-            selected = selected == AppDestination.Settings,
-            onClick = { onNavigate(AppDestination.Settings) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.More,
-                    selected = selected == AppDestination.Settings,
-                )
-            },
-            label = { IslamicNavigationLabel(R.string.more) },
-            colors = itemColors,
-        )
+        AppTabs.forEach { tab ->
+            NavigationBarItem(
+                modifier = Modifier.testTag(tab.tag),
+                selected = selected == tab.destination,
+                onClick = { onNavigate(tab.destination) },
+                icon = { IslamicNavigationIcon(symbol = tab.symbol, selected = selected == tab.destination) },
+                label = { IslamicNavigationLabel(tab.label) },
+                colors = itemColors,
+            )
+        }
     }
 }
 
@@ -776,8 +754,6 @@ private fun AppNavigationRail(
         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-
-    val labels = listOf(stringResource(R.string.home), stringResource(R.string.library), stringResource(R.string.tasbih), stringResource(R.string.more))
     NavigationRail(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         windowInsets = WindowInsets(0, 0, 0, 0),
@@ -789,58 +765,17 @@ private fun AppNavigationRail(
             )
         } },
     ) {
-        NavigationRailItem(
-            modifier = Modifier.testTag("nav_home").semantics { contentDescription = labels[0] },
-            selected = selected == AppDestination.Home,
-            onClick = { onNavigate(AppDestination.Home) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Mihrab,
-                    selected = selected == AppDestination.Home,
-                )
-            },
-            label = if (compact) null else { { IslamicNavigationLabel(R.string.home) } },
-            colors = itemColors,
-        )
-        NavigationRailItem(
-            modifier = Modifier.testTag("nav_library").semantics { contentDescription = labels[1] },
-            selected = selected == AppDestination.Library,
-            onClick = { onNavigate(AppDestination.Library) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Manuscript,
-                    selected = selected == AppDestination.Library,
-                )
-            },
-            label = if (compact) null else { { IslamicNavigationLabel(R.string.library) } },
-            colors = itemColors,
-        )
-        NavigationRailItem(
-            modifier = Modifier.testTag("nav_tasbih").semantics { contentDescription = labels[2] },
-            selected = selected == AppDestination.Tasbih,
-            onClick = { onNavigate(AppDestination.Tasbih) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.Tasbih,
-                    selected = selected == AppDestination.Tasbih,
-                )
-            },
-            label = if (compact) null else { { IslamicNavigationLabel(R.string.tasbih) } },
-            colors = itemColors,
-        )
-        NavigationRailItem(
-            modifier = Modifier.testTag("nav_settings").semantics { contentDescription = labels[3] },
-            selected = selected == AppDestination.Settings,
-            onClick = { onNavigate(AppDestination.Settings) },
-            icon = {
-                IslamicNavigationIcon(
-                    symbol = IslamicNavSymbol.More,
-                    selected = selected == AppDestination.Settings,
-                )
-            },
-            label = if (compact) null else { { IslamicNavigationLabel(R.string.more) } },
-            colors = itemColors,
-        )
+        AppTabs.forEach { tab ->
+            val label = stringResource(tab.label)
+            NavigationRailItem(
+                modifier = Modifier.testTag(tab.tag).semantics { contentDescription = label },
+                selected = selected == tab.destination,
+                onClick = { onNavigate(tab.destination) },
+                icon = { IslamicNavigationIcon(symbol = tab.symbol, selected = selected == tab.destination) },
+                label = if (compact) null else { { IslamicNavigationLabel(tab.label) } },
+                colors = itemColors,
+            )
+        }
     }
 }
 

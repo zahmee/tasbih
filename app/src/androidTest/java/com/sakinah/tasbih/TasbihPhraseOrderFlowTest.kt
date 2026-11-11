@@ -1,6 +1,7 @@
 package com.sakinah.tasbih
 
 import android.graphics.Bitmap
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -49,7 +50,7 @@ class TasbihPhraseOrderFlowTest {
             rule.waitUntil(10_000) { vm.uiState.value.tasbihCount == index + 1 }
         }
         val targetBefore = vm.uiState.value.tasbihTarget
-        rule.onNodeWithTag("nav_tasbih").performClick()
+        rule.onNodeWithTag("nav_home").performClick(); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitTag("tasbih_actions")
         rule.onNodeWithTag("tasbih_actions").performClick()
         waitTag("tasbih_manage_phrases")

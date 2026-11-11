@@ -67,7 +67,7 @@ fun PrayerTimesScreen(
     onChoosePlace: () -> Unit,
     onOpenQibla: () -> Unit,
     onOpenSettings: () -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     alerts: AlertSettings? = null,
     onOpenAlerts: () -> Unit = {},
     onOpenMonth: () -> Unit = {},

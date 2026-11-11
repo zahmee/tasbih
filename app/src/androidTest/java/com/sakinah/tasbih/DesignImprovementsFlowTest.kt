@@ -1,6 +1,7 @@
 package com.sakinah.tasbih
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -92,7 +93,7 @@ class DesignImprovementsFlowTest {
         val longText = "سبحان الله والحمد لله ".repeat(22) + "نهاية الذكر"
         rule.activityRule.scenario.onActivity { vm.addCustomPhrase(longText, 33); vm.setTasbihTextScale(1.6f) }
         waitState { vm.uiState.value.selectedPhrase.text == longText }
-        rule.onNodeWithTag("nav_tasbih").performClick()
+        rule.onNodeWithTag("nav_home").performClick(); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitTag("tasbih_counter")
         val totalBefore = vm.uiState.value.tasbihCount
         rule.onNodeWithTag("tasbih_focus_mode").performClick()
@@ -133,7 +134,7 @@ class DesignImprovementsFlowTest {
         val entry = vm.uiState.value.catalog.collection("hisn_001")!!.entries.first { it.text.length > 500 }
         rule.activityRule.scenario.onActivity { vm.addEntryToTasbih(entry) }
         waitState { vm.uiState.value.selectedPhrase.text == entry.text }
-        rule.onNodeWithTag("nav_tasbih").performClick()
+        rule.onNodeWithTag("nav_home").performClick(); rule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitTag("tasbih_actions")
         rule.onNodeWithTag("tasbih_actions").performClick()
         waitTag("tasbih_manage_phrases")

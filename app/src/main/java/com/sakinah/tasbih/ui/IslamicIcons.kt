@@ -24,16 +24,11 @@ import kotlin.math.sin
 
 internal enum class IslamicNavSymbol {
     Mihrab,
+    Dome,
+    Calendar,
     Manuscript,
     Tasbih,
     More,
-}
-
-internal enum class HomeActionSymbol {
-    MorningWird,
-    EveningWird,
-    Sleep,
-    AfterPrayer,
 }
 
 /**
@@ -61,6 +56,8 @@ internal fun IslamicNavigationIcon(
         val stroke = with(density) { (if (selected) 2.1.dp else 1.75.dp).toPx() }
         when (symbol) {
             IslamicNavSymbol.Mihrab -> drawMihrab(color, unit, stroke, selection)
+            IslamicNavSymbol.Dome -> drawDome(color, unit, stroke, selection)
+            IslamicNavSymbol.Calendar -> drawCalendarPage(color, unit, stroke, selection)
             IslamicNavSymbol.Manuscript -> drawManuscript(color, unit, stroke, selection)
             IslamicNavSymbol.Tasbih -> drawTasbih(color, unit, stroke, selection)
             IslamicNavSymbol.More -> {
@@ -70,105 +67,6 @@ internal fun IslamicNavigationIcon(
             }
         }
     }
-}
-
-/** Compact, original symbols for the three actions surfaced on the home screen. */
-@Composable
-internal fun IslamicHomeActionIcon(
-    symbol: HomeActionSymbol,
-    modifier: Modifier = Modifier,
-) {
-    val color = LocalContentColor.current
-    Canvas(modifier = modifier.size(38.dp)) {
-        val unit = size.minDimension / 100f
-        val stroke = 5.2f * unit
-        when (symbol) {
-            HomeActionSymbol.MorningWird -> drawDailyWird(color, unit, stroke, morning = true)
-            HomeActionSymbol.EveningWird -> drawDailyWird(color, unit, stroke, morning = false)
-            HomeActionSymbol.Sleep -> drawSleepDhikr(color, unit, stroke)
-            HomeActionSymbol.AfterPrayer -> drawPrayerDhikr(color, unit, stroke)
-        }
-    }
-}
-
-private fun DrawScope.drawDailyWird(
-    color: Color,
-    unit: Float,
-    stroke: Float,
-    morning: Boolean,
-) {
-    val arch = Path().apply {
-        moveTo(18f * unit, 88f * unit)
-        lineTo(18f * unit, 48f * unit)
-        cubicTo(18f * unit, 34f * unit, 36f * unit, 20f * unit, 50f * unit, 9f * unit)
-        cubicTo(64f * unit, 20f * unit, 82f * unit, 34f * unit, 82f * unit, 48f * unit)
-        lineTo(82f * unit, 88f * unit)
-    }
-    drawPath(
-        arch,
-        color,
-        style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
-    drawLine(
-        color,
-        Offset(11f * unit, 88f * unit),
-        Offset(89f * unit, 88f * unit),
-        stroke,
-        StrokeCap.Round,
-    )
-    if (morning) {
-        val sunCenter = Offset(50f * unit, 53f * unit)
-        drawCircle(color, radius = 10f * unit, center = sunCenter)
-        repeat(8) { index ->
-            val angle = index * PI / 4
-            drawLine(
-                color,
-                Offset(
-                    sunCenter.x + (cos(angle) * 15f * unit).toFloat(),
-                    sunCenter.y + (sin(angle) * 15f * unit).toFloat(),
-                ),
-                Offset(
-                    sunCenter.x + (cos(angle) * 22f * unit).toFloat(),
-                    sunCenter.y + (sin(angle) * 22f * unit).toFloat(),
-                ),
-                stroke * 0.68f,
-                StrokeCap.Round,
-            )
-        }
-    } else {
-        drawCrescent(color, Offset(50f * unit, 53f * unit), unit, scale = 1.05f)
-    }
-}
-
-private fun DrawScope.drawSleepDhikr(color: Color, unit: Float, stroke: Float) {
-    val moon = Path().apply {
-        moveTo(59f * unit, 12f * unit)
-        cubicTo(31f * unit, 9f * unit, 14f * unit, 32f * unit, 16f * unit, 55f * unit)
-        cubicTo(19f * unit, 82f * unit, 47f * unit, 94f * unit, 69f * unit, 81f * unit)
-        cubicTo(79f * unit, 75f * unit, 85f * unit, 65f * unit, 88f * unit, 55f * unit)
-        cubicTo(67f * unit, 68f * unit, 42f * unit, 54f * unit, 44f * unit, 32f * unit)
-        cubicTo(45f * unit, 23f * unit, 50f * unit, 16f * unit, 59f * unit, 12f * unit)
-        close()
-    }
-    drawPath(moon, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
-}
-
-private fun DrawScope.drawPrayerDhikr(color: Color, unit: Float, stroke: Float) {
-    val doorway = Path().apply {
-        moveTo(17f * unit, 90f * unit)
-        lineTo(17f * unit, 60f * unit)
-        cubicTo(17f * unit, 43f * unit, 35f * unit, 43f * unit, 39f * unit, 28f * unit)
-        cubicTo(41f * unit, 21f * unit, 48f * unit, 20f * unit, 50f * unit, 10f * unit)
-        cubicTo(52f * unit, 20f * unit, 59f * unit, 21f * unit, 61f * unit, 28f * unit)
-        cubicTo(65f * unit, 43f * unit, 83f * unit, 43f * unit, 83f * unit, 60f * unit)
-        lineTo(83f * unit, 90f * unit)
-        lineTo(60f * unit, 90f * unit)
-        lineTo(60f * unit, 72f * unit)
-        cubicTo(60f * unit, 56f * unit, 40f * unit, 56f * unit, 40f * unit, 72f * unit)
-        lineTo(40f * unit, 90f * unit)
-        close()
-    }
-    drawPath(doorway, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
 private fun DrawScope.drawCrescent(
@@ -220,6 +118,61 @@ private fun DrawScope.drawMihrab(
     }
     drawPath(house, color.copy(alpha = selection))
     drawPath(house, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+}
+
+/** A domed prayer hall with a crescent finial, for the prayer times. */
+private fun DrawScope.drawDome(
+    color: Color,
+    unit: Float,
+    stroke: Float,
+    selection: Float,
+) {
+    val hall = Path().apply {
+        moveTo(16f * unit, 88f * unit)
+        lineTo(16f * unit, 58f * unit)
+        lineTo(22f * unit, 58f * unit)
+        cubicTo(22f * unit, 40f * unit, 36f * unit, 30f * unit, 50f * unit, 26f * unit)
+        cubicTo(64f * unit, 30f * unit, 78f * unit, 40f * unit, 78f * unit, 58f * unit)
+        lineTo(84f * unit, 58f * unit)
+        lineTo(84f * unit, 88f * unit)
+        // The doorway is cut from the outline, so it stays open when the hall is filled.
+        lineTo(58f * unit, 88f * unit)
+        lineTo(58f * unit, 75f * unit)
+        quadraticTo(50f * unit, 64f * unit, 42f * unit, 75f * unit)
+        lineTo(42f * unit, 88f * unit)
+        close()
+    }
+    drawPath(hall, color.copy(alpha = selection))
+    drawPath(hall, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawLine(color, Offset(50f * unit, 26f * unit), Offset(50f * unit, 16f * unit), stroke, StrokeCap.Round)
+    drawCrescent(color, Offset(50f * unit, 10f * unit), unit, scale = 0.3f)
+}
+
+/** A calendar page with a crescent, for the Hijri and Gregorian calendar. */
+private fun DrawScope.drawCalendarPage(
+    color: Color,
+    unit: Float,
+    stroke: Float,
+    selection: Float,
+) {
+    val page = Path().apply {
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(
+                left = 14f * unit,
+                top = 22f * unit,
+                right = 86f * unit,
+                bottom = 88f * unit,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f * unit),
+            ),
+        )
+    }
+    drawPath(page, color.copy(alpha = 0.14f * selection))
+    drawPath(page, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawLine(color, Offset(14f * unit, 40f * unit), Offset(86f * unit, 40f * unit), stroke, StrokeCap.Round)
+    listOf(33f, 67f).forEach { x ->
+        drawLine(color, Offset(x * unit, 12f * unit), Offset(x * unit, 28f * unit), stroke, StrokeCap.Round)
+    }
+    drawCrescent(color, Offset(50f * unit, 64f * unit), unit, scale = 0.72f)
 }
 
 private fun DrawScope.drawManuscript(

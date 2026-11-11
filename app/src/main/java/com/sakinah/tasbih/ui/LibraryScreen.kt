@@ -82,6 +82,7 @@ fun LibraryScreen(
     onOpenEntry: (DhikrEntry) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onRetry: () -> Unit,
+    onOpenTasbih: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf<DhikrGroup?>(null) }
@@ -160,6 +161,9 @@ fun LibraryScreen(
                 }
                 when {
                     showingSections -> {
+                        // The tasbih left the bottom bar for prayer and the calendar; it waits here
+                        // and on the home screen.
+                        item { TasbihEntryRow(state, onOpenTasbih, tag = "library_open_tasbih") }
                         item { SakinahSectionHeader(stringResource(R.string.library_sections)) }
                         item { ResponsiveLibraryGroups(state = state, onSelect = { selectedGroup = it }) }
                     }

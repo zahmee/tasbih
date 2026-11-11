@@ -36,12 +36,15 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.ui.SakinahContentMaxWidth
 import com.sakinah.tasbih.ui.SakinahScreenBackground
 
-/** A calendar page: the parchment background, a bar with a way back, and a centered column. */
+/**
+ * A calendar page: the parchment background, a bar with a way back, and a centered column.
+ * A page opened from the bottom bar has nowhere to go back to, so [onBack] is null there.
+ */
 @Composable
 internal fun CalendarPage(
     title: String,
     tag: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -55,8 +58,10 @@ internal fun CalendarPage(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+                            }
                         }
                     },
                     actions = actions,

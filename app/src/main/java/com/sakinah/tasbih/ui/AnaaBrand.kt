@@ -50,15 +50,3 @@ internal fun AnaaWordmark(modifier: Modifier = Modifier, tint: Color? = null) {
         modifier = modifier.semantics { heading() },
     )
 }
-
-@Composable
-internal fun AnaaBrandLockup(modifier: Modifier = Modifier) {
-    Column(modifier = modifier.width(84.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        AnaaWordmark(Modifier.width(56.dp).height(37.dp))
-        Text(
-            text = stringResource(R.string.about_app_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            color = LocalSakinahBrandColors.current.antiqueGold,
-        )
-    }
-}

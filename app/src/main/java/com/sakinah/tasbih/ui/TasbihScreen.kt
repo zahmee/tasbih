@@ -154,6 +154,7 @@ fun TasbihScreen(
     onAddCustomPhrase: (String, Int) -> Unit,
     onUpdatePhrase: (String, String, Int) -> Unit,
     onSetTextScale: (Float) -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
@@ -279,6 +280,7 @@ fun TasbihScreen(
                             showEditor = true
                         },
                         onEnterFocusMode = { onFocusModeChange(true) },
+                        onBack = onBack,
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -646,9 +648,16 @@ private fun TasbihTopBar(
     onManagePhrases: () -> Unit,
     onAdd: () -> Unit,
     onEnterFocusMode: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().testTag("tasbih_top_bar"), verticalAlignment = Alignment.CenterVertically) {
+        // The tasbih opens from the home screen and the adhkar, so it shows the way back.
+        if (onBack != null) {
+            IconButton(onClick = onBack, modifier = Modifier.testTag("tasbih_back")) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+            }
+        }
         Text(stringResource(R.string.my_tasbih), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         FocusModeIconButton(false, stringResource(R.string.tasbih_focus_mode), onEnterFocusMode, Modifier.testTag("tasbih_focus_mode"))
         Box {
