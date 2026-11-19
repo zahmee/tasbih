@@ -69,7 +69,7 @@ class PrayerText(private val context: Context) {
         .joinToString("، ")
 
     /** Kept left to right, so the degree sign stays after the number inside Arabic text. */
-    fun degrees(value: Double): String = "⁦${arabicNumber(Math.round(value).toInt().mod(360))}°⁩"
+    fun degrees(value: Double): String = "\u2066${arabicNumber(Math.round(value).toInt().mod(360))}°\u2069"
 
     fun kilometres(value: Double): String =
         context.getString(R.string.qibla_km, arabicNumber(Math.round(value).toInt()))

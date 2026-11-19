@@ -41,11 +41,15 @@ class SakinahCoreFlowTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun homeKeepsTheCompactGreetingAndMovesTheFullBookToTheLibrary() {
+    fun homeLeadsWithPrayerAndMovesTheFullBookToTheLibrary() {
         waitForTag("home_featured")
 
         composeRule.onNodeWithTag("home_open_calendar").assertIsDisplayed()
-        composeRule.onNodeWithText("السلام عليكم").assertIsDisplayed()
+        // The lead card is the next prayer, or the invitation to choose a place before one is set.
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag("home_next_prayer").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("home_no_place").fetchSemanticsNodes().isNotEmpty()
+        }
         waitForAbsentText("حصن المسلم كاملًا")
         composeRule.onNodeWithTag("nav_library").assertIsDisplayed()
         composeRule.onNodeWithTag("nav_library").performClick()
@@ -145,6 +149,8 @@ class SakinahCoreFlowTest {
         waitForText("ذِكْرٌ مُعَدَّل")
         waitForText("الدورة الحالية 1 من 9")
 
+        composeRule.onNodeWithTag("tasbih_back").performClick()
+        waitForTag("nav_settings")
         composeRule.onNodeWithTag("nav_settings").performClick()
         waitForTag("open_achievements")
         composeRule.onNodeWithTag("open_appearance_settings").performScrollTo().performClick()
@@ -290,7 +296,7 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_previous_phrase").performClick()
         waitForTasbihTotal(2)
-        composeRule.onNodeWithTag("nav_home").performClick()
+        composeRule.onNodeWithTag("tasbih_back").performClick()
         waitForTag("home_featured")
         composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTasbihTotal(2)
@@ -326,7 +332,7 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_focus_mode").performClick()
         waitForTag("tasbih_focus_screen")
-        waitForAbsentTag("nav_home")
+        waitForAbsentTag("tasbih_back")
         waitForAbsentTag("tasbih_add")
         composeRule.onNodeWithTag("tasbih_focus_phrase_header").assertIsDisplayed()
         composeRule.onNodeWithTag("tasbih_exit_focus_mode").assertIsDisplayed()
@@ -362,7 +368,7 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_exit_focus_mode").performClick()
         waitForTag("tasbih_standard_screen")
-        waitForTag("nav_home")
+        waitForTag("tasbih_back")
         waitForAbsentTag("tasbih_exit_focus_mode")
         composeRule.onNodeWithTag(
             testTag = "tasbih_total_count",

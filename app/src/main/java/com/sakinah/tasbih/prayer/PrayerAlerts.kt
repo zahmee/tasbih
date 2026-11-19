@@ -1,5 +1,6 @@
 package com.sakinah.tasbih.prayer
 
+import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
@@ -73,11 +74,34 @@ object AlertPlanner {
         return Wake(alert.at, alert, urgent)
     }
 
+    /** An alert this long overdue is no longer raised: its time was announced long ago. */
+    val STALE: Duration = Duration.ofMinutes(20)
+
+    /**
+     * The alerts that came due while the alarm set for [pendingSince] was held back, up to
+     * [now], oldest first. Android delivers an alarm late when the phone is idle or exact alarms
+     * are not allowed, and by then a later alert's time may have passed too. Left out are alerts
+     * more than [STALE] old, and a reminder whose prayer has already begun.
+     */
+    fun due(schedule: PrayerSchedule, settings: AlertSettings, pendingSince: Instant, now: Instant): List<AlertEvent> {
+        if (!settings.anyOn || now.isBefore(pendingSince)) return emptyList()
+        val from = maxOf(pendingSince, now.minus(STALE))
+        val today = schedule.today(now)
+        return (-1L..1L).asSequence()
+            .map { schedule.day(today.plusDays(it)) }
+            .flatMap { day -> events(day, settings) }
+            .filter { !it.at.toInstant().isBefore(from) && !it.at.toInstant().isAfter(now) }
+            .filter { it.kind == AlertKind.PRAYER || it.prayerTime.toInstant().isAfter(now) }
+            .sortedBy { it.at.toInstant() }
+            .toList()
+    }
+
     /** The next alert after [now], within the next two days, or null when every alert is off. */
     fun nextAlert(schedule: PrayerSchedule, settings: AlertSettings, now: Instant): AlertEvent? {
         if (!settings.anyOn) return null
         val today = schedule.today(now)
-        return (0L..2L).asSequence()
+        // From yesterday, as far north in summer Isha can fall after midnight.
+        return (-1L..2L).asSequence()
             .map { schedule.day(today.plusDays(it)) }
             .flatMap { day -> events(day, settings) }
             .filter { it.at.toInstant().isAfter(now) }
@@ -87,7 +111,7 @@ object AlertPlanner {
     /** The next of the day's times after [now], where the widgets change. */
     fun nextBoundary(schedule: PrayerSchedule, now: Instant): ZonedDateTime {
         val today = schedule.today(now)
-        return (0L..1L).asSequence()
+        return (-1L..1L).asSequence()
             .map { schedule.day(today.plusDays(it)) }
             .flatMap { day -> Prayer.entries.asSequence().map { day[it] } }
             .first { it.toInstant().isAfter(now) }

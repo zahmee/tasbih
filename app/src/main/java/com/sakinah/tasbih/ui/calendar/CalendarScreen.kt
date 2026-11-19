@@ -78,6 +78,7 @@ fun CalendarScreen(
     today: LocalDate,
     startDate: LocalDate,
     jump: CalendarJump?,
+    onJumpHandled: (CalendarJump) -> Unit,
     onSetPrimary: (PrimaryCalendar) -> Unit,
     onCorrect: (HijriMonth, Int) -> Unit,
     onOpenOccasions: () -> Unit,
@@ -107,7 +108,10 @@ fun CalendarScreen(
             }
         }
         LaunchedEffect(jump?.serial) {
-            jump?.let { pagerState.animateScrollToPage(pageOf(it.date)) }
+            jump?.let {
+                pagerState.animateScrollToPage(pageOf(it.date))
+                onJumpHandled(it)
+            }
         }
 
         CalendarPage(

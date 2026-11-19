@@ -3,13 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        Used only to search for a city or village by name, then the times are worked out on the
-        phone. Nothing about the user, their reading or their tasbih is ever sent.
+        Used to search for a city or village by name, and by the phone's place naming service to
+        name the phone's position. The times are worked out on the phone. Nothing about the
+        user's reading or their tasbih is ever sent.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Asked for only when the user chooses to use the phone's position for prayer times. -->
+    <!--
+        Asked for only when the user chooses to use the phone's position for prayer times. The
+        user picks precise or approximate in the system's dialog: approximate is enough for the
+        times and the town's name, and precise also names the district.
+    -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Prayer alerts, each asked for or explained when the user turns alerts on. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

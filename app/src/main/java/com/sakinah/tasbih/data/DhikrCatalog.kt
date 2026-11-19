@@ -131,13 +131,35 @@ object DhikrCatalog {
             ?: builtInTasbihPhrases.first()
 }
 
-fun stripArabicDiacritics(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFD)
+/**
+ * Removes the vowel marks and the tatweel for reading without tashkeel. The hamza and madda
+ * are part of their letters and stay: \u0623 \u0625 \u0622 \u0624 \u0626 are kept whole, and so are a hamza or madda
+ * written as a separate mark (U+0653 to U+0655).
+ */
+fun stripArabicDiacritics(text: String): String = text.filterNot(::isArabicDiacritic)
+
+private fun isArabicDiacritic(character: Char): Boolean = when (character) {
+    '\u0640', // tatweel
+    in '\u0610'..'\u061a', // honorific and Quranic signs
+    in '\u064b'..'\u0652', // tanween, the short vowels, shadda and sukun
+    in '\u0656'..'\u065f',
+    '\u0670', // the dagger alif
+    in '\u06d6'..'\u06dc', // Quranic annotation marks
+    in '\u06df'..'\u06e4',
+    '\u06e7', '\u06e8',
+    in '\u06ea'..'\u06ed',
+    -> true
+    else -> false
+}
+
+/** For matching only: every mark goes, the hamza and madda with them, so \u00ab\u0627\u0643\u0628\u0631\u00bb finds \u00ab\u0623\u064e\u0643\u0652\u0628\u064e\u0631\u064f\u00bb. */
+private fun stripAllArabicMarks(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFD)
     .filterNot { character ->
         Character.getType(character) == Character.NON_SPACING_MARK.toInt() ||
             character == '\u0640'
     }
 
-fun normalizeArabicForSearch(text: String): String = stripArabicDiacritics(text)
+fun normalizeArabicForSearch(text: String): String = stripAllArabicMarks(text)
     .lowercase()
     .replace(Regex("[أإآٱ]"), "ا")
     .replace('ى', 'ي')

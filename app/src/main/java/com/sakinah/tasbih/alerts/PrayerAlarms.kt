@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import com.sakinah.tasbih.calendar.HijriCalendar
 import com.sakinah.tasbih.data.CalendarPreferencesRepository
 import com.sakinah.tasbih.data.PrayerPreferencesRepository
@@ -23,11 +24,16 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Keeps a single alarm, for the next prayer alert or the widgets' next change, whichever comes
  * first. One alarm rather than two spares Android's limit on alarms that ring in Doze. Each
  * alarm, when it rings, sets the one after it, so the chain survives a new day or time zone.
+ * The time the pending alarm was set for is remembered, so an alarm that Android delivers late
+ * still raises every alert that came due meanwhile, and opening the app mends a broken chain.
  * With the user's leave to set exact alarms they ring on the minute, even in Doze. Without it
  * they ring within ten minutes, and the full adhan gives way to a notification tone.
  */
@@ -40,21 +46,46 @@ object PrayerAlarms {
     private const val REQUEST_WAKE = 1
     private const val REQUEST_TEST = 3
     private val WINDOW = Duration.ofMinutes(10)
+    private const val STORE = "prayer_alarms"
+    private const val KEY_PENDING = "pending_at"
+
+    /** The whole adhan is not started this long after its time; the short tone stands in. */
+    private val ADHAN_LATE = Duration.ofMinutes(5)
+
+    /** Scheduling reads, raises and writes; two callers at once would raise an alert twice. */
+    private val lock = Mutex()
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
-    suspend fun schedule(context: Context) {
+    /**
+     * Sets the alarm for the next wake, then raises whatever alert came due since the last one
+     * was set. The alarm is set first, so that no failure in raising can break the chain.
+     */
+    suspend fun schedule(context: Context) = lock.withLock {
         val app = context.applicationContext
-        val wake = load(app)?.let { (schedule, alerts) ->
-            AlertPlanner.nextWake(schedule, alerts, Instant.now(), PrayerWidgetKind.anyPlaced(app) || dateTurnsAtMaghrib(app))
+        val store = app.getSharedPreferences(STORE, Context.MODE_PRIVATE)
+        val pending = store.getLong(KEY_PENDING, 0)
+        val now = Instant.now()
+        val loaded = load(app)
+        val wake = loaded?.let { (schedule, alerts) ->
+            AlertPlanner.nextWake(schedule, alerts, now, PrayerWidgetKind.anyPlaced(app) || dateTurnsAtMaghrib(app))
         }
         if (wake == null) {
             cancel(app, REQUEST_WAKE, ACTION_WAKE)
-            return
+            store.edit().remove(KEY_PENDING).apply()
+        } else {
+            set(app, wake.at, intent(app, ACTION_WAKE, REQUEST_WAKE, null, null, null), wake.urgent)
+            store.edit().putLong(KEY_PENDING, wake.at.toInstant().toEpochMilli()).apply()
         }
-        val event = wake.event
-        set(app, wake.at, intent(app, ACTION_WAKE, REQUEST_WAKE, event?.prayer, event?.kind, event?.prayerTime), wake.urgent)
+        if (loaded != null && pending in 1..now.toEpochMilli()) {
+            val (schedule, alerts) = loaded
+            AlertPlanner.due(schedule, alerts, Instant.ofEpochMilli(pending), now).forEach { event ->
+                val late = Duration.between(event.at.toInstant(), now) > ADHAN_LATE
+                val style = alerts.alertFor(event.prayer).style.let { if (late && it == AlertStyle.ADHAN) AlertStyle.SOUND else it }
+                raise(app, event.prayer, event.kind, style, event.prayerTime.withZoneSameInstant(ZoneId.systemDefault()), alerts)
+            }
+        }
     }
 
     /** A trial in one minute, so the user can lock the screen and hear what a prayer will sound like. */
@@ -65,21 +96,27 @@ object PrayerAlarms {
 
     internal suspend fun handle(context: Context, intent: Intent) {
         val app = context.applicationContext
-        when (intent.action) {
-            ACTION_WAKE, ACTION_TEST -> {
-                val prayer = Prayer.entries.getOrNull(intent.getIntExtra(EXTRA_PRAYER, -1))
-                val kind = AlertKind.entries.getOrNull(intent.getIntExtra(EXTRA_KIND, -1))
-                val time = intent.getLongExtra(EXTRA_TIME, 0)
-                if (prayer != null && kind != null) {
-                    val alerts = PrayerPreferencesRepository(app).currentAlerts()
-                    val style = if (intent.action == ACTION_TEST) testStyle(alerts) else alerts.alertFor(prayer).style
-                    raise(app, prayer, kind, style, Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()), alerts)
-                }
+        if (intent.action == ACTION_TEST) {
+            val prayer = Prayer.entries.getOrNull(intent.getIntExtra(EXTRA_PRAYER, -1))
+            val kind = AlertKind.entries.getOrNull(intent.getIntExtra(EXTRA_KIND, -1))
+            val time = intent.getLongExtra(EXTRA_TIME, 0)
+            if (prayer != null && kind != null) {
+                val alerts = PrayerPreferencesRepository(app).currentAlerts()
+                raise(app, prayer, kind, testStyle(alerts), Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()), alerts)
             }
+        } else {
+            // Raises the alert this alarm rang for, and any other that came due, and sets the next.
+            schedule(app)
         }
-        PrayerWidgetUpdater(app).updateAll()
-        if (dateTurnsAtMaghrib(app)) com.sakinah.tasbih.widget.CalendarWidgetUpdater(app).updateAll()
-        if (intent.action != ACTION_TEST) schedule(app)
+        // The widgets come last and may fail without taking the alerts down with them.
+        try {
+            PrayerWidgetUpdater(app).updateAll()
+            if (dateTurnsAtMaghrib(app)) com.sakinah.tasbih.widget.CalendarWidgetUpdater(app).updateAll()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            Log.w("PrayerAlarms", "The widgets could not be redrawn", failure)
+        }
         if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
             val place = PrayerPreferencesRepository(app).current().place
             if (place != null && place.keepsOtherTimeThan(ZoneId.systemDefault(), Instant.now())) {

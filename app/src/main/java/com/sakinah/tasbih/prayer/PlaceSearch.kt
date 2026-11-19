@@ -44,7 +44,7 @@ class PlaceSearch(private val endpoint: String = ENDPOINT) {
         const val MIN_QUERY_LENGTH = 2
 
         /** Direction marks the service leaves in some names, which would only confuse a search. */
-        private val DIRECTION_MARKS = Regex("[‎‏‪-‮⁦-⁩]")
+        private val DIRECTION_MARKS = Regex("[\u200E\u200F\u202A-\u202E\u2066-\u2069]")
 
         /**
          * Places without a time zone are dropped, as their times could not be shown correctly, and

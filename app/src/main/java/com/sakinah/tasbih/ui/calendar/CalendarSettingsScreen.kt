@@ -86,8 +86,8 @@ fun CalendarSettingsScreen(
                     label = { offset ->
                         // Kept left to right, or the sign would land after the digit in Arabic.
                         when {
-                            offset > 0 -> "⁦+${text.number(offset)}⁩"
-                            offset < 0 -> "⁦−${text.number(abs(offset))}⁩"
+                            offset > 0 -> "\u2066+${text.number(offset)}\u2069"
+                            offset < 0 -> "\u2066−${text.number(abs(offset))}\u2069"
                             else -> text.number(0)
                         }
                     },

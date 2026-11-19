@@ -52,6 +52,7 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.prayer.AsrChoice
 import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerSchedule
+import com.sakinah.tasbih.ui.calendar.CalendarHint
 import com.sakinah.tasbih.ui.calendar.CalendarPage
 import com.sakinah.tasbih.ui.calendar.CalendarText
 import com.sakinah.tasbih.ui.sakinahCardBorder
@@ -204,6 +205,10 @@ private fun Times(
                     )
                 }
             }
+        }
+
+        if (day.estimated) {
+            CalendarHint(stringResource(R.string.prayer_estimated_hint), Modifier.testTag("prayer_estimated_hint"))
         }
 
         if (calendarText != null) {

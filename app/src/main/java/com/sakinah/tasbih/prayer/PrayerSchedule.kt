@@ -11,14 +11,19 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** One day's times at a place, in the place's own time zone. */
-data class PrayerDay(val date: LocalDate, val times: Map<Prayer, ZonedDateTime>) {
+/**
+ * One day's times at a place, in the place's own time zone. [estimated] is set where the sun
+ * neither rose nor set that day, so the times are those of the nearest latitude where it did.
+ */
+data class PrayerDay(val date: LocalDate, val times: Map<Prayer, ZonedDateTime>, val estimated: Boolean = false) {
     operator fun get(prayer: Prayer): ZonedDateTime = times.getValue(prayer)
 }
 
@@ -59,7 +64,15 @@ class PrayerSchedule(
             // Ramadan is read from the Hijri calendar with the user's corrections.
             adjustments.isha = adjustment(Prayer.ISHA) + ramadanIsha
         }
-        val times = PrayerTimes(coordinates, DateComponents(date.year, date.monthValue, date.dayOfMonth), parameters)
+        val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
+        var times = PrayerTimes(coordinates, components, parameters)
+        // Inside the polar circles the sun stays up or down for weeks, and the library then
+        // gives no times at all. The nearest latitude that still has a day and a night stands in.
+        var latitude = place.latitude
+        while (times.fajr == null && abs(latitude) > LOWEST_STAND_IN_LATITUDE) {
+            latitude -= sign(latitude) * STAND_IN_STEP
+            times = PrayerTimes(Coordinates(latitude, place.longitude), components, parameters)
+        }
         return PrayerDay(
             date,
             mapOf(
@@ -70,6 +83,7 @@ class PrayerSchedule(
                 Prayer.MAGHRIB to times.maghrib.inZone(),
                 Prayer.ISHA to times.isha.inZone(),
             ),
+            estimated = latitude != place.latitude,
         )
     }
 
@@ -112,13 +126,15 @@ class PrayerSchedule(
         private const val RAMADAN = 9
         private const val RAMADAN_ISHA_MINUTES = 30
         private const val EARTH_RADIUS_KM = 6371.0088
+        private const val STAND_IN_STEP = 0.5
+        private const val LOWEST_STAND_IN_LATITUDE = 45.0
 
         /** Far from the equator the night is too short for twilight angles, so a rule shares it out. */
         fun highLatitudeRule(choice: HighLatitudeChoice, latitude: Double): HighLatitudeRule = when (choice) {
             HighLatitudeChoice.MIDDLE_OF_THE_NIGHT -> HighLatitudeRule.MIDDLE_OF_THE_NIGHT
             HighLatitudeChoice.SEVENTH_OF_THE_NIGHT -> HighLatitudeRule.SEVENTH_OF_THE_NIGHT
             HighLatitudeChoice.TWILIGHT_ANGLE -> HighLatitudeRule.TWILIGHT_ANGLE
-            HighLatitudeChoice.AUTO -> if (kotlin.math.abs(latitude) > 48) HighLatitudeRule.SEVENTH_OF_THE_NIGHT else HighLatitudeRule.MIDDLE_OF_THE_NIGHT
+            HighLatitudeChoice.AUTO -> if (abs(latitude) > 48) HighLatitudeRule.SEVENTH_OF_THE_NIGHT else HighLatitudeRule.MIDDLE_OF_THE_NIGHT
         }
 
         /** Distance along the earth's surface, by the haversine formula. */

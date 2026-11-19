@@ -281,6 +281,13 @@ private fun SakinahNavigation(
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
     val placeSearch by prayerViewModel.search.collectAsStateWithLifecycle()
     val prayerAlerts by prayerViewModel.alerts.collectAsStateWithLifecycle()
+    // Opening the app sets the prayer alarm again: Android drops it when the app is force-stopped
+    // or the exact alarm permission is withdrawn, and tells nobody.
+    LifecycleResumeEffect(Unit) {
+        prayerViewModel.refresh()
+        prayerViewModel.followDeviceLocation()
+        onPauseOrDispose { }
+    }
 
     fun openTasbih() {
         isTasbihFocusMode = false
@@ -513,6 +520,7 @@ private fun SakinahNavigation(
                                     hijriToday = com.sakinah.tasbih.calendar.hijriDayFor(today, java.time.Instant.now(), maghrib, text.settings.hijriDayFromMaghrib),
                                     startDate = destination.startEpochDay?.let(LocalDate::ofEpochDay) ?: today,
                                     jump = calendarJump,
+                                    onJumpHandled = calendarViewModel::jumpHandled,
                                     onSetPrimary = calendarViewModel::setPrimary,
                                     onCorrect = calendarViewModel::setCorrection,
                                     onOpenOccasions = { backStack.add(AppDestination.CalendarOccasions) },
@@ -582,6 +590,9 @@ private fun SakinahNavigation(
                                 onSearch = prayerViewModel::search,
                                 onChoose = prayerViewModel::choose,
                                 onUseDeviceLocation = prayerViewModel::useDeviceLocation,
+                                followDevice = prayerState?.settings?.followDevice ?: true,
+                                onFollowDevice = prayerViewModel::setFollowDevice,
+                                onRename = prayerViewModel::renamePlace,
                                 onBack = ::navigateBack,
                             )
                         }

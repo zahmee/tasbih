@@ -35,6 +35,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         _jump.value = CalendarJump(date, (_jump.value?.serial ?: 0) + 1)
     }
 
+    /** The calendar has moved there, so opening it again must not move it once more. */
+    fun jumpHandled(jump: CalendarJump) {
+        _jump.compareAndSet(jump, null)
+    }
+
     fun setPrimary(primary: PrimaryCalendar) = save { repository.setPrimary(primary) }
 
     fun setWeekStart(start: WeekStart) = save { repository.setWeekStart(start) }

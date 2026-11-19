@@ -41,6 +41,8 @@ data class PrayerSettings(
     val highLatitude: HighLatitudeChoice = HighLatitudeChoice.AUTO,
     /** Minutes added to each time, from -30 to +30, to match a local mosque or official table. */
     val adjustments: Map<Prayer, Int> = emptyMap(),
+    /** With a place read from the phone, read it again each time the app opens, to follow a journey. */
+    val followDevice: Boolean = true,
 ) {
     companion object {
         const val MAX_ADJUSTMENT = 30

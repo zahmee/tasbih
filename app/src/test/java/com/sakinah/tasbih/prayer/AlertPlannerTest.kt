@@ -96,4 +96,25 @@ class AlertPlannerTest {
         val calm = AlertPlanner.nextWake(riyadh, far, at("14:40"), widgetsPlaced = false)!!
         assertEquals(false, calm.urgent)
     }
+
+    @Test
+    fun `an alarm delivered late still raises the alert that came due meanwhile`() {
+        // Dhuhr is at 11:37. Its reminder's alarm, set for 11:27, arrives at 11:38.
+        val settings = AlertSettings(alerts = mapOf(Prayer.DHUHR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 10)))
+        val due = AlertPlanner.due(riyadh, settings, at("11:27"), at("11:38"))
+        assertEquals(listOf(AlertKind.PRAYER), due.map { it.kind })
+        assertEquals(Prayer.DHUHR, due.single().prayer)
+        // On time, the reminder alone is due, and the prayer is what comes next.
+        assertEquals(listOf(AlertKind.REMINDER), AlertPlanner.due(riyadh, settings, at("11:27"), at("11:27")).map { it.kind })
+        assertEquals(AlertKind.PRAYER, AlertPlanner.nextAlert(riyadh, settings, at("11:27"))?.kind)
+    }
+
+    @Test
+    fun `an alert long overdue is not raised`() {
+        val settings = AlertSettings(alerts = mapOf(Prayer.DHUHR to PrayerAlert(AlertStyle.SOUND), Prayer.ASR to PrayerAlert(AlertStyle.SOUND)))
+        assertEquals(emptyList<AlertEvent>(), AlertPlanner.due(riyadh, settings, at("11:37"), at("13:00")))
+        // After hours switched off, only what fell in the last minutes is raised.
+        assertEquals(listOf(Prayer.ASR), AlertPlanner.due(riyadh, settings, at("11:37"), at("14:50")).map { it.prayer })
+        assertEquals(emptyList<AlertEvent>(), AlertPlanner.due(riyadh, settings, at("11:37"), at("11:00")))
+    }
 }

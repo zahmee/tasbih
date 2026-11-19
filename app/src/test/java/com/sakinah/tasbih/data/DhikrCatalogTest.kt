@@ -104,4 +104,18 @@ class DhikrCatalogTest {
         assertEquals(1f / 3f, progress.fraction(collection), 0.001f)
         assertTrue(progress.isEntryCompleted(2, collection))
     }
+
+    @Test
+    fun `hiding the tashkeel keeps the hamza and the madda`() {
+        assertEquals("الله أكبر", stripArabicDiacritics("اللَّهُ أَكْبَرُ"))
+        assertEquals("لا إله إلا الله", stripArabicDiacritics("لَا إِلَٰهَ إِلَّا اللَّهُ"))
+        assertEquals("القرآن", stripArabicDiacritics("الْقُرْآنِ"))
+        assertEquals("يؤمنون بالله وملائكته", stripArabicDiacritics("يُؤْمِنُونَ بِاللَّهِ وَمَلَائِكَتِهِ"))
+        assertEquals("سبحان الله", stripArabicDiacritics("سُبْحَـانَ اللهِ"))
+        // A hamza written as a separate mark is still a letter's hamza.
+        assertEquals("ا\u0654كبر", stripArabicDiacritics("ا\u0654\u064Eكبر"))
+        assertEquals("أَكْبَرُ", displayArabic("أَكْبَرُ", showDiacritics = true))
+        // Search still ignores the hamza, so a query typed without it finds the text.
+        assertEquals("اكبر", normalizeArabicForSearch("أَكْبَرُ"))
+    }
 }

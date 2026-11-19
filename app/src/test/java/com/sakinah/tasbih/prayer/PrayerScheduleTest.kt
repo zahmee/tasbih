@@ -165,4 +165,22 @@ class PrayerScheduleTest {
         assertTrue(PrayerMethod.hanafiByDefault("PK"))
         assertEquals(false, PrayerMethod.hanafiByDefault("SA"))
     }
+
+    @Test
+    fun `a polar day or night still gives six ordered times, marked as estimated`() {
+        val tromso = PrayerSchedule(
+            PrayerPlace("Tromso", "", "", "NO", 69.6489, 18.95508, "Europe/Oslo"),
+            PrayerSettings(method = PrayerMethod.MUSLIM_WORLD_LEAGUE),
+            HijriCalendar(),
+        )
+        listOf("2026-06-21", "2026-12-21").forEach { date ->
+            val day = tromso.day(LocalDate.parse(date))
+            assertTrue(date, day.estimated)
+            val times = Prayer.entries.map { day[it] }
+            assertEquals(date, times.sortedBy { it.toInstant() }, times)
+        }
+        // At the equinox the sun rises and sets there, and nothing is estimated.
+        assertTrue(!tromso.day(LocalDate.parse("2026-03-20")).estimated)
+        tromso.next(ZonedDateTime.of(LocalDate.parse("2026-06-21"), LocalTime.NOON, tromso.zone).toInstant())
+    }
 }

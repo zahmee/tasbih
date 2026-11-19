@@ -104,7 +104,7 @@ class ReaderNavigationFlowTest {
 
     @Test fun readerOpenedFromHomeKeepsNavigationUntilFocusIsEnabled() {
         ready()
-        rule.onNodeWithTag("home_resume_wird").performScrollTo().performClick()
+        rule.onNodeWithTag("home_featured").performScrollTo().performClick()
         assertNormalChrome("nav_home")
         val counts = vm.uiState.value.readingProgress
         capture("reader-normal")
@@ -140,7 +140,7 @@ class ReaderNavigationFlowTest {
 
     @Test fun focusExitLabelFitsAllArabicFontsAndBackRestoresNavigation() {
         ready()
-        rule.onNodeWithTag("home_resume_wird").performScrollTo().performClick()
+        rule.onNodeWithTag("home_featured").performScrollTo().performClick()
         assertNormalChrome("nav_home")
         rule.onNodeWithTag("reader_focus_mode").performClick()
         for (font in ArabicFontStyle.entries) {

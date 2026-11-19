@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-// Its own file: the place stays on the phone, apart from the remembrance and tasbih progress.
+// Its own file, apart from the remembrance and tasbih progress.
 private val Context.prayerDataStore by preferencesDataStore(name = "prayer_preferences")
 
 class PrayerPreferencesRepository internal constructor(
@@ -65,6 +65,13 @@ class PrayerPreferencesRepository internal constructor(
         it[Keys.timeZone] = place.timeZone
         it[Keys.fromDevice] = place.fromDevice
     }
+
+    /** The user's own name for the place, kept until the place itself changes. */
+    suspend fun setPlaceName(name: String) = dataStore.edit {
+        if (it[Keys.latitude] != null && name.isNotBlank()) it[Keys.name] = name.trim()
+    }
+
+    suspend fun setFollowDevice(follow: Boolean) = dataStore.edit { it[Keys.followDevice] = follow }
 
     /** Null goes back to the method of the place's country. */
     suspend fun setMethod(method: PrayerMethod?) = dataStore.edit {
@@ -108,6 +115,7 @@ class PrayerPreferencesRepository internal constructor(
             adjustments = SavedMaps.decodeStrings(preferences[Keys.adjustments]).mapNotNull { (name, minutes) ->
                 Prayer.entries.firstOrNull { it.name == name }?.let { it to minutes }
             }.toMap(),
+            followDevice = preferences[Keys.followDevice] ?: true,
         )
     }
 
@@ -134,6 +142,7 @@ class PrayerPreferencesRepository internal constructor(
         val longitude = doublePreferencesKey("place_longitude")
         val timeZone = stringPreferencesKey("place_time_zone")
         val fromDevice = booleanPreferencesKey("place_from_device")
+        val followDevice = booleanPreferencesKey("place_follow_device")
         val method = stringPreferencesKey("method")
         val asr = stringPreferencesKey("asr")
         val highLatitude = stringPreferencesKey("high_latitude")

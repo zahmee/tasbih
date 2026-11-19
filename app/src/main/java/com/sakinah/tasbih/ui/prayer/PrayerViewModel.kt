@@ -1,6 +1,7 @@
 package com.sakinah.tasbih.ui.prayer
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sakinah.tasbih.R
@@ -50,6 +51,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     private val calendar = CalendarPreferencesRepository(application)
     private val placeSearch = PlaceSearch()
     private var searchJob: Job? = null
+    private var lastFollow = 0L
 
     /** Null until the saved settings have been read once. */
     val state: StateFlow<PrayerState?> = combine(repository.settings, calendar.settings) { settings, calendarSettings ->
@@ -97,6 +99,35 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Reads the position again when the app opens, for a place that came from the phone, so the
+     * place and its name follow a journey. Nothing is read in the background. The place changes
+     * only after a real move, or to give a name to a position that could not be named before.
+     */
+    fun followDeviceLocation() {
+        val now = SystemClock.elapsedRealtime()
+        if (lastFollow != 0L && now - lastFollow < FOLLOW_EVERY_MS) return
+        lastFollow = now
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val settings = repository.current()
+            val place = settings.place ?: return@launch
+            if (!place.fromDevice || !settings.followDevice || !DeviceLocation.hasPermission(app)) return@launch
+            val unnamed = app.getString(R.string.prayer_my_location)
+            val found = DeviceLocation.currentPlace(app, unnamed, FOLLOW_TIMEOUT_MS) ?: return@launch
+            val moved = PrayerSchedule.distanceKm(place.latitude, place.longitude, found.latitude, found.longitude) > FOLLOW_MOVE_KM
+            val newlyNamed = place.name == unnamed && found.name != unnamed
+            if (moved || newlyNamed) {
+                repository.setPlace(found)
+                refreshAlarms()
+            }
+        }
+    }
+
+    fun renamePlace(name: String) = save { repository.setPlaceName(name) }
+
+    fun setFollowDevice(follow: Boolean) = save { repository.setFollowDevice(follow) }
+
     fun setMethod(method: PrayerMethod?) = save { repository.setMethod(method) }
 
     fun setAsr(choice: AsrChoice) = save { repository.setAsr(choice) }
@@ -129,6 +160,13 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             block()
             refreshAlarms()
         }
+    }
+
+    private companion object {
+        const val FOLLOW_EVERY_MS = 10 * 60_000L
+        const val FOLLOW_TIMEOUT_MS = 15_000L
+        /** The approximate position moves by itself within a couple of kilometres. */
+        const val FOLLOW_MOVE_KM = 1.0
     }
 
     private suspend fun refreshAlarms() {

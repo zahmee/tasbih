@@ -1,6 +1,5 @@
 package com.sakinah.tasbih.ui.prayer
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +63,9 @@ fun PlaceScreen(
     onSearch: (String) -> Unit,
     onChoose: (PrayerPlace) -> Unit,
     onUseDeviceLocation: () -> Unit,
+    followDevice: Boolean,
+    onFollowDevice: (Boolean) -> Unit,
+    onRename: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -70,7 +74,9 @@ fun PlaceScreen(
     var askLocation by rememberSaveable { mutableStateOf(false) }
     var locationDenied by rememberSaveable { mutableStateOf(false) }
     var waitingForLocation by rememberSaveable { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    var renaming by rememberSaveable { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { answers ->
+        val granted = answers.values.any { it }
         locationDenied = !granted
         if (granted) {
             waitingForLocation = true
@@ -105,13 +111,40 @@ fun PlaceScreen(
                         waitingForLocation = true
                         onUseDeviceLocation()
                     } else {
-                        permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        permission.launch(DeviceLocation.PERMISSIONS)
                     }
                 }) { Text(stringResource(R.string.prayer_location_continue)) }
             },
             dismissButton = {
                 TextButton(onClick = { askLocation = false }) { Text(stringResource(R.string.prayer_not_now)) }
             },
+        )
+    }
+
+    if (renaming && current != null) {
+        var name by rememberSaveable { mutableStateOf(current.name) }
+        AlertDialog(
+            onDismissRequest = { renaming = false },
+            title = { Text(stringResource(R.string.prayer_rename_title)) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(MAX_NAME_LENGTH) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("prayer_rename_field"),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = name.isNotBlank(),
+                    onClick = {
+                        onRename(name)
+                        renaming = false
+                    },
+                    modifier = Modifier.testTag("prayer_rename_save"),
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { renaming = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
@@ -156,7 +189,40 @@ fun PlaceScreen(
             }
             if (current != null) {
                 item {
-                    Message(stringResource(R.string.prayer_current_place, text.placeLine(current)))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.prayer_current_place, text.placeLine(current)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp).testTag("prayer_current_place"),
+                        )
+                        TextButton(onClick = { renaming = true }, modifier = Modifier.testTag("prayer_rename")) {
+                            Text(stringResource(R.string.prayer_rename_place))
+                        }
+                    }
+                }
+                if (current.fromDevice) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .toggleable(value = followDevice, role = Role.Switch, onValueChange = onFollowDevice)
+                                .heightIn(min = 56.dp)
+                                .testTag("prayer_follow_device"),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.prayer_follow_device), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    stringResource(R.string.prayer_follow_device_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Switch(checked = followDevice, onCheckedChange = null)
+                        }
+                    }
                 }
             }
             when {
@@ -217,3 +283,4 @@ private fun Message(text: String, error: Boolean = false) {
 }
 
 private const val SEARCH_DELAY_MS = 600L
+private const val MAX_NAME_LENGTH = 60

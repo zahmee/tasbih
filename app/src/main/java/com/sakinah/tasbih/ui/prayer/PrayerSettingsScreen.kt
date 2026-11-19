@@ -225,8 +225,8 @@ private fun AdjustRow(name: String, minutes: Int, onChange: (Int) -> Unit) {
         }
         // Kept left to right, or the sign would land after the digits in Arabic.
         val value = when {
-            minutes > 0 -> "⁦+${arabicNumber(minutes)}⁩"
-            minutes < 0 -> "⁦−${arabicNumber(abs(minutes))}⁩"
+            minutes > 0 -> "\u2066+${arabicNumber(minutes)}\u2069"
+            minutes < 0 -> "\u2066−${arabicNumber(abs(minutes))}\u2069"
             else -> arabicNumber(0)
         }
         Text(

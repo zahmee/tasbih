@@ -109,6 +109,15 @@ fun PrayerMonthScreen(schedule: PrayerSchedule, calendarText: CalendarText, onBa
                     modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                 )
             }
+            if (days.any { it.estimated }) {
+                Text(
+                    stringResource(R.string.prayer_estimated_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                )
+            }
             HeaderRow(text)
             HorizontalDivider()
             LazyColumn(Modifier.fillMaxSize()) {
