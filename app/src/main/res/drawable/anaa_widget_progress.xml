@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The bar of the time passed since the last prayer: a faint track, the passed part in the accent, filling from the right as Arabic reads: the launcher does not pass the widget direction to a progress picture, so start would mean the left.
+    The colours here serve before Android 12; from it the chosen accent is laid on from code.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <corners android:radius="2dp" />
+            <solid android:color="@color/anaa_widget_cell_line" />
+        </shape>
+    </item>
+    <item android:id="@android:id/progress">
+        <clip android:clipOrientation="horizontal" android:gravity="right">
+            <shape android:shape="rectangle">
+                <corners android:radius="2dp" />
+                <solid android:color="@color/anaa_widget_accent" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

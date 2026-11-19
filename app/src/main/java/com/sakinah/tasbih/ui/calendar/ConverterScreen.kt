@@ -1,5 +1,11 @@
 package com.sakinah.tasbih.ui.calendar
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,6 +96,7 @@ fun ConverterScreen(text: CalendarText, today: LocalDate, onBack: () -> Unit) {
                     options = (1..12).map { it to if (fromHijri) text.hijriMonthName(it) else text.gregorianMonthName(it) },
                     onSelect = { month = it },
                     modifier = Modifier.weight(1.6f),
+                    badge = text::number,
                 )
                 OutlinedTextField(
                     value = yearText,
@@ -145,8 +152,11 @@ private fun Chooser(
     options: List<Pair<Int, String>>,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** A number shown before each name, as the month's place in the year. */
+    badge: ((Int) -> String)? = null,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
+    val chosen = options.firstOrNull { it.second == value }?.first
     Box(modifier) {
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -156,6 +166,10 @@ private fun Chooser(
                     .fillMaxWidth()
                     .heightIn(min = 48.dp),
             ) {
+                if (badge != null && chosen != null) {
+                    NumberBadge(badge(chosen))
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -163,6 +177,7 @@ private fun Chooser(
             options.forEach { (option, name) ->
                 DropdownMenuItem(
                     text = { Text(name) },
+                    leadingIcon = badge?.let { { NumberBadge(it(option)) } },
                     onClick = {
                         open = false
                         onSelect(option)
@@ -170,6 +185,22 @@ private fun Chooser(
                 )
             }
         }
+    }
+}
+
+/**
+ * A month's number in a small faint circle before its name. Written inline, «٦ جمادى» would
+ * read as a date, the sixth of the month; the circle keeps it a label, in a column of its own.
+ */
+@Composable
+private fun NumberBadge(number: String) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(26.dp)
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f), CircleShape),
+    ) {
+        Text(number, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }
 

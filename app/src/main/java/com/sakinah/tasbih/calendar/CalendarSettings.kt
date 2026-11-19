@@ -6,6 +6,12 @@ enum class PrimaryCalendar { HIJRI, GREGORIAN }
 /** [AUTO] follows the phone's region, since Arabic weeks start on Saturday, Sunday or Monday. */
 enum class WeekStart { AUTO, SATURDAY, SUNDAY, MONDAY }
 
+/** A colour the user may give a calendar's day numbers. [THEME] keeps the screen's own ink. */
+enum class DayColor { THEME, GREEN, COPPER, BLUE, RED, PURPLE }
+
+/** [TABLE] draws every day in a square of its own; [PLAIN] leaves the days on the page. */
+enum class GridStyle { PLAIN, TABLE }
+
 data class CalendarSettings(
     val primary: PrimaryCalendar = PrimaryCalendar.HIJRI,
     /** Moves every Hijri day, from -2 to +2. */
@@ -13,6 +19,20 @@ data class CalendarSettings(
     /** Hijri month, as [HijriMonth.key], to how many days later than computed it began. */
     val monthCorrections: Map<String, Int> = emptyMap(),
     val weekStart: WeekStart = WeekStart.AUTO,
+    /** The days off the user keeps, marked in the month. Friday and Saturday unless chosen; may be none. */
+    val weekendDays: Set<java.time.DayOfWeek> = DEFAULT_WEEKEND,
+    /** The colour of the Hijri day number in the month, large or small. */
+    val hijriColor: DayColor = DayColor.THEME,
+    /** The colour of the Gregorian day number in the month, large or small. */
+    val gregorianColor: DayColor = DayColor.THEME,
+    /** The table since November 20, 2026, at the user's wish. */
+    val gridStyle: GridStyle = GridStyle.TABLE,
+    /** Shows the events of the phone's own calendars. Off until the user turns it on. */
+    val agendaEnabled: Boolean = false,
+    /** A phone calendar's id to the colour the user gave it; [DayColor.THEME] keeps its own. */
+    val agendaColors: Map<Long, DayColor> = emptyMap(),
+    /** Phone calendars the user chose not to show here. */
+    val agendaHidden: Set<Long> = emptySet(),
     /** Occasions that not all Muslims mark, such as the Mawlid. Off unless chosen. */
     val showOtherOccasions: Boolean = false,
     val showWhiteDays: Boolean = true,
@@ -28,6 +48,8 @@ data class CalendarSettings(
     fun monthWidgetPage(appWidgetId: Int, today: Long): Int =
         if (monthWidgetPagesDay == today) monthWidgetPages[appWidgetId] ?: 0 else 0
 }
+
+val DEFAULT_WEEKEND: Set<java.time.DayOfWeek> = setOf(java.time.DayOfWeek.FRIDAY, java.time.DayOfWeek.SATURDAY)
 
 /**
  * Maps are saved as sets of "key=value" lines, which Preferences can hold. Anything that does

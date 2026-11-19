@@ -161,9 +161,6 @@ fun LibraryScreen(
                 }
                 when {
                     showingSections -> {
-                        // The tasbih left the bottom bar for prayer and the calendar; it waits here
-                        // and on the home screen.
-                        item { TasbihEntryRow(state, onOpenTasbih, tag = "library_open_tasbih") }
                         item { SakinahSectionHeader(stringResource(R.string.library_sections)) }
                         item { ResponsiveLibraryGroups(state = state, onSelect = { selectedGroup = it }) }
                     }
@@ -233,6 +230,8 @@ private fun LibraryHeader(selectedGroup: DhikrGroup?, onBackToSections: () -> Un
         SakinahScreenHeader(
             title = stringResource(R.string.hisn_library),
             subtitle = stringResource(R.string.library_subtitle),
+            // The user asked for the app's mark off this page, and the tasbih has its own tab now.
+            showBrand = false,
         )
     } else {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -11,6 +11,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.sakinah.tasbih.calendar.CalendarSettings
+import com.sakinah.tasbih.calendar.DEFAULT_WEEKEND
+import com.sakinah.tasbih.calendar.DayColor
+import com.sakinah.tasbih.calendar.GridStyle
+import java.time.DayOfWeek
 import com.sakinah.tasbih.calendar.HijriMonth
 import com.sakinah.tasbih.calendar.PrimaryCalendar
 import com.sakinah.tasbih.calendar.SavedMaps
@@ -34,6 +38,33 @@ class CalendarPreferencesRepository internal constructor(
     suspend fun setPrimary(primary: PrimaryCalendar) = dataStore.edit { it[Keys.primary] = primary.name }
 
     suspend fun setWeekStart(start: WeekStart) = dataStore.edit { it[Keys.weekStart] = start.name }
+
+    suspend fun setWeekendDays(days: Set<DayOfWeek>) = dataStore.edit { it[Keys.weekendDays] = days.mapTo(mutableSetOf()) { d -> d.name } }
+
+    suspend fun setHijriColor(color: DayColor) = dataStore.edit { it[Keys.hijriColor] = color.name }
+
+    suspend fun setGregorianColor(color: DayColor) = dataStore.edit { it[Keys.gregorianColor] = color.name }
+
+    suspend fun setGridStyle(style: GridStyle) = dataStore.edit { it[Keys.gridStyle] = style.name }
+
+    suspend fun setAgendaEnabled(on: Boolean) = dataStore.edit { it[Keys.agendaEnabled] = on }
+
+    suspend fun setAgendaColor(calendarId: Long, color: DayColor) = dataStore.edit { preferences ->
+        val colors = readAgendaColors(preferences[Keys.agendaColors])
+        val updated = if (color == DayColor.THEME) colors - calendarId else colors + (calendarId to color)
+        preferences[Keys.agendaColors] = updated.mapTo(mutableSetOf()) { (id, c) -> "$id=${c.name}" }
+    }
+
+    suspend fun setAgendaShown(calendarId: Long, shown: Boolean) = dataStore.edit { preferences ->
+        val hidden = preferences[Keys.agendaHidden].orEmpty()
+        preferences[Keys.agendaHidden] = if (shown) hidden - calendarId.toString() else hidden + calendarId.toString()
+    }
+
+    private fun readAgendaColors(lines: Set<String>?): Map<Long, DayColor> = lines.orEmpty().mapNotNull { line ->
+        val id = line.substringBefore('=').toLongOrNull()
+        val color = DayColor.entries.firstOrNull { it.name == line.substringAfter('=', "") }
+        if (id == null || color == null) null else id to color
+    }.toMap()
 
     suspend fun setHijriOffset(days: Int) = dataStore.edit { it[Keys.hijriOffset] = days }
 
@@ -86,6 +117,16 @@ class CalendarPreferencesRepository internal constructor(
         hijriOffsetDays = preferences[Keys.hijriOffset] ?: 0,
         monthCorrections = SavedMaps.decodeStrings(preferences[Keys.monthCorrections]),
         weekStart = enumOrDefault(preferences[Keys.weekStart], WeekStart.AUTO),
+        // Never saved means the default; a saved empty set means the user keeps no day off.
+        weekendDays = preferences[Keys.weekendDays]
+            ?.mapNotNullTo(mutableSetOf()) { name -> DayOfWeek.entries.firstOrNull { it.name == name } }
+            ?: DEFAULT_WEEKEND,
+        hijriColor = enumOrDefault(preferences[Keys.hijriColor], DayColor.THEME),
+        gregorianColor = enumOrDefault(preferences[Keys.gregorianColor], DayColor.THEME),
+        gridStyle = enumOrDefault(preferences[Keys.gridStyle], GridStyle.TABLE),
+        agendaEnabled = preferences[Keys.agendaEnabled] ?: false,
+        agendaColors = readAgendaColors(preferences[Keys.agendaColors]),
+        agendaHidden = preferences[Keys.agendaHidden].orEmpty().mapNotNullTo(mutableSetOf()) { it.toLongOrNull() },
         showOtherOccasions = preferences[Keys.showOtherOccasions] ?: false,
         showWhiteDays = preferences[Keys.showWhiteDays] ?: true,
         hijriDayFromMaghrib = preferences[Keys.hijriDayFromMaghrib] ?: false,
@@ -102,6 +143,13 @@ class CalendarPreferencesRepository internal constructor(
         val hijriOffset = intPreferencesKey("hijri_offset_days")
         val monthCorrections = stringSetPreferencesKey("hijri_month_corrections")
         val weekStart = stringPreferencesKey("week_start")
+        val weekendDays = stringSetPreferencesKey("weekend_days")
+        val hijriColor = stringPreferencesKey("hijri_day_color")
+        val gregorianColor = stringPreferencesKey("gregorian_day_color")
+        val gridStyle = stringPreferencesKey("grid_style")
+        val agendaEnabled = booleanPreferencesKey("agenda_enabled")
+        val agendaColors = stringSetPreferencesKey("agenda_colors")
+        val agendaHidden = stringSetPreferencesKey("agenda_hidden")
         val showOtherOccasions = booleanPreferencesKey("show_other_occasions")
         val showWhiteDays = booleanPreferencesKey("show_white_days")
         val hijriDayFromMaghrib = booleanPreferencesKey("hijri_day_from_maghrib")

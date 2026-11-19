@@ -95,6 +95,14 @@ class PrayerSchedule(
         return PrayerMoment(Prayer.FAJR, day(date.plusDays(1))[Prayer.FAJR], tomorrow = true)
     }
 
+    /** The last of the five to have come, which before Fajr is the night before's Isha. */
+    fun previous(now: Instant = Instant.now()): PrayerMoment {
+        val date = today(now)
+        val day = day(date)
+        ObligatoryPrayers.lastOrNull { !now.isBefore(day[it].toInstant()) }?.let { return PrayerMoment(it, day[it]) }
+        return PrayerMoment(Prayer.ISHA, day(date.minusDays(1))[Prayer.ISHA])
+    }
+
     /** The prayer whose time it is now, or null between sunrise and Dhuhr, when none is due. */
     fun current(now: Instant = Instant.now()): PrayerMoment? {
         val date = today(now)

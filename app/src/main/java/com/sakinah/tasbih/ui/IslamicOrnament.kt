@@ -130,8 +130,8 @@ internal fun KhatamMedallion(icon: ImageVector, modifier: Modifier = Modifier) {
 
 /** A rule that fades out to both sides of a small khatam, between the date and the day's prayer. */
 @Composable
-internal fun KhatamDivider(modifier: Modifier = Modifier) {
-    val copper = LocalSakinahBrandColors.current.antiqueGold
+internal fun KhatamDivider(modifier: Modifier = Modifier, color: Color? = null) {
+    val copper = color ?: LocalSakinahBrandColors.current.antiqueGold
     Canvas(modifier.fillMaxWidth().height(14.dp)) {
         val radius = 5.5.dp.toPx()
         val gap = radius + 6.dp.toPx()

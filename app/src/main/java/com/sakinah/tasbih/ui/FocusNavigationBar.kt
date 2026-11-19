@@ -1,5 +1,7 @@
 package com.sakinah.tasbih.ui
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -65,6 +67,8 @@ internal fun FocusNavigationBar(
     exitTag: String,
     beforeExit: @Composable () -> Unit = {},
     afterExit: @Composable () -> Unit = {},
+    /** Only the icon in a round button, without the words. */
+    exitIconOnly: Boolean = false,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrevious, enabled = canGoPrevious, modifier = Modifier.testTag(previousTag)) {
@@ -72,7 +76,11 @@ internal fun FocusNavigationBar(
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             beforeExit()
-            OutlinedButton(
+            if (exitIconOnly) {
+                FilledTonalIconButton(onClick = onExit, modifier = Modifier.padding(horizontal = 8.dp).size(48.dp).testTag(exitTag)) {
+                    Icon(Icons.Outlined.FullscreenExit, contentDescription = stringResource(R.string.tasbih_exit_focus_mode))
+                }
+            } else OutlinedButton(
                 onClick = onExit,
                 // Measured after the optional side controls so they always keep their touch targets.
                 modifier = Modifier.weight(1f, fill = false).heightIn(min = 48.dp).testTag(exitTag),

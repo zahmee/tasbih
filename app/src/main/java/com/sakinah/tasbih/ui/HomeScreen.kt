@@ -139,15 +139,15 @@ fun HomeScreen(
         ?: remember(today) { DateTimeFormatter.ofPattern("EEEE", arabic).format(today) }
     val hijri = calendarText?.let { text ->
         val maghrib = day?.get(Prayer.MAGHRIB)?.toInstant()
-        text.hijriDate(hijriDayFor(today, now, maghrib, text.settings.hijriDayFromMaghrib))
+        text.hijriDate(hijriDayFor(today, now, maghrib, text.settings.hijriDayFromMaghrib), numbered = true)
     }?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(HijrahDate.from(today)) }
-    val gregorian = calendarText?.gregorianDate(today)?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(today) }
+    val gregorian = calendarText?.gregorianDate(today, numbered = true)?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(today) }
 
     val featuredOrder = if (LocalTime.now().hour in 4..15) 27 else 28
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }
 
     val header: @Composable () -> Unit = {
-        HomeHeader(weekday, hijri, gregorian, schedule?.place?.name, onOpenCalendar, onChoosePlace)
+        HomeHeader(weekday, hijri, gregorian, schedule?.place?.name, prayerText, onOpenCalendar, onChoosePlace)
     }
     val prayer: @Composable () -> Unit = {
         PrayerHero(next, next?.let { prayerText.remaining(Duration.between(now, it.time.toInstant())) }, prayerText, onOpenPrayer, onChoosePlace)
@@ -200,45 +200,82 @@ fun HomeScreen(
     }
 }
 
-/** The day by both calendars, which opens the calendar, and the place the times are for. */
+/**
+ * The day by both calendars, which opens the calendar, and the place the times are for. The
+ * weekday leads on the right and the clock stands opposite it on the left, as the user asked.
+ */
 @Composable
 private fun HomeHeader(
     weekday: String,
     hijri: String,
     gregorian: String,
     place: String?,
+    prayerText: PrayerText,
     onOpenCalendar: () -> Unit,
     onChoosePlace: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .testTag("home_open_calendar")
-                .clip(MaterialTheme.shapes.small)
-                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
-                .padding(4.dp),
-        ) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 weekday,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.semantics { heading() },
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
+                    .padding(4.dp)
+                    .semantics { heading() },
             )
-            Text(hijri, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HomeClock(prayerText)
         }
-        if (place != null) {
-            TextButton(
-                onClick = onChoosePlace,
-                modifier = Modifier.widthIn(max = 168.dp).testTag("home_place"),
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("home_open_calendar")
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
-                Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(place, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
+                Text(hijri, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text(gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (place != null) {
+                TextButton(
+                    onClick = onChoosePlace,
+                    modifier = Modifier.widthIn(max = 168.dp).testTag("home_place"),
+                ) {
+                    Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(place, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
+}
+
+/** The time now, turning over on the minute itself rather than up to half a minute late. */
+@Composable
+private fun HomeClock(prayerText: PrayerText) {
+    var time by remember { mutableStateOf(java.time.ZonedDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val now = java.time.ZonedDateTime.now()
+            time = now
+            delay(60_000L - (now.second * 1000L + now.nano / 1_000_000))
+        }
+    }
+    LifecycleResumeEffect(Unit) {
+        time = java.time.ZonedDateTime.now()
+        onPauseOrDispose { }
+    }
+    Text(
+        prayerText.time(time),
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(4.dp).testTag("home_clock"),
+    )
 }
 
 /** The next prayer and how long until it, or a way to choose a place before there are times. */

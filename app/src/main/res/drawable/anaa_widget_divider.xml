@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two ruled lines meeting at a small khatam, as under the date on the home screen. Tinted from code. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="180dp"
+    android:height="12dp"
+    android:viewportWidth="180"
+    android:viewportHeight="12">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8,6 L76,6 M104,6 L172,6"
+        android:strokeWidth="0.8"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M90,0.5 L91.4,2.7 L93.9,2.1 L93.3,4.6 L95.5,6 L93.3,7.4 L93.9,9.9 L91.4,9.3 L90,11.5 L88.6,9.3 L86.1,9.9 L86.7,7.4 L84.5,6 L86.7,4.6 L86.1,2.1 L88.6,2.7 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M80,6 m-1.2,0 a1.2,1.2 0,1 0,2.4 0 a1.2,1.2 0,1 0,-2.4 0 M100,6 m-1.2,0 a1.2,1.2 0,1 0,2.4 0 a1.2,1.2 0,1 0,-2.4 0" />
+</vector>

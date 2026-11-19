@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.AlertDialog
@@ -59,6 +60,7 @@ fun PrayerSettingsScreen(
     state: PrayerState,
     viewModel: PrayerViewModel,
     onBack: () -> Unit,
+    onOpenWidgetStyle: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -166,6 +168,15 @@ fun PrayerSettingsScreen(
         item { CalendarHint(stringResource(R.string.prayer_high_latitude_hint)) }
 
         item { SakinahSectionHeader(stringResource(R.string.cal_section_widgets)) }
+        item {
+            SettingNavigationRow(
+                stringResource(R.string.widget_style_entry),
+                stringResource(R.string.widget_style_entry_hint),
+                Icons.Outlined.Widgets,
+                "prayer_open_widget_style",
+                onOpenWidgetStyle,
+            )
+        }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(

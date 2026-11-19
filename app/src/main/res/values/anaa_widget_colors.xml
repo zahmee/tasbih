@@ -9,4 +9,16 @@
     <color name="anaa_widget_today">#FF185348</color>
     <color name="anaa_widget_on_today">#FFFFFBF3</color>
     <color name="anaa_widget_preview_line">#33185348</color>
+    <!-- As the calendar in the app: today in a faint square, days off in a faint band, the table's lines. -->
+    <color name="anaa_widget_today_fill">#1F185348</color>
+    <color name="anaa_widget_today_line">#80185348</color>
+    <color name="anaa_widget_day_off">#1A996244</color>
+    <color name="anaa_widget_cell_line">#4056645F</color>
+    <color name="anaa_widget_chip_text">#FFFFFBF3</color>
+    <!-- The colours the user may give the day numbers, deep on the light paper. -->
+    <color name="anaa_widget_ink_green">#FF1E6A4D</color>
+    <color name="anaa_widget_ink_copper">#FF94562A</color>
+    <color name="anaa_widget_ink_blue">#FF235A92</color>
+    <color name="anaa_widget_ink_red">#FFA23636</color>
+    <color name="anaa_widget_ink_purple">#FF684592</color>
 </resources>

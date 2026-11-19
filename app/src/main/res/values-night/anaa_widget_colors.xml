@@ -9,4 +9,15 @@
     <color name="anaa_widget_today">#FF8ED8C0</color>
     <color name="anaa_widget_on_today">#FF081713</color>
     <color name="anaa_widget_preview_line">#338ED8C0</color>
+    <color name="anaa_widget_today_fill">#268ED8C0</color>
+    <color name="anaa_widget_today_line">#998ED8C0</color>
+    <color name="anaa_widget_day_off">#1FDCAA87</color>
+    <color name="anaa_widget_cell_line">#40A9BDB5</color>
+    <color name="anaa_widget_chip_text">#FF081713</color>
+    <!-- Soft on the night surface. -->
+    <color name="anaa_widget_ink_green">#FF86D3AF</color>
+    <color name="anaa_widget_ink_copper">#FFE3AC7C</color>
+    <color name="anaa_widget_ink_blue">#FF94BDEB</color>
+    <color name="anaa_widget_ink_red">#FFF0A0A0</color>
+    <color name="anaa_widget_ink_purple">#FFC6A9E8</color>
 </resources>

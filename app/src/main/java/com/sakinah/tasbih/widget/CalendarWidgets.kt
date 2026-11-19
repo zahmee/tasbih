@@ -1,5 +1,6 @@
 package com.sakinah.tasbih.widget
 
+import com.sakinah.tasbih.calendar.PrimaryCalendar
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -52,6 +53,11 @@ internal fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
 abstract class BaseCalendarWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_SET_PRIMARY) {
+            val primary = PrimaryCalendar.entries.firstOrNull { it.name == intent.getStringExtra(EXTRA_PRIMARY) } ?: return
+            runAsync { CalendarWidgetUpdater(context).setPrimary(primary) }
+            return
+        }
         if (intent.action != ACTION_MONTH_PAGE) {
             super.onReceive(context, intent)
             return
@@ -90,6 +96,10 @@ abstract class BaseCalendarWidget : AppWidgetProvider() {
         /** Zero goes back to the current month. */
         const val ACTION_MONTH_PAGE = "com.sakinah.tasbih.action.CALENDAR_MONTH_PAGE"
         const val EXTRA_DIRECTION = "direction"
+
+        /** The switch at the top of the month widget. */
+        const val ACTION_SET_PRIMARY = "com.sakinah.tasbih.action.CALENDAR_SET_PRIMARY"
+        const val EXTRA_PRIMARY = "primary"
     }
 }
 

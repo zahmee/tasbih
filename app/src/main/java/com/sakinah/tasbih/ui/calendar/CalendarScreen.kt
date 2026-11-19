@@ -3,8 +3,18 @@
 package com.sakinah.tasbih.ui.calendar
 
 import com.sakinah.tasbih.ui.KhatamMark
-import com.sakinah.tasbih.ui.LowMihrabArchShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.automirrored.outlined.EventNote
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import com.sakinah.tasbih.calendar.AgendaEvent
+import com.sakinah.tasbih.calendar.DeviceAgenda
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.calendar.CalendarMonth
 import com.sakinah.tasbih.calendar.DayCell
+import com.sakinah.tasbih.calendar.GridStyle
 import com.sakinah.tasbih.calendar.HijriMonth
 import com.sakinah.tasbih.calendar.Occasions
 import com.sakinah.tasbih.calendar.PrimaryCalendar
@@ -89,12 +100,30 @@ fun CalendarScreen(
     onOpenSettings: () -> Unit,
     onBack: (() -> Unit)?,
     hijriToday: LocalDate = today,
+    agenda: AgendaState = AgendaState(),
+    onVisibleMonth: (LocalDate) -> Unit = {},
+    onSetAgenda: (Boolean) -> Unit = {},
 ) {
     val calendar = text.calendar
     val primary = text.settings.primary
     // The day the pages stay on, so changing the leading calendar opens the month that holds it.
     var anchor by rememberSaveable(startDate) { mutableStateOf(startDate.toEpochDay()) }
     var selected by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Outside the key below, so changing the leading calendar keeps the page where it was
+    // instead of building it anew and throwing the reader back to the top.
+    val scroll = rememberScrollState()
+    val context = LocalContext.current
+    val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onSetAgenda(true)
+    }
+    val showAgenda = {
+        if (DeviceAgenda.granted(context)) onSetAgenda(true) else askPermission.launch(DeviceAgenda.PERMISSION)
+    }
+    val agendaOn = text.settings.agendaEnabled && agenda.granted
+    val hidden = text.settings.agendaHidden
+    val eventsOn: (LocalDate) -> List<AgendaEvent> = { day ->
+        if (agendaOn) agenda.events[day].orEmpty().filter { it.calendarId !in hidden } else emptyList()
+    }
 
     val (first, last) = remember(primary, calendar) { CalendarMonth.range(primary, calendar) }
     val pageCount = last.minus(first) + 1
@@ -107,7 +136,10 @@ fun CalendarScreen(
         val scope = rememberCoroutineScope()
         LaunchedEffect(pagerState) {
             snapshotFlow { pagerState.settledPage }.collect { page ->
-                first.plus(page).days(calendar).getOrNull(MIDDLE_OF_MONTH)?.let { anchor = it.toEpochDay() }
+                first.plus(page).days(calendar).getOrNull(MIDDLE_OF_MONTH)?.let {
+                    anchor = it.toEpochDay()
+                    onVisibleMonth(it)
+                }
             }
         }
         LaunchedEffect(jump?.serial) {
@@ -136,19 +168,29 @@ fun CalendarScreen(
                 }
             },
         ) {
-            MonthContent(text, today, hijriToday, first, pagerState, onSetPrimary, onSelect = { selected = it }, onOpenOccasions)
+            MonthContent(text, today, hijriToday, first, pagerState, scroll, eventsOn, onSetPrimary, onSelect = { selected = it }, onOpenOccasions)
         }
     }
 
     selected?.let { epochDay ->
+        val date = LocalDate.ofEpochDay(epochDay)
         DaySheet(
             text = text,
-            date = LocalDate.ofEpochDay(epochDay),
+            date = date,
+            events = eventsOn(date),
+            agendaOn = agendaOn,
+            calendars = agenda.calendars,
+            onShowAgenda = showAgenda,
             onCorrect = onCorrect,
             onDismiss = { selected = null },
         )
     }
 }
+
+/** The colour an event is drawn in: the one the user gave its calendar, or the phone's own. */
+@Composable
+internal fun agendaInk(event: AgendaEvent, settings: com.sakinah.tasbih.calendar.CalendarSettings): Color =
+    settings.agendaColors[event.calendarId]?.ink() ?: Color(event.color).copy(alpha = 1f)
 
 @Composable
 private fun MonthContent(
@@ -157,6 +199,8 @@ private fun MonthContent(
     hijriToday: LocalDate,
     first: CalendarMonth,
     pagerState: PagerState,
+    scroll: ScrollState,
+    eventsOn: (LocalDate) -> List<AgendaEvent>,
     onSetPrimary: (PrimaryCalendar) -> Unit,
     onSelect: (Long) -> Unit,
     onOpenOccasions: () -> Unit,
@@ -167,7 +211,7 @@ private fun MonthContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(horizontal = 16.dp),
     ) {
         CalendarChoices(
@@ -210,15 +254,24 @@ private fun MonthContent(
         }
 
         val firstDay = text.firstDayOfWeek()
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
+        val weekend = text.settings.weekendDays
+        // Days off stand in a faint band down the whole column, their names in copper.
+        val band = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+        val copper = LocalSakinahBrandColors.current.antiqueGold
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             weekDays(firstDay).forEach { day ->
+                val off = day in weekend
                 Text(
                     text = text.weekday(day).removePrefix("ال"),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (off) FontWeight.SemiBold else null,
+                    color = if (off) copper else MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (off) band else Color.Transparent, RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                        .padding(top = 6.dp, bottom = 6.dp),
                 )
             }
         }
@@ -227,14 +280,32 @@ private fun MonthContent(
         HorizontalPager(state = pagerState, beyondViewportPageCount = 1, modifier = Modifier.testTag("calendar_pager")) { page ->
             val grid = remember(page, primary, calendar, firstDay) { buildMonthGrid(first.plus(page), calendar, firstDay) }
             // The cell grows with the system's text size, so two dates and the markers still fit.
-            val cellHeight = 60.dp * LocalDensity.current.fontScale.coerceIn(1f, 1.8f)
+            // A little taller while the phone's events are shown, for their dots under the dates.
+            val base = if (text.settings.agendaEnabled) 66.dp else 60.dp
+            val cellHeight = base * LocalDensity.current.fontScale.coerceIn(1f, 1.8f)
             Column {
-                grid.forEach { week ->
+                val columns = weekDays(firstDay)
+                // The band ends with the month's last week, not in an empty row kept for the height.
+                val lastWeek = grid.indexOfLast { week -> week.any { it != null } }
+                grid.forEachIndexed { row, week ->
                     Row(Modifier.fillMaxWidth()) {
-                        week.forEach { cell ->
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f).height(cellHeight)) {
+                        week.forEachIndexed { column, cell ->
+                            val off = columns[column] in weekend && row <= lastWeek
+                            val last = row == lastWeek
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(cellHeight)
+                                    .background(
+                                        if (off) band else Color.Transparent,
+                                        if (last) RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp) else RectangleShape,
+                                    ),
+                            ) {
                                 if (cell != null) {
-                                    DayBox(cell, text, cell.date == today, onClick = { onSelect(cell.date.toEpochDay()) })
+                                    val events = eventsOn(cell.date)
+                                    val dots = events.map { agendaInk(it, text.settings) }.distinct().take(3)
+                                    DayBox(cell, text, cell.date == today, off, dots, events.size, onClick = { onSelect(cell.date.toEpochDay()) })
                                 }
                             }
                         }
@@ -248,7 +319,15 @@ private fun MonthContent(
 }
 
 @Composable
-private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick: () -> Unit) {
+private fun DayBox(
+    cell: DayCell,
+    text: CalendarText,
+    isToday: Boolean,
+    isDayOff: Boolean,
+    dots: List<Color>,
+    eventCount: Int,
+    onClick: () -> Unit,
+) {
     val hijriFirst = text.settings.primary == PrimaryCalendar.HIJRI
     val hijriDay = cell.hijri?.let { text.number(it.day) }.orEmpty()
     val gregorianDay = text.number(cell.date.dayOfMonth)
@@ -257,21 +336,44 @@ private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick:
     val isWhiteDay = text.settings.showWhiteDays && cell.hijri?.let(Occasions::isWhiteDay) == true
     val colors = MaterialTheme.colorScheme
     val copper = LocalSakinahBrandColors.current.antiqueGold
+    val dayOff = stringResource(R.string.cal_day_off)
+    val todayLabel = stringResource(R.string.cal_today)
     val description = listOfNotNull(
+        todayLabel.takeIf { isToday },
         text.weekday(cell.date.dayOfWeek),
         cell.hijri?.let(text::hijriDate),
         text.gregorianDate(cell.date),
+        dayOff.takeIf { isDayOff },
+        if (eventCount > 0) stringResource(R.string.cal_agenda_count, text.number(eventCount)) else null,
     ).joinToString("، ")
+    val todayShape = RoundedCornerShape(12.dp)
+    val table = text.settings.gridStyle == GridStyle.TABLE
+    // The user's own colours for each calendar's number, whichever of the two leads.
+    val hijriInk = text.settings.hijriColor.ink()
+    val gregorianInk = text.settings.gregorianColor.ink()
+    val largeInk = if (hijriFirst) hijriInk else gregorianInk
+    val smallInk = if (hijriFirst) gregorianInk else hijriInk
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .padding(2.dp)
+            .padding(3.dp)
             .fillMaxSize()
-            // Today stands in a low mihrab arch, as the next prayer does on the home screen.
-            .clip(if (isToday) LowMihrabArchShape else RoundedCornerShape(14.dp))
-            .background(if (isToday) colors.primary else Color.Transparent)
+            // Today sits in a faint square, like a pressed button: a soft tint and a thin rule.
+            // In the table every other day has a square of its own, drawn fainter.
+            .then(
+                when {
+                    isToday -> Modifier
+                        .background(colors.primary.copy(alpha = 0.12f), todayShape)
+                        .border(if (table) 1.5.dp else 1.dp, colors.primary.copy(alpha = 0.5f), todayShape)
+                    table -> Modifier
+                        .background(colors.surface.copy(alpha = 0.6f), todayShape)
+                        .border(1.dp, colors.outlineVariant, todayShape)
+                    else -> Modifier
+                },
+            )
+            .clip(todayShape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
     ) {
@@ -280,7 +382,8 @@ private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick:
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
             color = when {
-                isToday -> colors.onPrimary
+                largeInk != null -> largeInk
+                isToday -> colors.primary
                 hasOccasion -> copper
                 else -> colors.onSurface
             },
@@ -288,12 +391,19 @@ private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick:
         Text(
             text = if (hijriFirst) gregorianDay else hijriDay,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isToday) colors.onPrimary.copy(alpha = 0.8f) else colors.onSurfaceVariant,
+            color = smallInk ?: if (isToday) colors.primary.copy(alpha = 0.8f) else colors.onSurfaceVariant,
         )
-        // Short lines, never dots: a dot beside Arabic digits reads as the digit zero.
+        // Short lines for occasions, never dots: a dot beside Arabic digits reads as the digit zero.
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.height(6.dp).padding(top = 3.dp)) {
-            if (hasOccasion) Marker(if (isToday) colors.onPrimary else copper)
-            if (isWhiteDay) Marker(if (isToday) colors.onPrimary.copy(alpha = 0.7f) else colors.outline)
+            if (hasOccasion) Marker(copper)
+            if (isWhiteDay) Marker(colors.outline)
+        }
+        // The phone's events are the dots the user asked for, one per colour, on a line of their
+        // own below the digits and the occasion lines so they cannot be read as a zero.
+        if (dots.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(top = 3.dp)) {
+                dots.forEach { Box(Modifier.size(6.dp).background(it, CircleShape)) }
+            }
         }
     }
 }
@@ -349,16 +459,23 @@ private fun TodaySummary(text: CalendarText, today: LocalDate, onOpenOccasions: 
 private fun DaySheet(
     text: CalendarText,
     date: LocalDate,
+    events: List<AgendaEvent>,
+    agendaOn: Boolean,
+    calendars: List<com.sakinah.tasbih.calendar.DeviceCalendar>,
+    onShowAgenda: () -> Unit,
     onCorrect: (HijriMonth, Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val calendar = text.calendar
     val hijri = calendar.fromGregorian(date)
+    // The month's correction is asked for only on request, so a tap on a day shows the day.
+    var correcting by rememberSaveable(date) { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
                 .testTag("calendar_day_sheet"),
         ) {
@@ -385,7 +502,29 @@ private fun DaySheet(
                 Text(stringResource(R.string.cal_white_day), style = MaterialTheme.typography.bodyMedium)
             }
 
-            if (hijri != null) {
+            HorizontalDivider(Modifier.padding(vertical = 10.dp))
+            if (agendaOn) {
+                Text(stringResource(R.string.cal_agenda_title), style = MaterialTheme.typography.titleSmall)
+                if (events.isEmpty()) {
+                    CalendarHint(stringResource(R.string.cal_agenda_empty))
+                }
+                events.forEach { event ->
+                    AgendaRow(text, date, event, calendars.firstOrNull { it.id == event.calendarId }?.name.orEmpty())
+                }
+            } else {
+                TextButton(onClick = onShowAgenda, modifier = Modifier.testTag("calendar_show_agenda")) {
+                    Icon(Icons.AutoMirrored.Outlined.EventNote, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.cal_agenda_show))
+                }
+            }
+
+            if (hijri != null && !correcting) {
+                TextButton(onClick = { correcting = true }, modifier = Modifier.padding(top = 8.dp).testTag("calendar_open_correction")) {
+                    Text(stringResource(R.string.cal_correct_open, text.hijriMonthYear(hijri.yearMonth)))
+                }
+            }
+            if (hijri != null && correcting) {
                 val month = hijri.yearMonth
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
                 Text(stringResource(R.string.cal_correct_title, text.hijriMonthYear(month)), style = MaterialTheme.typography.titleSmall)
@@ -407,6 +546,59 @@ private fun DaySheet(
                 )
                 CalendarHint(stringResource(R.string.cal_correct_hint))
             }
+        }
+    }
+}
+
+/** One event of the phone's calendar: its colour, title, hours and calendar. Opens in the phone's calendar app. */
+@Composable
+private fun AgendaRow(text: CalendarText, day: LocalDate, event: AgendaEvent, calendarName: String) {
+    val context = LocalContext.current
+    val zone = java.time.ZoneId.systemDefault()
+    val use24 = android.text.format.DateFormat.is24HourFormat(context)
+    val am = stringResource(R.string.prayer_am)
+    val pm = stringResource(R.string.prayer_pm)
+    fun clock(instant: java.time.Instant): String {
+        val time = instant.atZone(zone)
+        val minute = text.number(time.minute).padStart(2, '٠')
+        if (use24) return "${text.number(time.hour)}:$minute"
+        val hour = (time.hour % 12).let { if (it == 0) 12 else it }
+        return "${text.number(hour)}:$minute ${if (time.hour < 12) am else pm}"
+    }
+    val starts = event.begin.atZone(zone).toLocalDate()
+    val ends = event.end.minusMillis(1).atZone(zone).toLocalDate()
+    val hours = when {
+        event.allDay -> stringResource(R.string.cal_agenda_all_day)
+        starts == day && ends == day -> "${clock(event.begin)} – ${clock(event.end)}"
+        starts == day -> stringResource(R.string.cal_agenda_from, clock(event.begin))
+        ends == day -> stringResource(R.string.cal_agenda_until, clock(event.end))
+        else -> stringResource(R.string.cal_agenda_all_day)
+    }
+    val title = event.title.ifBlank { stringResource(R.string.cal_agenda_untitled) }
+    // Names and places may be Latin, so each is isolated to keep the line in reading order.
+    val details = listOf(hours, event.location, calendarName).filter { it.isNotBlank() }
+        .joinToString(" · ") { "\u2068$it\u2069" }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(role = Role.Button) {
+                val intent = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.content.ContentUris.withAppendedId(android.provider.CalendarContract.Events.CONTENT_URI, event.eventId),
+                ).putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.begin.toEpochMilli())
+                    .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, event.end.toEpochMilli())
+                runCatching { context.startActivity(intent) }
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp)
+            .testTag("calendar_agenda_event"),
+    ) {
+        Box(Modifier.size(12.dp).background(agendaInk(event, text.settings), CircleShape))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

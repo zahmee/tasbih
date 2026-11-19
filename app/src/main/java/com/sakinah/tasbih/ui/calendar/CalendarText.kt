@@ -55,12 +55,24 @@ class CalendarText(private val context: Context, val settings: CalendarSettings)
     fun gregorianMonthYear(month: YearMonth): String =
         context.getString(R.string.cal_gregorian_month_year, gregorianMonthName(month.monthValue), number(month.year))
 
+    /** «جمادى الآخرة (٦)»: a month heading names the month and its place in the year. */
+    private fun numberedHijri(month: Int) = "${hijriMonthName(month)} (${number(month)})"
+
+    private fun numberedGregorian(month: Int) = "${gregorianMonthName(month)} (${number(month)})"
+
+    private fun numberedHijriYear(month: HijriMonth) =
+        context.getString(R.string.cal_hijri_month_year, numberedHijri(month.month), number(month.year))
+
+    private fun numberedGregorianYear(month: YearMonth) =
+        context.getString(R.string.cal_gregorian_month_year, numberedGregorian(month.monthValue), number(month.year))
+
+    /** «جمادى الآخرة (٦) ١٤٤٨ هـ», with the month's number, as the user asked of the calendar's headings. */
     fun monthTitle(month: CalendarMonth): String = when (month) {
-        is CalendarMonth.Hijri -> hijriMonthYear(month.month)
-        is CalendarMonth.Gregorian -> gregorianMonthYear(month.month)
+        is CalendarMonth.Hijri -> numberedHijriYear(month.month)
+        is CalendarMonth.Gregorian -> numberedGregorianYear(month.month)
     }
 
-    /** The months of the other calendar that this month spans, such as «أكتوبر – نوفمبر ٢٠٢٦ م». */
+    /** The months of the other calendar that this month spans, such as «نوفمبر (١١) – ديسمبر (١٢) ٢٠٢٦ م». */
     fun monthSubtitle(month: CalendarMonth): String {
         val days = month.days(calendar)
         if (days.isEmpty()) return ""
@@ -69,22 +81,35 @@ class CalendarText(private val context: Context, val settings: CalendarSettings)
                 val first = YearMonth.from(days.first())
                 val last = YearMonth.from(days.last())
                 when {
-                    first == last -> gregorianMonthYear(first)
-                    first.year == last.year -> range(gregorianMonthName(first.monthValue), gregorianMonthYear(last))
-                    else -> range(gregorianMonthYear(first), gregorianMonthYear(last))
+                    first == last -> numberedGregorianYear(first)
+                    first.year == last.year -> range(numberedGregorian(first.monthValue), numberedGregorianYear(last))
+                    else -> range(numberedGregorianYear(first), numberedGregorianYear(last))
                 }
             }
             is CalendarMonth.Gregorian -> {
                 val first = calendar.fromGregorian(days.first())?.yearMonth ?: return ""
                 val last = calendar.fromGregorian(days.last())?.yearMonth ?: return ""
                 when {
-                    first == last -> hijriMonthYear(first)
-                    first.year == last.year -> range(hijriMonthName(first.month), hijriMonthYear(last))
-                    else -> range(hijriMonthYear(first), hijriMonthYear(last))
+                    first == last -> numberedHijriYear(first)
+                    first.year == last.year -> range(numberedHijri(first.month), numberedHijriYear(last))
+                    else -> range(numberedHijriYear(first), numberedHijriYear(last))
                 }
             }
         }
     }
+
+    /** «١٠ جمادى الآخرة (٦) ١٤٤٨ هـ» when [numbered]; empty outside the years the Hijri data covers. */
+    fun hijriDate(date: LocalDate, numbered: Boolean): String = calendar.fromGregorian(date)?.let {
+        context.getString(R.string.cal_hijri_date, number(it.day), if (numbered) numberedHijri(it.month) else hijriMonthName(it.month), number(it.year))
+    }.orEmpty()
+
+    /** «٢٠ نوفمبر (١١) ٢٠٢٦ م» when [numbered]. */
+    fun gregorianDate(date: LocalDate, numbered: Boolean): String = context.getString(
+        R.string.cal_gregorian_date,
+        number(date.dayOfMonth),
+        if (numbered) numberedGregorian(date.monthValue) else gregorianMonthName(date.monthValue),
+        number(date.year),
+    )
 
     fun occasionName(occasion: Occasion): String = context.getString(occasion.nameRes)
 

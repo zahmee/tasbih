@@ -106,6 +106,7 @@ private sealed interface AppDestination {
     data object PrayerAlerts : AppDestination
     data object PrayerReliability : AppDestination
     data object PrayerMonth : AppDestination
+    data object PrayerWidgetStyle : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -130,6 +131,7 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.PrayerAlerts -> "prayer-alerts"
     AppDestination.PrayerReliability -> "prayer-reliability"
     AppDestination.PrayerMonth -> "prayer-month"
+    AppDestination.PrayerWidgetStyle -> "prayer-widget-style"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -151,6 +153,7 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "prayer-alerts" -> AppDestination.PrayerAlerts
     "prayer-reliability" -> AppDestination.PrayerReliability
     "prayer-month" -> AppDestination.PrayerMonth
+    "prayer-widget-style" -> AppDestination.PrayerWidgetStyle
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
@@ -273,11 +276,14 @@ private fun SakinahNavigation(
     val calendarViewModel: CalendarViewModel = viewModel()
     val calendarSettings by calendarViewModel.settings.collectAsStateWithLifecycle()
     val calendarJump by calendarViewModel.jump.collectAsStateWithLifecycle()
+    val calendarAgenda by calendarViewModel.agenda.collectAsStateWithLifecycle()
     var today by remember { mutableStateOf(LocalDate.now()) }
     // The day can turn while the app waits in the background, as at midnight.
     LifecycleResumeEffect(Unit) {
         today = LocalDate.now()
         calendarViewModel.refreshWidgets()
+        // Events may have been added in the phone's calendar app meanwhile.
+        calendarViewModel.loadAgenda()
         onPauseOrDispose { }
     }
     val context = LocalContext.current
@@ -299,11 +305,8 @@ private fun SakinahNavigation(
         onPauseOrDispose { }
     }
 
-    fun openTasbih() {
-        isTasbihFocusMode = false
-        isReaderFocusMode = false
-        backStack.add(AppDestination.Tasbih)
-    }
+    // The tasbih is a tab of its own, so wherever it is opened from, the bar shows it.
+    fun openTasbih() = navigateTopLevel(AppDestination.Tasbih)
 
     fun openCalendar(date: LocalDate? = null) {
         isReaderFocusMode = false
@@ -362,7 +365,8 @@ private fun SakinahNavigation(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavigationRail = maxWidth >= 600.dp
         val compactNavigationRail = maxHeight < 480.dp
-        val hideTopLevelNavigation = isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader
+        val hideTopLevelNavigation = (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader) ||
+            (isTasbihFocusMode && backStack.lastOrNull() == AppDestination.Tasbih)
         Scaffold(
             bottomBar = {
                 if (topLevelDestination != null && !useNavigationRail && !hideTopLevelNavigation) {
@@ -452,7 +456,7 @@ private fun SakinahNavigation(
                                 onAddCustomPhrase = viewModel::addCustomPhrase,
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
                                 onSetTextScale = viewModel::setTasbihTextScale,
-                                onBack = ::navigateBack,
+                                onBack = backFor(destination),
                             )
                         }
 
@@ -541,6 +545,9 @@ private fun SakinahNavigation(
                                     onOpenConverter = { backStack.add(AppDestination.CalendarConverter) },
                                     onOpenSettings = { backStack.add(AppDestination.CalendarSettings) },
                                     onBack = backFor(destination),
+                                    agenda = calendarAgenda,
+                                    onVisibleMonth = calendarViewModel::loadAgenda,
+                                    onSetAgenda = { calendarViewModel.setAgendaEnabled(it) },
                                 )
                             }
                         }
@@ -613,8 +620,21 @@ private fun SakinahNavigation(
 
                         AppDestination.PrayerOptions -> NavEntry(destination) {
                             prayerState?.let { state ->
-                                PrayerSettingsScreen(state = state, viewModel = prayerViewModel, onBack = ::navigateBack)
+                                PrayerSettingsScreen(
+                                    state = state,
+                                    viewModel = prayerViewModel,
+                                    onBack = ::navigateBack,
+                                    onOpenWidgetStyle = { backStack.add(AppDestination.PrayerWidgetStyle) },
+                                )
                             }
+                        }
+
+                        AppDestination.PrayerWidgetStyle -> NavEntry(destination) {
+                            com.sakinah.tasbih.ui.prayer.PrayerWidgetStyleScreen(
+                                schedule = prayerState?.schedule,
+                                calendarText = calendarText,
+                                onBack = ::navigateBack,
+                            )
                         }
 
                         AppDestination.PrayerAlerts -> NavEntry(destination) {
@@ -702,13 +722,14 @@ private fun Any?.topLevelDestination(): AppDestination? = when (this) {
     AppDestination.Prayer -> AppDestination.Prayer
     is AppDestination.Calendar -> CalendarTab
     AppDestination.Library -> AppDestination.Library
+    AppDestination.Tasbih -> AppDestination.Tasbih
     AppDestination.Settings -> AppDestination.Settings
     else -> null
 }
 
 /**
- * The bottom bar since November 11, 2026: the day, prayer and the calendar first, then the
- * adhkar, which hold the tasbih, and more.
+ * The bottom bar since November 20, 2026: the day, prayer and the calendar first, then the
+ * adhkar and the tasbih, which the user wanted a tap away, and more.
  */
 private data class AppTab(
     val destination: AppDestination,
@@ -722,6 +743,7 @@ private val AppTabs = listOf(
     AppTab(AppDestination.Prayer, IslamicNavSymbol.Dome, R.string.nav_prayer, "nav_prayer"),
     AppTab(CalendarTab, IslamicNavSymbol.Calendar, R.string.cal_title, "nav_calendar"),
     AppTab(AppDestination.Library, IslamicNavSymbol.Manuscript, R.string.nav_adhkar, "nav_library"),
+    AppTab(AppDestination.Tasbih, IslamicNavSymbol.Tasbih, R.string.my_tasbih, "nav_tasbih"),
     AppTab(AppDestination.Settings, IslamicNavSymbol.More, R.string.more, "nav_settings"),
 )
 

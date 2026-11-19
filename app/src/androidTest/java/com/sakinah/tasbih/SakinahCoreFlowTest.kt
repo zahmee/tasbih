@@ -149,7 +149,6 @@ class SakinahCoreFlowTest {
         waitForText("ذِكْرٌ مُعَدَّل")
         waitForText("الدورة الحالية 1 من 9")
 
-        composeRule.onNodeWithTag("tasbih_back").performClick()
         waitForTag("nav_settings")
         composeRule.onNodeWithTag("nav_settings").performClick()
         // The list is lazy: a row below the fold exists only once it is scrolled to, as below.
@@ -297,7 +296,7 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_previous_phrase").performClick()
         waitForTasbihTotal(2)
-        composeRule.onNodeWithTag("tasbih_back").performClick()
+        composeRule.onNodeWithTag("nav_home").performClick()
         waitForTag("home_featured")
         composeRule.onNodeWithTag("nav_home").performClick(); composeRule.onNodeWithTag("home_open_tasbih").performScrollTo().performClick()
         waitForTasbihTotal(2)
@@ -333,11 +332,11 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_focus_mode").performClick()
         waitForTag("tasbih_focus_screen")
-        waitForAbsentTag("tasbih_back")
+        waitForAbsentTag("nav_tasbih")
         waitForAbsentTag("tasbih_add")
         composeRule.onNodeWithTag("tasbih_focus_phrase_header").assertIsDisplayed()
         composeRule.onNodeWithTag("tasbih_exit_focus_mode").assertIsDisplayed()
-        composeRule.onNodeWithText("إلغاء التوسيع").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("إلغاء التوسيع").assertIsDisplayed()
         val previous = composeRule.onNodeWithTag("tasbih_previous_phrase").fetchSemanticsNode().boundsInRoot
         val exit = composeRule.onNodeWithTag("tasbih_exit_focus_mode").fetchSemanticsNode().boundsInRoot
         val next = composeRule.onNodeWithTag("tasbih_next_phrase").fetchSemanticsNode().boundsInRoot
@@ -369,7 +368,7 @@ class SakinahCoreFlowTest {
 
         composeRule.onNodeWithTag("tasbih_exit_focus_mode").performClick()
         waitForTag("tasbih_standard_screen")
-        waitForTag("tasbih_back")
+        waitForTag("nav_tasbih")
         waitForAbsentTag("tasbih_exit_focus_mode")
         composeRule.onNodeWithTag(
             testTag = "tasbih_total_count",

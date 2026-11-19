@@ -244,7 +244,8 @@ fun TasbihScreen(
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight && maxHeight < 500.dp
             // A modest dial at the bottom leaves everything above it to the dhikr.
-            val maximumDialSize = if (landscape) 260.dp else minOf(maxWidth * 0.54f, maxHeight * 0.3f, 210.dp)
+            // A little larger than before, as the user asked: the dial is what the eye and thumb seek.
+            val maximumDialSize = if (landscape) 290.dp else minOf(maxWidth * 0.62f, maxHeight * 0.34f, 240.dp)
             // Keep the convenient background gesture without exposing a duplicate
             // accessibility action; the dial below is the single announced counter.
             Box(
@@ -1206,6 +1207,8 @@ private fun FocusPhraseHeader(
             previousTag = "tasbih_previous_phrase",
             nextTag = "tasbih_next_phrase",
             exitTag = "tasbih_exit_focus_mode",
+            // The icon alone in the middle; its name is still read out.
+            exitIconOnly = true,
             beforeExit = {
                 FocusTextSizeButton(
                     larger = false,

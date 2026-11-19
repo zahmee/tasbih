@@ -43,13 +43,38 @@
     <style name="AnaaWidgetOtherDay" parent="AnaaWidgetDay">
         <item name="android:textColor">@color/anaa_widget_text_soft</item>
     </style>
+
+    <!-- The phone's events under a day, as the dots in the app: one per colour. -->
+    <style name="AnaaWidgetDots" parent="AnaaWidgetDay">
+        <item name="android:textSize">7sp</item>
+        <item name="android:visibility">gone</item>
+    </style>
+
+    <style name="AnaaWidgetChip">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/anaa_widget_text</item>
+    </style>
     <style name="AnaaWidgetPrayerCell">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_weight">1</item>
         <item name="android:layout_margin">2dp</item>
-        <item name="android:gravity">center</item>
-        <item name="android:orientation">vertical</item>
+    </style>
+
+    <!-- One side of a line above the prayers. -->
+    <style name="AnaaWidgetInfoLine">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/anaa_widget_text</item>
     </style>
 
     <style name="AnaaWidgetPrayerName">

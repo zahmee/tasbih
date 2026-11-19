@@ -155,6 +155,8 @@ internal fun SakinahScreenHeader(
     subtitle: String? = null,
     eyebrow: String? = null,
     trailing: (@Composable () -> Unit)? = null,
+    /** The app's mark beside the title; left off where the user found it one too many. */
+    showBrand: Boolean = true,
 ) {
   Column(modifier = modifier.fillMaxWidth()) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -190,7 +192,7 @@ internal fun SakinahScreenHeader(
                 if (trailing != null) {
                     Spacer(Modifier.width(12.dp))
                     trailing()
-                } else {
+                } else if (showBrand) {
                     AnaaAppIcon(modifier = Modifier.padding(top = 2.dp).size(42.dp))
                 }
             }

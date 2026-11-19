@@ -4,6 +4,24 @@ import android.appwidget.AppWidgetManager
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.platform.testTag
+import com.sakinah.tasbih.calendar.weekDays
+import com.sakinah.tasbih.calendar.GridStyle
+import com.sakinah.tasbih.calendar.DayColor
+import com.sakinah.tasbih.calendar.DeviceAgenda
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -35,6 +53,7 @@ import com.sakinah.tasbih.widget.CalendarWidgetKind
 import java.time.DayOfWeek
 import kotlin.math.abs
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CalendarSettingsScreen(
     text: CalendarText,
@@ -43,6 +62,11 @@ fun CalendarSettingsScreen(
 ) {
     val settings = text.settings
     val context = LocalContext.current
+    val agenda by viewModel.agenda.collectAsStateWithLifecycle()
+    val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.setAgendaEnabled(granted)
+    }
+    LaunchedEffect(Unit) { viewModel.loadAgenda() }
     val auto = stringResource(R.string.cal_automatic)
     SettingsPage(stringResource(R.string.cal_settings), onBack, "calendar_settings") {
         item { SakinahSectionHeader(stringResource(R.string.cal_section_display)) }
@@ -74,6 +98,105 @@ fun CalendarSettingsScreen(
                     onSelect = viewModel::setWeekStart,
                 )
             }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.cal_weekend), style = MaterialTheme.typography.titleMedium)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("calendar_weekend"),
+                ) {
+                    weekDays(text.firstDayOfWeek()).forEach { day ->
+                        val selected = day in settings.weekendDays
+                        FilterChip(
+                            selected = selected,
+                            onClick = { viewModel.toggleWeekendDay(day) },
+                            label = { Text(text.weekday(day)) },
+                            leadingIcon = if (selected) {
+                                { Icon(Icons.Outlined.Check, null, Modifier.size(18.dp)) }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+                CalendarHint(stringResource(R.string.cal_weekend_hint))
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.cal_grid_style), style = MaterialTheme.typography.titleMedium)
+                CalendarChoices(
+                    options = GridStyle.entries,
+                    selected = settings.gridStyle,
+                    label = { stringResource(if (it == GridStyle.TABLE) R.string.cal_grid_table else R.string.cal_grid_plain) },
+                    onSelect = viewModel::setGridStyle,
+                )
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.cal_hijri_color), style = MaterialTheme.typography.titleMedium)
+                DayColorPicker(settings.hijriColor, viewModel::setHijriColor, Modifier.testTag("calendar_hijri_color"))
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.cal_gregorian_color), style = MaterialTheme.typography.titleMedium)
+                DayColorPicker(settings.gregorianColor, viewModel::setGregorianColor, Modifier.testTag("calendar_gregorian_color"))
+                CalendarHint(stringResource(R.string.cal_color_hint))
+            }
+        }
+
+        item { SakinahSectionHeader(stringResource(R.string.cal_section_agenda)) }
+        item {
+            SettingToggleRow(
+                stringResource(R.string.cal_agenda_enable),
+                stringResource(R.string.cal_agenda_enable_hint),
+                settings.agendaEnabled && agenda.granted,
+                { on -> if (!on) viewModel.setAgendaEnabled(false) else if (DeviceAgenda.granted(context)) viewModel.setAgendaEnabled(true) else askPermission.launch(DeviceAgenda.PERMISSION) },
+                "calendar_agenda",
+            )
+        }
+        if (settings.agendaEnabled && agenda.granted) {
+            if (agenda.calendars.isEmpty()) {
+                item { CalendarHint(stringResource(R.string.cal_agenda_none)) }
+            }
+            agenda.calendars.forEach { deviceCalendar ->
+                item(key = "agenda_${deviceCalendar.id}") {
+                    val shown = deviceCalendar.id !in settings.agendaHidden
+                    val shownLabel = stringResource(R.string.cal_agenda_shown)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.weight(1f)) {
+                                Text(deviceCalendar.name.ifBlank { deviceCalendar.account }, style = MaterialTheme.typography.titleMedium)
+                                if (deviceCalendar.account.isNotBlank() && deviceCalendar.account != deviceCalendar.name) {
+                                    Text(
+                                        "\u2068${deviceCalendar.account}\u2069",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = shown,
+                                onCheckedChange = { viewModel.setAgendaShown(deviceCalendar.id, it) },
+                                modifier = Modifier.semantics { contentDescription = shownLabel },
+                            )
+                        }
+                        if (shown) {
+                            DayColorPicker(
+                                selected = settings.agendaColors[deviceCalendar.id] ?: DayColor.THEME,
+                                onSelect = { viewModel.setAgendaColor(deviceCalendar.id, it) },
+                                ownInk = Color(deviceCalendar.color).copy(alpha = 1f),
+                                ownLabel = R.string.cal_color_own,
+                            )
+                        }
+                    }
+                }
+            }
+        } else if (settings.agendaEnabled && !agenda.granted) {
+            item { CalendarHint(stringResource(R.string.cal_agenda_denied)) }
         }
 
         item { SakinahSectionHeader(stringResource(R.string.cal_section_adjust)) }
