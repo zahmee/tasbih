@@ -43,9 +43,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 internal object SakinahSpacing {
     val Small = 8.dp
@@ -128,7 +125,6 @@ internal fun SakinahScreenBackground(
                 drawEightPointRosette(
                     center = Offset(size.width * 0.08f, size.height * 0.075f),
                     outerRadius = largeRadius,
-                    innerRadius = largeRadius * 0.47f,
                     color = ornament.copy(alpha = 0.045f),
                     strokeWidth = 1.dp.toPx(),
                 )
@@ -143,7 +139,6 @@ internal fun SakinahScreenBackground(
                 drawEightPointRosette(
                     center = Offset(size.width * 0.94f, size.height * 0.7f),
                     outerRadius = smallRadius,
-                    innerRadius = smallRadius * 0.47f,
                     color = ornament.copy(alpha = 0.035f),
                     strokeWidth = 0.8.dp.toPx(),
                 )
@@ -161,7 +156,8 @@ internal fun SakinahScreenHeader(
     eyebrow: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+  Column(modifier = modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val useStackedActions = trailing != null && maxWidth < 520.dp
 
         if (useStackedActions) {
@@ -200,6 +196,10 @@ internal fun SakinahScreenHeader(
             }
         }
     }
+    // The same rule that sits under the date on the home screen.
+    Spacer(Modifier.height(12.dp))
+    KhatamDivider()
+  }
 }
 
 @Composable
@@ -280,7 +280,6 @@ internal fun SakinahSectionHeader(
             drawEightPointRosette(
                 center = Offset(size.width - starRadius, centerY),
                 outerRadius = starRadius,
-                innerRadius = starRadius * 0.46f,
                 color = gold,
                 strokeWidth = 0.8.dp.toPx(),
             )
@@ -302,7 +301,6 @@ internal fun SakinahRosette(
         drawEightPointRosette(
             center = center,
             outerRadius = radius,
-            innerRadius = radius * 0.46f,
             color = color,
             strokeWidth = 1.2.dp.toPx(),
         )
@@ -319,23 +317,12 @@ internal fun sakinahCardBorder(alpha: Float = 0.18f): BorderStroke = BorderStrok
 private fun DrawScope.drawEightPointRosette(
     center: Offset,
     outerRadius: Float,
-    innerRadius: Float,
     color: Color,
     strokeWidth: Float,
 ) {
-    val path = Path()
-    repeat(16) { index ->
-        val angle = -PI / 2 + index * PI / 8
-        val radius = if (index % 2 == 0) outerRadius else innerRadius
-        val point = Offset(
-            x = center.x + (cos(angle) * radius).toFloat(),
-            y = center.y + (sin(angle) * radius).toFloat(),
-        )
-        if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
-    }
-    path.close()
+    // The khatam of the home screen's ornament, so every screen draws the one star.
     drawPath(
-        path = path,
+        path = khatamPath(center, outerRadius),
         color = color,
         style = Stroke(
             width = strokeWidth,

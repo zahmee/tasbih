@@ -34,7 +34,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -110,15 +112,24 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     private val readingSessions = ReadingSessionRepository(preferencesRepository, activityRepository)
     private val contentState = MutableStateFlow<ContentState>(ContentState.Loading)
 
+    /**
+     * The saved settings, read and decoded once for everything here that follows them, and off
+     * the main thread: each count of the tasbih rewrites them, and four readers each decoding
+     * the whole file on the main thread made every tap heavier than it needs to be.
+     */
+    private val preferences = preferencesRepository.preferences
+        .flowOn(Dispatchers.Default)
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000), replay = 1)
+
     // Only consulted until the first entry is opened; afterwards the stored list is used.
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val recentReaderFallback = preferencesRepository.preferences
+    private val recentReaderFallback = preferences
         .map { it.recentEntryIds.isEmpty() }
         .distinctUntilChanged()
         .flatMapLatest { needed -> if (needed) activityRepository.recentReaderEntryIds else flowOf(emptyList()) }
 
     val uiState: StateFlow<SakinahUiState> = combine(
-        preferencesRepository.preferences,
+        preferences,
         contentState,
         recentReaderFallback,
     ) { preferences, content, recentReaderEntryIds ->
@@ -168,7 +179,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val selectedTasbihPhraseAnalytics: StateFlow<TasbihPhraseAnalytics?> = preferencesRepository.preferences
+    val selectedTasbihPhraseAnalytics: StateFlow<TasbihPhraseAnalytics?> = preferences
         .map { preferences ->
             // Resolve the phrase the same way uiState does, so the sheet always gets its own counts.
             val phrases = preferences.tasbihPhrases
@@ -199,10 +210,10 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun decrementTasbih() = viewModelScope.launch {
-        val state = uiState.value
-        if (state.tasbihCount <= 0) return@launch
-        preferencesRepository.decrementCounter()
-        activityRepository.undoTasbih(state.selectedPhrase.id)
+        // The saved count decides, not the one on screen: two quick taps on undo both see the
+        // same count there, and the second would take an older count out of the history.
+        val phraseId = preferencesRepository.decrementCounter() ?: return@launch
+        activityRepository.undoTasbih(phraseId)
     }
 
     fun resetTasbih() = viewModelScope.launch {
@@ -357,7 +368,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
 
     private fun watchForDailyRollover() {
         viewModelScope.launch {
-            preferencesRepository.preferences.map { it.dailyReset }.distinctUntilChanged().collectLatest { settings ->
+            preferences.map { it.dailyReset }.distinctUntilChanged().collectLatest { settings ->
                 while (true) {
                     preferencesRepository.rollOverDailyStateIfNeeded()
                     // Recheck the wall clock as well as the exact boundary, including time-zone edits.

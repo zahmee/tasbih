@@ -8,6 +8,16 @@ if (signingPropertiesFile.isFile) {
     signingPropertiesFile.inputStream().use(signingProperties::load)
 }
 
+// The Google Maps key for the Qibla's satellite view, same rule again: maps.properties is
+// gitignored and holds one line, MAPS_API_KEY=... Without it the build has no satellite view.
+val mapsProperties = Properties()
+val mapsPropertiesFile = rootProject.file("maps.properties")
+
+if (mapsPropertiesFile.isFile) {
+    mapsPropertiesFile.inputStream().use(mapsProperties::load)
+}
+val mapsApiKey: String = mapsProperties.getProperty("MAPS_API_KEY").orEmpty().trim()
+
 // Play Developer API key, same rule as the signing key: play-service-account.json is gitignored.
 val playCredentialsFile = rootProject.file("play-service-account.json")
 
@@ -30,6 +40,8 @@ android {
         versionCode = 10
         versionName = "1.3.6"
         buildConfigField("String", "RELEASE_DATE", "\"2026-10-24\"")
+        buildConfigField("boolean", "MAPS_ENABLED", mapsApiKey.isNotEmpty().toString())
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -124,6 +136,9 @@ dependencies {
     // Prayer times and the Qibla, computed on the device. MIT licensed, no dependencies, Java 8 bytecode.
     // Its Kotlin successor, adhan2, is built for Java 21, which this project's unit tests cannot run.
     implementation("com.batoulapps.adhan:adhan:1.2.1")
+    // Satellite pictures under the Qibla line. Google's own library, the only closed one here;
+    // it needs Google services on the phone, and the screen hides the choice where they are missing.
+    implementation("com.google.maps.android:maps-compose:9.0.1")
     ksp("androidx.room3:room3-compiler:3.0.1")
 
     testImplementation("junit:junit:4.13.2")

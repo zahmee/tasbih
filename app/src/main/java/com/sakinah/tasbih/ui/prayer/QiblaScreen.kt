@@ -25,7 +25,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -58,6 +57,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.prayer.PrayerSchedule
@@ -82,6 +82,8 @@ fun QiblaScreen(
     schedule: PrayerSchedule?,
     onChoosePlace: () -> Unit,
     onBack: () -> Unit,
+    satellite: Boolean = false,
+    onSatellite: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -95,6 +97,11 @@ fun QiblaScreen(
                 Text(stringResource(R.string.prayer_no_place_title), style = MaterialTheme.typography.titleLarge)
                 TextButton(onClick = onChoosePlace) { Text(stringResource(R.string.prayer_choose_place)) }
             }
+            return@CalendarPage
+        }
+        val mapsAvailable = remember(context) { QiblaMaps.available(context) }
+        if (mapsAvailable && satellite) {
+            SatelliteQibla(schedule, text, onChoosePlace, onSatellite)
             return@CalendarPage
         }
         val place = schedule.place
@@ -127,6 +134,7 @@ fun QiblaScreen(
                 }
                 TextButton(onClick = onChoosePlace) { Text(stringResource(R.string.prayer_change_place)) }
             }
+            if (mapsAvailable) QiblaViewToggle(satellite = false, onSatellite = onSatellite)
 
             Dial(
                 heading = heading ?: 0f,
@@ -323,7 +331,7 @@ private fun Dial(heading: Float, qibla: Float, facing: Boolean, showHeading: Boo
 }
 
 @Stable
-private class CompassState {
+internal class CompassState {
     var heading by mutableStateOf<Float?>(null)
     var accuracy by mutableIntStateOf(SensorManager.SENSOR_STATUS_ACCURACY_HIGH)
     var available by mutableStateOf(true)
@@ -334,19 +342,21 @@ private class CompassState {
  * where a phone has no rotation vector. Smoothed on sine and cosine, so 359 to 0 is no jump.
  */
 @Composable
-private fun rememberCompass(latitude: Double, longitude: Double): CompassState {
+internal fun rememberCompass(latitude: Double, longitude: Double): CompassState {
     val context = LocalContext.current
     val state = remember { CompassState() }
     val declination = remember(latitude, longitude) {
         GeomagneticField(latitude.toFloat(), longitude.toFloat(), 0f, System.currentTimeMillis()).declination
     }
-    DisposableEffect(context, declination) {
+    // From start to stop, not for as long as the page exists: the sensors must rest when the
+    // user leaves the app with the Qibla open.
+    LifecycleStartEffect(context, declination) {
         val manager = context.getSystemService(SensorManager::class.java)
         val rotation = manager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         val magnetic = manager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
         val gravity = manager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         state.available = manager != null && magnetic != null && (rotation != null || gravity != null)
-        if (!state.available) return@DisposableEffect onDispose { }
+        if (!state.available) return@LifecycleStartEffect onStopOrDispose { }
 
         val matrix = FloatArray(9)
         val remapped = FloatArray(9)
@@ -404,7 +414,7 @@ private fun rememberCompass(latitude: Double, longitude: Double): CompassState {
         if (rotation != null) manager.registerListener(listener, rotation, SensorManager.SENSOR_DELAY_UI)
         if (rotation == null) manager.registerListener(listener, gravity, SensorManager.SENSOR_DELAY_UI)
         manager.registerListener(listener, magnetic, SensorManager.SENSOR_DELAY_UI)
-        onDispose { manager.unregisterListener(listener) }
+        onStopOrDispose { manager.unregisterListener(listener) }
     }
     return state
 }
@@ -427,12 +437,12 @@ private fun remap(context: Context, matrix: FloatArray, out: FloatArray) {
 }
 
 /** From -180 to 180, so the shorter way round is always chosen. */
-private fun normalize(degrees: Float): Float = ((degrees % 360f) + 540f) % 360f - 180f
+internal fun normalize(degrees: Float): Float = ((degrees % 360f) + 540f) % 360f - 180f
 
-private fun roundToFive(degrees: Float): Int = ((degrees / 5f).roundToInt() * 5).coerceAtLeast(5)
+internal fun roundToFive(degrees: Float): Int = ((degrees / 5f).roundToInt() * 5).coerceAtLeast(5)
 
 /** Within this many degrees the phone is taken to face the Qibla. */
-private const val FACING_DEGREES = 5f
+internal const val FACING_DEGREES = 5f
 private const val SMOOTHING = 0.15f
 
 /** Below this height the shadow is too long and faint to follow. */

@@ -574,6 +574,16 @@
     <string name="method_moonsighting">لجنة رؤية الهلال</string>
     <string name="method_france">اتحاد المنظمات الإسلامية في فرنسا</string>
     <string name="method_russia">الإدارة الدينية لمسلمي روسيا</string>
+    <string name="qibla_view_compass">البوصلة</string>
+    <string name="qibla_view_satellite">القمر الصناعي</string>
+    <string name="qibla_map_hint">أمسك الهاتف أفقيًا وأعلاه أمامك. السهم الأبيض اتجاه هاتفك، والخط الذهبي اتجاه القبلة: استدر حتى يصير الخط تحت السهم.</string>
+    <string name="qibla_map_no_compass">لا توجد بوصلة في هذا الهاتف. الشمال أعلى الخريطة، والخط الذهبي يتجه من مكانك إلى الكعبة.</string>
+    <string name="qibla_map_saved_place">الخريطة الآن على المكان المحفوظ لا على موقعك. اسمح بالموقع لتظهر النقطة حيث تقف.</string>
+    <string name="qibla_map_allow">السماح بالموقع</string>
+    <string name="qibla_map_locating">جارٍ تحديد موقعك…</string>
+    <string name="qibla_map_rough">موقعك تقريبي الآن، بدقة نحو %1$s متر. اخرج إلى مكان مكشوف ليصير أدق.</string>
+    <string name="qibla_map_notice">تُحمَّل الصور من خرائط قوقل، فتصل إليها المنطقة المعروضة.</string>
+    <string name="qibla_map_description">صورة بالقمر الصناعي تتوسطها نقطة موقعك، وخط من موقعك باتجاه القبلة</string>
     <string name="qibla_title">القبلة</string>
     <string name="qibla_entry_summary">اتجاه الكعبة بالبوصلة، والمسافة إليها</string>
     <string name="qibla_no_compass">لا توجد بوصلة في هذا الهاتف. اتجاه القبلة %1$s من الشمال، باتجاه عقارب الساعة.</string>

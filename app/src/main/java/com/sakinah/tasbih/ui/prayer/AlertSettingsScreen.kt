@@ -33,7 +33,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.alerts.AlertHealth
 import com.sakinah.tasbih.alerts.PrayerSounds
@@ -293,19 +293,25 @@ private class Preview(private val context: android.content.Context) {
         val wasPlaying = playing == id
         stop()
         if (wasPlaying) return
-        player = runCatching {
-            MediaPlayer.create(context, uri)?.apply {
-                setOnCompletionListener { stop() }
-                start()
+        val created = runCatching { MediaPlayer.create(context, uri) }.getOrNull()
+        player = created?.let {
+            runCatching {
+                it.setOnCompletionListener { stop() }
+                it.start()
+                it
+            }.getOrElse { _ ->
+                it.release()
+                null
             }
-        }.getOrNull()
+        }
         playing = if (player != null) id else null
     }
 
     fun stop() {
-        player?.runCatching {
-            stop()
-            release()
+        // Released even when stopping fails, as it does on a player that never started.
+        player?.let {
+            runCatching { it.stop() }
+            runCatching { it.release() }
         }
         player = null
         playing = null
@@ -316,7 +322,8 @@ private class Preview(private val context: android.content.Context) {
 private fun rememberPreview(): Preview {
     val context = LocalContext.current
     val preview = remember { Preview(context) }
-    DisposableEffect(Unit) { onDispose { preview.stop() } }
+    // An adhan being tried must not play on after the user leaves the app.
+    LifecycleStartEffect(Unit) { onStopOrDispose { preview.stop() } }
     return preview
 }
 

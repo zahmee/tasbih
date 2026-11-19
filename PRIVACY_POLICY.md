@@ -22,7 +22,7 @@
 - إعدادات تنبيهات الصلاة، والنغمة والأذان اللذان تختارهما.
 - المناسبات الخاصة التي تضيفها إلى التقويم.
 
-لا يرسل التطبيق هذه البيانات إلى خادم تابع لمؤسسة إبداع التطوير والبرمجة لتقنية المعلومات. ولا يخرج من هاتفك إلا ما يوضحه القسمان التاليان: نص البحث عن المكان، وإحداثيات موقعك لتسميته إذا اخترت استخدام موقعك.
+لا يرسل التطبيق هذه البيانات إلى خادم تابع لمؤسسة إبداع التطوير والبرمجة لتقنية المعلومات. ولا يخرج من هاتفك إلا ما يوضحه القسمان التاليان: نص البحث عن المكان، وإحداثيات موقعك لتسميته إذا اخترت استخدام موقعك، والمنطقة المعروضة إذا اخترت القبلة على صور القمر الصناعي.
 
 ## البحث عن المكان عبر الإنترنت
 
@@ -35,6 +35,10 @@
 يقرأ التطبيق موقع جهازك ليحسب المواقيت واتجاه القبلة على هاتفك. ثم يرسل إحداثيات الموقع وحدها إلى خدمة تسمية الأماكن المدمجة في نظام هاتفك، ليعرف اسم الحي والمدينة والمنطقة. هذه الخدمة تقدمها قوقل في أغلب هواتف أندرويد، وتسري عليها سياسة الخصوصية الخاصة بها. لا يُرسل مع الإحداثيات أي معرّف لك، ولا شيء من أذكارك أو تقدمك. وإذا لم تتوفر الخدمة في هاتفك أو لم يكن متصلًا، سُمّي المكان من قائمة أماكن محفوظة داخل التطبيق دون إرسال شيء، وهي تغطي الدول العربية. وفي غيرها يبقى المكان باسم «موقعي الحالي»، ولك أن تكتب اسمه بنفسك.
 
 يُحفظ الموقع واسمه على جهازك. وما دام خيار «تحديث المكان عند فتح التطبيق» مفعّلًا، يُقرأ الموقع ويُسمّى من جديد كلما فتحت التطبيق، ليتبع المكان تنقلك. يمكنك إطفاء الخيار من شاشة المكان. لا يُقرأ الموقع في الخلفية أبدًا. ويمكنك سحب الإذن في أي وقت من إعدادات النظام، واختيار مكانك بالبحث بدلًا منه.
+
+## القبلة على صور القمر الصناعي
+
+عرض القبلة فوق صور القمر الصناعي اختياري ومطفأ في البداية، ويظهر في الهواتف التي فيها خدمات قوقل فقط. إذا اخترته في شاشة القبلة، تُحمَّل صور الخريطة من خرائط قوقل، فتصل إلى قوقل المنطقة المعروضة على الخريطة وعنوان شبكتك، وتسري عليها سياسة الخصوصية الخاصة بقوقل. يُرسم خط القبلة على هاتفك، ولا يُرسل معه شيء من أذكارك أو تقدمك. ولتقف النقطة حيث تقف أنت، يُقرأ موقع هاتفك باستمرار ما دامت هذه الشاشة مفتوحة أمامك، بعد إذنك، ويتوقف عند مغادرتها. يبقى الموقع على هاتفك، وما يصل إلى قوقل هو المنطقة التي تعرضها الخريطة. البوصلة العادية لا تتصل بالإنترنت.
 
 ## تنبيهات الصلاة والأذان
 
@@ -77,6 +81,8 @@ The app may store settings, reading progress, favorites, tasbih phrases, counts,
 Anaa uses the Internet to search for a place: when the user types the name of a city or village on the place screen, that text alone is sent to the Open-Meteo geocoding service (open-meteo.com), which returns the place's name, coordinates and time zone. No identifier and no reading or tasbih data is sent with it. As with any Internet request, the service sees the network address, and its own privacy policy applies.
 
 If the user chooses "use my current location", the app explains what it will do and asks for the location permission; the user picks precise or approximate in the system dialog. The app reads the device's position to compute prayer times and the Qibla on the device. It then sends the coordinates alone to the place naming service built into the phone's system, to learn the name of the district, town and region. On most Android phones that service is provided by Google, and its own privacy policy applies. No identifier and no reading or tasbih data is sent with the coordinates. Where the service is missing or the phone is offline, the place is named from a list of places kept inside the app, which covers the Arab countries and sends nothing; elsewhere it keeps a plain label that the user may rename. The position and its name are kept on the device. While "update the place when the app opens" is on, the position is read and named again each time the app is opened; the option can be turned off on the place screen. The position is never read in the background. The permission can be withdrawn at any time in the system settings.
+
+The Qibla over satellite imagery is optional, off by default, and offered only on phones with Google services. When the user chooses it on the Qibla screen, the map imagery is loaded from Google Maps, so Google receives the area shown on the map and the network address, under Google's own privacy policy. The Qibla line is drawn on the device, and no reading or tasbih data is sent. So that the mark stands where the user stands, the phone's position is read continuously while this screen is open in front of the user, with their permission, and reading stops when they leave it. The position stays on the device; what Google receives is the area the map shows. The ordinary compass does not use the Internet.
 
 Prayer alerts are optional and off by default. When the user turns them on, the app explains why it needs the notification permission and then asks for it. Alerts are scheduled on the device with the system alarm service, and nothing about them is sent anywhere. The user may also allow exact alarms in the system settings so alerts arrive on the minute. The full adhan plays with a visible notification that has a stop button, and it stops when a call begins. If the phone's time zone changes away from the chosen place's, a notification suggests updating the place; the location is not read for this. If the user picks an adhan file from the phone, the app keeps read access to that one file to play it, and never copies or uploads it.
 

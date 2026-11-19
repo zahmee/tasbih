@@ -67,7 +67,11 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun search(query: String) {
         searchJob?.cancel()
-        if (query.trim().length < PlaceSearch.MIN_QUERY_LENGTH) return
+        if (query.trim().length < PlaceSearch.MIN_QUERY_LENGTH) {
+            // The search just cancelled would have cleared this itself had it finished.
+            _search.update { it.copy(searching = false) }
+            return
+        }
         searchJob = viewModelScope.launch {
             _search.update { it.copy(searching = true, searchFailed = false) }
             val results = try {
@@ -127,6 +131,11 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     fun renamePlace(name: String) = save { repository.setPlaceName(name) }
 
     fun setFollowDevice(follow: Boolean) = save { repository.setFollowDevice(follow) }
+
+    /** Only how the Qibla is drawn, so no alarm or widget needs setting again. */
+    fun setQiblaSatellite(satellite: Boolean) {
+        viewModelScope.launch { repository.setQiblaSatellite(satellite) }
+    }
 
     fun setMethod(method: PrayerMethod?) = save { repository.setMethod(method) }
 

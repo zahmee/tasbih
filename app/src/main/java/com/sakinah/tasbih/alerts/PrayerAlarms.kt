@@ -35,7 +35,9 @@ import kotlinx.coroutines.sync.withLock
  * The time the pending alarm was set for is remembered, so an alarm that Android delivers late
  * still raises every alert that came due meanwhile, and opening the app mends a broken chain.
  * With the user's leave to set exact alarms they ring on the minute, even in Doze. Without it
- * they ring within ten minutes, and the full adhan gives way to a notification tone.
+ * they ring within ten minutes while the phone is awake, a second alarm of the kind Doze lets
+ * through stands behind the first for a phone left idle, and the full adhan gives way to a
+ * notification tone.
  */
 object PrayerAlarms {
     private const val ACTION_WAKE = "com.sakinah.tasbih.action.PRAYER_WAKE"
@@ -43,7 +45,9 @@ object PrayerAlarms {
     private const val EXTRA_PRAYER = "prayer"
     private const val EXTRA_KIND = "kind"
     private const val EXTRA_TIME = "time"
+    private const val ACTION_WAKE_IDLE = "com.sakinah.tasbih.action.PRAYER_WAKE_IDLE"
     private const val REQUEST_WAKE = 1
+    private const val REQUEST_WAKE_IDLE = 2
     private const val REQUEST_TEST = 3
     private val WINDOW = Duration.ofMinutes(10)
     private const val STORE = "prayer_alarms"
@@ -73,9 +77,11 @@ object PrayerAlarms {
         }
         if (wake == null) {
             cancel(app, REQUEST_WAKE, ACTION_WAKE)
+            cancel(app, REQUEST_WAKE_IDLE, ACTION_WAKE_IDLE)
             store.edit().remove(KEY_PENDING).apply()
         } else {
             set(app, wake.at, intent(app, ACTION_WAKE, REQUEST_WAKE, null, null, null), wake.urgent)
+            setIdleBackup(app, wake.at)
             store.edit().putLong(KEY_PENDING, wake.at.toInstant().toEpochMilli()).apply()
         }
         if (loaded != null && pending in 1..now.toEpochMilli()) {
@@ -177,6 +183,24 @@ object PrayerAlarms {
             urgent -> manager.setAlarmClock(AlarmManager.AlarmClockInfo(millis, AlertNotifier.openPrayerTimes(context)), operation)
             else -> manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, operation)
         }
+    }
+
+    /**
+     * Without exact alarms, the windowed alarm above is held back for as long as the phone lies
+     * idle, which at Fajr can be hours. This second one is of the kind Doze lets through, though
+     * less punctual while the phone is awake. Whichever rings first raises the alert and sets
+     * both again, and the other then finds nothing due.
+     */
+    private fun setIdleBackup(context: Context, at: ZonedDateTime) {
+        if (canScheduleExact(context)) {
+            cancel(context, REQUEST_WAKE_IDLE, ACTION_WAKE_IDLE)
+            return
+        }
+        context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            at.toInstant().toEpochMilli(),
+            intent(context, ACTION_WAKE_IDLE, REQUEST_WAKE_IDLE, null, null, null),
+        )
     }
 
     /** The action must match the one the alarm was set with, or Android finds no alarm to cancel. */

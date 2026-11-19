@@ -11,6 +11,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -101,24 +102,23 @@ fun SakinahTheme(
         ThemeMode.Dark -> true
     }
     val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> {
-            dynamicDarkColorScheme(context)
+    // Remembered: a new colour scheme or typography on every recomposition would redraw the
+    // whole app, and the app's state changes with each count of the tasbih.
+    val colorScheme = remember(dynamicColor, darkTheme, context) {
+        when {
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> dynamicDarkColorScheme(context)
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicLightColorScheme(context)
+            darkTheme -> DarkColors
+            else -> LightColors
         }
-
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColors
-        else -> LightColors
     }
 
     val brandColors = if (darkTheme) DarkSakinahBrandColors else LightSakinahBrandColors
 
-    val typography = sakinahTypography(arabicFontStyle)
+    val typography = remember(arabicFontStyle) { sakinahTypography(arabicFontStyle) }
+    val dhikrFont = remember(arabicFontStyle) { dhikrFontFor(arabicFontStyle) }
     CompositionLocalProvider(
-        LocalDhikrFontFamily provides dhikrFontFor(arabicFontStyle),
+        LocalDhikrFontFamily provides dhikrFont,
         LocalSakinahBrandColors provides brandColors,
     ) {
         MaterialTheme(

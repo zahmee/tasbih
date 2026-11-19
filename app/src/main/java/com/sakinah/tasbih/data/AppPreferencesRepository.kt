@@ -84,11 +84,17 @@ class AppPreferencesRepository internal constructor(
         }
     }
 
-    suspend fun decrementCounter() {
+    /** The id of the phrase whose count went down by one, or null when it already stood at zero. */
+    suspend fun decrementCounter(): String? {
+        var decremented: String? = null
         editDailyState { preferences ->
-            val key = Keys.phraseCounter(preferences.selectedPhraseId())
-            preferences[key] = (preferences.currentPhraseCount() - 1).coerceAtLeast(0)
+            val phraseId = preferences.selectedPhraseId()
+            val count = preferences.currentPhraseCount()
+            // Set on every run of this block, which DataStore may run again after a failed write.
+            decremented = phraseId.takeIf { count > 0 }
+            preferences[Keys.phraseCounter(phraseId)] = (count - 1).coerceAtLeast(0)
         }
+        return decremented
     }
 
     suspend fun resetCounter() {

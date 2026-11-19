@@ -29,7 +29,10 @@ object AlertNotifier {
     const val CHANNEL_ADHAN = "prayer_adhan_playing"
     private const val CHANNEL_TRAVEL = "prayer_travel"
     private const val TRAVEL_ID = 4300
-    private const val TONE_PREFIX = "prayer_tone_"
+    private const val TONE_PREFIX = "prayer_sound_"
+
+    /** Trial builds made channels under this name whose sound was addressed by a number. */
+    private const val OLD_TONE_PREFIX = "prayer_tone_"
     private const val NOTIFICATION_ID = 4100
 
     fun canPost(context: Context): Boolean =
@@ -80,6 +83,7 @@ object AlertNotifier {
             }
         }
         channels.forEach { it.group = GROUP }
+        manager.notificationChannels.filter { it.id.startsWith(OLD_TONE_PREFIX) }.forEach { manager.deleteNotificationChannel(it.id) }
         manager.createNotificationChannels(channels)
     }
 

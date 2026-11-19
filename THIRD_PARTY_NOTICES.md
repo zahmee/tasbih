@@ -37,6 +37,12 @@
 - المكتبة: [batoulapps/adhan-java](https://github.com/batoulapps/adhan-java)، النسخة 1.2.1
 - الترخيص: MIT، حقوق النشر © Batoul Apps
 
+## خرائط القبلة
+
+- المكتبة: [Maps Compose](https://github.com/googlemaps/android-maps-compose)، النسخة 9.0.1، بترخيص Apache 2.0، ومعها حزمة خرائط قوقل لأندرويد من خدمات قوقل وهي مغلقة المصدر
+- الاستخدام: صور القمر الصناعي تحت خط القبلة، عند اختيار المستخدم فقط، وتخضع لشروط منصة خرائط قوقل
+- المفتاح: في ملف `maps.properties` غير المرفوع، بسطر واحد `MAPS_API_KEY=...`. البناء دونه يخلو من عرض القمر الصناعي
+
 ## البحث عن الأماكن
 
 - الخدمة: [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api)، تُستدعى عند البحث عن مكان بالاسم فقط

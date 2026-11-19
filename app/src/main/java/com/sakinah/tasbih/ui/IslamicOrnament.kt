@@ -1,5 +1,6 @@
 package com.sakinah.tasbih.ui
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -162,8 +163,14 @@ internal fun KhatamMark(modifier: Modifier = Modifier, color: Color = LocalSakin
 }
 
 /** The pointed arch of a mihrab, which holds the prayer whose time comes next. */
-internal val MihrabArchShape: Shape = GenericShape { size, _ ->
-    val rise = minOf(size.width * 0.5f, size.height * 0.42f)
+internal val MihrabArchShape: Shape = mihrabArch(0.42f)
+
+/** A lower arch for a small square, as a day of the month, where a tall point would crowd the number. */
+internal val LowMihrabArchShape: Shape = mihrabArch(0.22f)
+
+/** [rise] is how far down the sides the arch begins, as a share of the height. */
+private fun mihrabArch(rise: Float): Shape = GenericShape { size, _ ->
+    val rise = minOf(size.width * 0.5f, size.height * rise)
     val corner = size.minDimension * 0.12f
     moveTo(0f, size.height - corner)
     lineTo(0f, rise)
@@ -174,4 +181,22 @@ internal val MihrabArchShape: Shape = GenericShape { size, _ ->
     lineTo(corner, size.height)
     quadraticTo(0f, size.height, 0f, size.height - corner)
     close()
+}
+
+/** The approved lead card's shape: rounded top-right and bottom-left corners, sharp opposite ones. */
+internal val FeatureShape = RoundedCornerShape(topStart = 24.dp, topEnd = 0.dp, bottomEnd = 24.dp, bottomStart = 0.dp)
+
+/** The same shape for the ruled frame inside it, its corners turned on the same centres. */
+private val FeatureFrameShape = RoundedCornerShape(topStart = 18.dp, topEnd = 0.dp, bottomEnd = 18.dp, bottomStart = 0.dp)
+
+/**
+ * The ornament of a lead card, on the home screen and the prayer times alike: a tile lattice
+ * fading in from the end edge, inside a ruled frame. [color] is the card's own content colour.
+ */
+@Composable
+internal fun OrnamentedFeature(color: Color, content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().ornamentFrame(FeatureFrameShape, color.copy(alpha = 0.22f))) {
+        KhatamLattice(color.copy(alpha = 0.11f), Modifier.matchParentSize())
+        content()
+    }
 }

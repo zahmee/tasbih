@@ -241,21 +241,6 @@ private fun HomeHeader(
     }
 }
 
-/** The approved feature shape: rounded top-right and bottom-left corners, sharp opposite ones. */
-private val HomeFeatureShape = RoundedCornerShape(topStart = 24.dp, topEnd = 0.dp, bottomEnd = 24.dp, bottomStart = 0.dp)
-
-/** The same shape for the ruled frame inside it, its corners turned on the same centres. */
-private val HomeFeatureFrameShape = RoundedCornerShape(topStart = 18.dp, topEnd = 0.dp, bottomEnd = 18.dp, bottomStart = 0.dp)
-
-/** The lead card's ornament: a tile lattice fading in from the end edge, inside a ruled frame. */
-@Composable
-private fun FeatureOrnament(color: Color, content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxWidth().ornamentFrame(HomeFeatureFrameShape, color.copy(alpha = 0.22f))) {
-        KhatamLattice(color.copy(alpha = 0.11f), Modifier.matchParentSize())
-        content()
-    }
-}
-
 /** The next prayer and how long until it, or a way to choose a place before there are times. */
 @Composable
 private fun PrayerHero(
@@ -267,12 +252,12 @@ private fun PrayerHero(
 ) {
     if (next == null || remaining == null) {
         Surface(
-            shape = HomeFeatureShape,
+            shape = FeatureShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.fillMaxWidth().testTag("home_no_place"),
         ) {
-            FeatureOrnament(MaterialTheme.colorScheme.primary) {
+            OrnamentedFeature(MaterialTheme.colorScheme.primary) {
                 Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.prayer_no_place_title), style = MaterialTheme.typography.titleLarge)
                     Text(stringResource(R.string.home_no_place_body), style = MaterialTheme.typography.bodyMedium)
@@ -293,7 +278,7 @@ private fun PrayerHero(
     val spoken = stringResource(R.string.home_next_prayer_spoken, label, name, time, remaining)
     Surface(
         onClick = onOpenPrayer,
-        shape = HomeFeatureShape,
+        shape = FeatureShape,
         color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier
@@ -301,7 +286,7 @@ private fun PrayerHero(
             .testTag("home_next_prayer")
             .semantics { contentDescription = spoken },
     ) {
-        FeatureOrnament(MaterialTheme.colorScheme.onPrimary) {
+        OrnamentedFeature(MaterialTheme.colorScheme.onPrimary) {
             Column(
                 modifier = Modifier
                     .padding(horizontal = 22.dp, vertical = 16.dp)

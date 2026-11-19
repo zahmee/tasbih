@@ -73,6 +73,8 @@ class PrayerPreferencesRepository internal constructor(
 
     suspend fun setFollowDevice(follow: Boolean) = dataStore.edit { it[Keys.followDevice] = follow }
 
+    suspend fun setQiblaSatellite(satellite: Boolean) = dataStore.edit { it[Keys.qiblaSatellite] = satellite }
+
     /** Null goes back to the method of the place's country. */
     suspend fun setMethod(method: PrayerMethod?) = dataStore.edit {
         if (method == null) it.remove(Keys.method) else it[Keys.method] = method.name
@@ -116,6 +118,7 @@ class PrayerPreferencesRepository internal constructor(
                 Prayer.entries.firstOrNull { it.name == name }?.let { it to minutes }
             }.toMap(),
             followDevice = preferences[Keys.followDevice] ?: true,
+            qiblaSatellite = preferences[Keys.qiblaSatellite] ?: false,
         )
     }
 
@@ -143,6 +146,7 @@ class PrayerPreferencesRepository internal constructor(
         val timeZone = stringPreferencesKey("place_time_zone")
         val fromDevice = booleanPreferencesKey("place_from_device")
         val followDevice = booleanPreferencesKey("place_follow_device")
+        val qiblaSatellite = booleanPreferencesKey("qibla_satellite")
         val method = stringPreferencesKey("method")
         val asr = stringPreferencesKey("asr")
         val highLatitude = stringPreferencesKey("high_latitude")

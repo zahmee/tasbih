@@ -156,9 +156,11 @@ fun TasbihScreen(
     onSetTextScale: (Float) -> Unit,
     onBack: (() -> Unit)? = null,
 ) {
-    var showResetConfirmation by remember { mutableStateOf(false) }
-    var showEditor by remember { mutableStateOf(false) }
-    var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
+    // Saved, so turning the phone keeps a dialog or the editor open with what was typed in it.
+    var showResetConfirmation by rememberSaveable { mutableStateOf(false) }
+    var showEditor by rememberSaveable { mutableStateOf(false) }
+    var editingSelected by rememberSaveable { mutableStateOf(false) }
+    val editingPhrase = if (editingSelected) state.selectedPhrase.copy(defaultGoal = state.tasbihTarget) else null
     var showPhraseStatistics by rememberSaveable { mutableStateOf(false) }
     var showCompletedCycle by remember { mutableStateOf(false) }
     var completionJob by remember { mutableStateOf<Job?>(null) }
@@ -271,12 +273,12 @@ fun TasbihScreen(
                         onReset = { showResetConfirmation = true },
                         onOpenStatistics = { showPhraseStatistics = true },
                         onEdit = {
-                            editingPhrase = state.selectedPhrase.copy(defaultGoal = state.tasbihTarget)
+                            editingSelected = true
                             showEditor = true
                         },
                         onManagePhrases = onOpenPhraseManager,
                         onAdd = {
-                            editingPhrase = null
+                            editingSelected = false
                             showEditor = true
                         },
                         onEnterFocusMode = { onFocusModeChange(true) },
@@ -370,7 +372,9 @@ fun TasbihPhraseManagerScreen(
     onDeletePhrase: (String) -> Unit,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
-    var editingPhrase by remember { mutableStateOf<TasbihPhrase?>(null) }
+    // The id is saved, not the phrase, so turning the phone still edits the same dhikr.
+    var editingPhraseId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingPhrase = state.tasbihPhrases.firstOrNull { it.id == editingPhraseId }
     var phrasePendingDeletion by remember { mutableStateOf<TasbihPhrase?>(null) }
     var reorderingPhraseId by rememberSaveable { mutableStateOf<String?>(null) }
     var revealPhraseId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -411,7 +415,7 @@ fun TasbihPhraseManagerScreen(
                     actions = {
                         IconButton(
                             onClick = {
-                                editingPhrase = null
+                                editingPhraseId = null
                                 showEditor = true
                             },
                             modifier = Modifier.testTag("tasbih_manager_add"),
@@ -456,7 +460,7 @@ fun TasbihPhraseManagerScreen(
                             isReordering = reorderingPhraseId == phrase.id,
                             onSelect = { onSelectPhrase(phrase.id) },
                             onEdit = {
-                                editingPhrase = phrase
+                                editingPhraseId = phrase.id
                                 showEditor = true
                             },
                             onDelete = { phrasePendingDeletion = phrase },

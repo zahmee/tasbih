@@ -2,6 +2,8 @@
 
 package com.sakinah.tasbih.ui.calendar
 
+import androidx.compose.foundation.layout.Column
+import com.sakinah.tasbih.ui.KhatamDivider
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.RowScope
@@ -75,12 +77,11 @@ internal fun CalendarPage(
                     .consumeWindowInsets(padding),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                Box(
-                    modifier = Modifier
-                        .widthIn(max = SakinahContentMaxWidth)
-                        .fillMaxSize(),
-                    content = content,
-                )
+                Column(Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxSize()) {
+                    // The rule that sits under the date on the home screen, here under every page's title.
+                    KhatamDivider(Modifier.padding(horizontal = 20.dp))
+                    Box(modifier = Modifier.fillMaxSize(), content = content)
+                }
             }
         }
     }

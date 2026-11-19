@@ -2,6 +2,8 @@
 
 package com.sakinah.tasbih.ui.calendar
 
+import com.sakinah.tasbih.ui.KhatamMark
+import com.sakinah.tasbih.ui.LowMihrabArchShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -223,11 +226,13 @@ private fun MonthContent(
         // Follows the reading direction, so the next month comes in from where reading goes.
         HorizontalPager(state = pagerState, beyondViewportPageCount = 1, modifier = Modifier.testTag("calendar_pager")) { page ->
             val grid = remember(page, primary, calendar, firstDay) { buildMonthGrid(first.plus(page), calendar, firstDay) }
+            // The cell grows with the system's text size, so two dates and the markers still fit.
+            val cellHeight = 60.dp * LocalDensity.current.fontScale.coerceIn(1f, 1.8f)
             Column {
                 grid.forEach { week ->
                     Row(Modifier.fillMaxWidth()) {
                         week.forEach { cell ->
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f).height(60.dp)) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f).height(cellHeight)) {
                                 if (cell != null) {
                                     DayBox(cell, text, cell.date == today, onClick = { onSelect(cell.date.toEpochDay()) })
                                 }
@@ -264,7 +269,8 @@ private fun DayBox(cell: DayCell, text: CalendarText, isToday: Boolean, onClick:
         modifier = Modifier
             .padding(2.dp)
             .fillMaxSize()
-            .clip(RoundedCornerShape(14.dp))
+            // Today stands in a low mihrab arch, as the next prayer does on the home screen.
+            .clip(if (isToday) LowMihrabArchShape else RoundedCornerShape(14.dp))
             .background(if (isToday) colors.primary else Color.Transparent)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
@@ -321,7 +327,10 @@ private fun TodaySummary(text: CalendarText, today: LocalDate, onOpenOccasions: 
             .testTag("calendar_today_summary"),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text.weekday(today.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                KhatamMark()
+                Text(text.weekday(today.dayOfWeek), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
             hijri?.let { Text(text.hijriDate(it), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
             Text(text.gregorianDate(today), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             todays.forEach { Text(text.occasionName(it), color = LocalSakinahBrandColors.current.antiqueGold) }

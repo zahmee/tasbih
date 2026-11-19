@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -46,7 +47,6 @@ import kotlinx.coroutines.launch
 import com.sakinah.tasbih.data.DhikrEntry
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
@@ -180,7 +180,8 @@ fun SakinahApp(
         ThemeMode.Light -> false
         ThemeMode.Dark -> true
     }
-    SideEffect {
+    // Only when the theme turns, not on every count of the tasbih.
+    DisposableEffect(darkTheme, activity) {
         val style = if (darkTheme) {
             SystemBarStyle.dark(AndroidColor.TRANSPARENT)
         } else {
@@ -190,6 +191,7 @@ fun SakinahApp(
             statusBarStyle = style,
             navigationBarStyle = style,
         )
+        onDispose { }
     }
 
     // Arabic is the only released locale for now. Keeping direction at the app root makes
@@ -230,6 +232,8 @@ private fun SakinahNavigation(
     val navigationScope = rememberCoroutineScope()
     var isTasbihFocusMode by rememberSaveable { mutableStateOf(false) }
     var isReaderFocusMode by rememberSaveable { mutableStateOf(false) }
+    // True while the page above the day was reached as a tab, which shows no back button of its own.
+    var tabFromBar by rememberSaveable { mutableStateOf(false) }
     val latestState = rememberUpdatedState(state)
     val activity = LocalActivity.current
     val topLevelDestination = when (val destination = backStack.lastOrNull()) {
@@ -238,11 +242,17 @@ private fun SakinahNavigation(
         else -> destination.topLevelDestination()
     }
 
+    /**
+     * The day stays under every other tab, so the system's back button returns to it from a
+     * tab and leaves the app only from the day itself.
+     */
     fun navigateTopLevel(destination: AppDestination) {
         isTasbihFocusMode = false
         isReaderFocusMode = false
         backStack.clear()
-        backStack.add(destination)
+        backStack.add(AppDestination.Home)
+        if (destination != AppDestination.Home) backStack.add(destination)
+        tabFromBar = destination != AppDestination.Home
     }
 
     fun openReader(collectionId: String) {
@@ -301,6 +311,7 @@ private fun SakinahNavigation(
     }
 
     LaunchedEffect(openRequest) {
+        if (openRequest != null) tabFromBar = false
         when (val request = openRequest) {
             null -> Unit
             is AppOpenRequest.Calendar -> {
@@ -336,6 +347,7 @@ private fun SakinahNavigation(
             isReaderFocusMode = false
         } else if (backStack.size > 1) {
             backStack.removeAt(backStack.lastIndex)
+            if (backStack.size == 1) tabFromBar = false
         } else {
             activity?.finish()
         }
@@ -343,7 +355,9 @@ private fun SakinahNavigation(
 
     /** A tab page shows a way back only when something lies under it, as after a widget tap. */
     fun backFor(destination: AppDestination): (() -> Unit)? =
-        if (backStack.indexOf(destination) > 0) ::navigateBack else null
+        backStack.indexOf(destination).let { index ->
+            if (index > 1 || (index == 1 && !tabFromBar)) ::navigateBack else null
+        }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavigationRail = maxWidth >= 600.dp
@@ -625,6 +639,8 @@ private fun SakinahNavigation(
                         AppDestination.Qibla -> NavEntry(destination) {
                             QiblaScreen(
                                 schedule = prayerState?.schedule,
+                                satellite = prayerState?.settings?.qiblaSatellite ?: false,
+                                onSatellite = prayerViewModel::setQiblaSatellite,
                                 onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
                                 onBack = ::navigateBack,
                             )

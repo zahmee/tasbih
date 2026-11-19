@@ -152,7 +152,8 @@ class SakinahCoreFlowTest {
         composeRule.onNodeWithTag("tasbih_back").performClick()
         waitForTag("nav_settings")
         composeRule.onNodeWithTag("nav_settings").performClick()
-        waitForTag("open_achievements")
+        // The list is lazy: a row below the fold exists only once it is scrolled to, as below.
+        waitForTag("settings_list")
         composeRule.onNodeWithTag("open_appearance_settings").performScrollTo().performClick()
         composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("theme_dark"))
         composeRule.onNodeWithTag("theme_dark").performClick()

@@ -1,5 +1,8 @@
 package com.sakinah.tasbih.ui.prayer
 
+import com.sakinah.tasbih.ui.KhatamMark
+import com.sakinah.tasbih.ui.OrnamentedFeature
+import com.sakinah.tasbih.ui.FeatureShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -237,31 +240,31 @@ private fun Times(
     }
 }
 
-/** The approved home card's shape: rounded top-right and bottom-left corners only. */
-private val NextPrayerShape = RoundedCornerShape(topStart = 24.dp, topEnd = 0.dp, bottomEnd = 24.dp, bottomStart = 0.dp)
-
+/** The next prayer, dressed as the home screen's lead card. */
 @Composable
 private fun NextPrayerCard(name: String, time: String, remaining: String, tomorrow: Boolean) {
     Surface(
-        shape = NextPrayerShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = FeatureShape,
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier.fillMaxWidth().testTag("prayer_next"),
     ) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                stringResource(if (tomorrow) R.string.prayer_next_tomorrow else R.string.prayer_next),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Row(verticalAlignment = Alignment.Bottom) {
+        OrnamentedFeature(MaterialTheme.colorScheme.onPrimary) {
+            Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    name,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
-                    modifier = Modifier.weight(1f).semantics { heading() },
+                    stringResource(if (tomorrow) R.string.prayer_next_tomorrow else R.string.prayer_next),
+                    style = MaterialTheme.typography.titleSmall,
                 )
-                Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
+                        modifier = Modifier.weight(1f).semantics { heading() },
+                    )
+                    Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Text(remaining, style = MaterialTheme.typography.bodyLarge)
             }
-            Text(remaining, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -278,6 +281,11 @@ private fun PrayerRow(name: String, time: String, isCurrent: Boolean, isSunrise:
             .heightIn(min = 52.dp)
             .padding(horizontal = 12.dp),
     ) {
+        // A khatam marks the prayer whose time it is, so the mark is not the row's colour alone.
+        if (isCurrent) {
+            KhatamMark()
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             name,
             style = MaterialTheme.typography.titleMedium,

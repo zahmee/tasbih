@@ -49,5 +49,10 @@ object PrayerSounds {
 
     fun adhan(id: String): PrayerSound = adhans.firstOrNull { it.id == id } ?: adhans.first()
 
-    fun uri(context: Context, @RawRes raw: Int): Uri = Uri.parse("android.resource://${context.packageName}/$raw")
+    /**
+     * By the file's name, not its number: a notification channel keeps the address it was made
+     * with for good, and the numbers shift whenever a sound is added to or removed from the app.
+     */
+    fun uri(context: Context, @RawRes raw: Int): Uri =
+        Uri.parse("android.resource://${context.packageName}/raw/${context.resources.getResourceEntryName(raw)}")
 }

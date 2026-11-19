@@ -43,6 +43,8 @@ data class PrayerSettings(
     val adjustments: Map<Prayer, Int> = emptyMap(),
     /** With a place read from the phone, read it again each time the app opens, to follow a journey. */
     val followDevice: Boolean = true,
+    /** The Qibla over satellite pictures rather than as a compass, where the phone can show them. */
+    val qiblaSatellite: Boolean = false,
 ) {
     companion object {
         const val MAX_ADJUSTMENT = 30

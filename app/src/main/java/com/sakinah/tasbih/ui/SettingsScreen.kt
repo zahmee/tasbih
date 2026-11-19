@@ -65,7 +65,7 @@ fun SettingsScreen(
             item { SettingNavigationRow(stringResource(R.string.sound_settings), completionSoundName(state.completionSound), Icons.AutoMirrored.Outlined.VolumeUp, "open_sound_settings", onOpenSoundSettings) }
             item { SettingNavigationRow(stringResource(R.string.daily_reset_settings), dailyResetSummary(state.dailyReset), Icons.Outlined.Update, "open_daily_reset_settings") { onOpenSection(SettingsSection.DailyReset) } }
             item { SettingNavigationRow(stringResource(R.string.appearance), stringResource(R.string.appearance_settings_summary), Icons.Outlined.Palette, "open_appearance_settings") { onOpenSection(SettingsSection.Appearance) } }
-            item { Spacer(Modifier.height(8.dp)); HorizontalDivider(); Spacer(Modifier.height(8.dp)) }
+            item { Spacer(Modifier.height(8.dp)); KhatamDivider(); Spacer(Modifier.height(8.dp)) }
             item { SettingNavigationRow(stringResource(R.string.qibla_title), stringResource(R.string.qibla_entry_summary), Icons.Outlined.Explore, "open_qibla", onOpenQibla) }
             item { SettingNavigationRow(stringResource(R.string.achievements), stringResource(R.string.activity_entry_summary), Icons.Outlined.BarChart, "open_achievements", onOpenAchievements) }
             item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
@@ -159,9 +159,12 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, tag: String, conten
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
                 modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("settings_detail_list"),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = if (compactInput) 4.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large), content = content,
-            )
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = if (compactInput) 4.dp else 0.dp, bottom = if (compactInput) 4.dp else 20.dp),
+                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
+            ) {
+                if (!compactInput) item(key = "page_ornament") { KhatamDivider() }
+                content()
+            }
         }
     }
 }
@@ -172,8 +175,8 @@ internal fun SettingNavigationRow(title: String, description: String, icon: Imag
         Modifier.fillMaxWidth().testTag(tag).clickable(role = Role.Button, onClick = onClick).heightIn(min = 72.dp).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(16.dp))
+        KhatamMedallion(icon)
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
