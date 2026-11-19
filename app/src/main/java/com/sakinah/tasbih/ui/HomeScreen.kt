@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -178,6 +180,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 header()
+                KhatamDivider()
                 if (twoColumns) {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { prayer() }
@@ -241,6 +244,18 @@ private fun HomeHeader(
 /** The approved feature shape: rounded top-right and bottom-left corners, sharp opposite ones. */
 private val HomeFeatureShape = RoundedCornerShape(topStart = 24.dp, topEnd = 0.dp, bottomEnd = 24.dp, bottomStart = 0.dp)
 
+/** The same shape for the ruled frame inside it, its corners turned on the same centres. */
+private val HomeFeatureFrameShape = RoundedCornerShape(topStart = 18.dp, topEnd = 0.dp, bottomEnd = 18.dp, bottomStart = 0.dp)
+
+/** The lead card's ornament: a tile lattice fading in from the end edge, inside a ruled frame. */
+@Composable
+private fun FeatureOrnament(color: Color, content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().ornamentFrame(HomeFeatureFrameShape, color.copy(alpha = 0.22f))) {
+        KhatamLattice(color.copy(alpha = 0.11f), Modifier.matchParentSize())
+        content()
+    }
+}
+
 /** The next prayer and how long until it, or a way to choose a place before there are times. */
 @Composable
 private fun PrayerHero(
@@ -257,14 +272,16 @@ private fun PrayerHero(
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.fillMaxWidth().testTag("home_no_place"),
         ) {
-            Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.prayer_no_place_title), style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.home_no_place_body), style = MaterialTheme.typography.bodyMedium)
-                Button(
-                    onClick = onChoosePlace,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("home_choose_place"),
-                ) {
-                    Text(stringResource(R.string.prayer_choose_place))
+            FeatureOrnament(MaterialTheme.colorScheme.primary) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.prayer_no_place_title), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.home_no_place_body), style = MaterialTheme.typography.bodyMedium)
+                    Button(
+                        onClick = onChoosePlace,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("home_choose_place"),
+                    ) {
+                        Text(stringResource(R.string.prayer_choose_place))
+                    }
                 }
             }
         }
@@ -284,22 +301,24 @@ private fun PrayerHero(
             .testTag("home_next_prayer")
             .semantics { contentDescription = spoken },
     ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 20.dp, vertical = 14.dp)
-                .clearAndSetSemantics { },
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(label, style = MaterialTheme.typography.titleSmall)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    name,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
-                    modifier = Modifier.weight(1f),
-                )
-                Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        FeatureOrnament(MaterialTheme.colorScheme.onPrimary) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 22.dp, vertical = 16.dp)
+                    .clearAndSetSemantics { },
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(label, style = MaterialTheme.typography.titleSmall)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Text(remaining, style = MaterialTheme.typography.bodyLarge)
             }
-            Text(remaining, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -318,7 +337,7 @@ private fun DayTimes(day: PrayerDay, next: PrayerMoment?, prayerText: PrayerText
         border = sakinahCardBorder(),
         modifier = Modifier.fillMaxWidth().testTag("home_day_times"),
     ) {
-        BoxWithConstraints(Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
+        BoxWithConstraints(Modifier.padding(horizontal = 4.dp, vertical = 6.dp)) {
             val perRow = if (maxWidth >= 300.dp * fontScale.coerceAtLeast(1f)) 6 else 3
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Prayer.entries.chunked(perRow).forEach { row ->
@@ -354,9 +373,9 @@ private fun TimeCell(name: String, clock: String, spoken: String, isNext: Boolea
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .padding(horizontal = 2.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(if (isNext) colors.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent)
-            .padding(vertical = 6.dp)
+            .background(if (isNext) colors.secondaryContainer else Color.Transparent, MihrabArchShape)
+            // Room above the name for the arch's point, kept on every cell so the row stays level.
+            .padding(top = 13.dp, bottom = 7.dp)
             .clearAndSetSemantics { contentDescription = spoken },
     ) {
         Text(
@@ -436,14 +455,15 @@ private fun ServiceBox(tile: ServiceTile, modifier: Modifier) {
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = sakinahCardBorder(),
-        modifier = modifier.heightIn(min = 88.dp).testTag(tile.tag),
+        modifier = modifier.heightIn(min = 92.dp).testTag(tile.tag),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Top),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
         ) {
-            Icon(tile.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            KhatamMedallion(tile.icon)
+            Spacer(Modifier.height(4.dp))
             Text(tile.title, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
             tile.value?.let {
                 Text(
@@ -468,10 +488,10 @@ private fun ServiceRow(tile: ServiceTile) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.heightIn(min = 60.dp).padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
-            Icon(tile.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(14.dp))
+            KhatamMedallion(tile.icon)
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(tile.title, style = MaterialTheme.typography.titleMedium)
                 tile.value?.let {
@@ -515,7 +535,10 @@ private fun WirdRow(collection: DhikrCollection, state: SakinahUiState, onClick:
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.today), style = MaterialTheme.typography.labelMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    KhatamMark()
+                    Text(stringResource(R.string.today), style = MaterialTheme.typography.labelMedium)
+                }
                 Text(
                     displayArabic(collection.title, state.showDiacritics),
                     style = MaterialTheme.typography.titleMedium,
