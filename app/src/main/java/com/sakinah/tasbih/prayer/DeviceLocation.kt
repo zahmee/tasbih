@@ -41,6 +41,13 @@ object DeviceLocation {
         PERMISSIONS.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
     /**
+     * Whether the user allowed the precise position. With the approximate one only, Android moves
+     * every position by up to a couple of kilometres on purpose, whatever the phone itself knows.
+     */
+    fun hasPrecisePermission(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /**
      * Null when the permission is missing, location is off, or no position came in time.
      * [fallbackName] is the label kept when the position could not be named.
      */
