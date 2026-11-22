@@ -44,8 +44,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -72,6 +76,8 @@ import com.sakinah.tasbih.ui.SettingToggleRow
 import com.sakinah.tasbih.ui.calendar.CalendarChoices
 import com.sakinah.tasbih.ui.calendar.CalendarHint
 import com.sakinah.tasbih.ui.calendar.CalendarText
+import com.sakinah.tasbih.widget.IslamicPattern
+import com.sakinah.tasbih.widget.LineColor
 import com.sakinah.tasbih.widget.LineItem
 import com.sakinah.tasbih.widget.NextMark
 import com.sakinah.tasbih.widget.PrayerWidgetKind
@@ -148,6 +154,9 @@ fun PrayerWidgetStyleScreen(
                 LineEditor(
                     number = index + 1,
                     line = line,
+                    style = current,
+                    // The day widget's first line is a heading, in the accent.
+                    fallback = if (index == 0) WidgetPalette::accent else WidgetPalette::textSoft,
                     onChange = { changed -> viewModel.update { s -> s.copy(lines = s.lines.toMutableList().also { it[index] = changed }) } },
                     onRemove = { viewModel.update { s -> s.copy(lines = s.lines.toMutableList().also { it.removeAt(index) }) } },
                 )
@@ -206,6 +215,8 @@ fun PrayerWidgetStyleScreen(
                 LineEditor(
                     number = index + 1,
                     line = line,
+                    style = current,
+                    fallback = WidgetPalette::textSoft,
                     onChange = { changed -> viewModel.update { s -> s.copy(nextLines = s.nextLines.toMutableList().also { it[index] = changed }) } },
                     onRemove = { viewModel.update { s -> s.copy(nextLines = s.nextLines.toMutableList().also { it.removeAt(index) }) } },
                 )
@@ -312,15 +323,7 @@ fun PrayerWidgetStyleScreen(
                 CalendarChoices(
                     options = WidgetIntensity.entries,
                     selected = current.intensity,
-                    label = {
-                        stringResource(
-                            when (it) {
-                                WidgetIntensity.SOFT -> R.string.widget_intensity_soft
-                                WidgetIntensity.NORMAL -> R.string.widget_intensity_normal
-                                WidgetIntensity.STRONG -> R.string.widget_intensity_strong
-                            },
-                        )
-                    },
+                    label = { intensityLabel(it) },
                     onSelect = { choice -> viewModel.update { it.copy(intensity = choice) } },
                 )
             }
@@ -348,28 +351,62 @@ fun PrayerWidgetStyleScreen(
                 CalendarChoices(
                     options = WidgetWeight.entries,
                     selected = current.weight,
-                    label = { stringResource(if (it == WidgetWeight.BOLD) R.string.widget_weight_bold else R.string.widget_weight_regular) },
+                    label = { weightLabel(it) },
                     onSelect = { choice -> viewModel.update { it.copy(weight = choice) } },
                 )
             }
         }
         item {
+            Labelled(stringResource(R.string.widget_time_weight)) {
+                CalendarChoices(
+                    options = WidgetWeight.entries,
+                    selected = current.timeWeight,
+                    label = { weightLabel(it) },
+                    onSelect = { choice -> viewModel.update { it.copy(timeWeight = choice) } },
+                )
+                CalendarHint(stringResource(R.string.widget_weight_hint))
+            }
+        }
+        item {
+            Labelled(stringResource(R.string.widget_name_color)) {
+                LineColors(current, current.nameColor, fallback = WidgetPalette::textSoft) { choice -> viewModel.update { it.copy(nameColor = choice) } }
+            }
+        }
+        item {
+            Labelled(stringResource(R.string.widget_time_color)) {
+                LineColors(current, current.timeColor, fallback = WidgetPalette::text) { choice -> viewModel.update { it.copy(timeColor = choice) } }
+            }
+        }
+        item {
             Labelled(stringResource(R.string.widget_ornament)) {
                 CalendarChoices(
-                    options = WidgetOrnament.entries,
+                    // The frame is kept only to read old choices, which now show as the pattern.
+                    options = WidgetOrnament.entries - WidgetOrnament.FRAME,
                     selected = current.ornament,
                     label = {
                         stringResource(
                             when (it) {
                                 WidgetOrnament.NONE -> R.string.widget_ornament_none
                                 WidgetOrnament.DIVIDER -> R.string.widget_ornament_divider
-                                WidgetOrnament.FRAME -> R.string.widget_ornament_frame
+                                WidgetOrnament.PATTERN, WidgetOrnament.FRAME -> R.string.widget_ornament_pattern
                             },
                         )
                     },
                     onSelect = { choice -> viewModel.update { it.copy(ornament = choice) } },
                 )
                 CalendarHint(stringResource(R.string.widget_ornament_hint))
+            }
+        }
+        if (current.ornament == WidgetOrnament.PATTERN) {
+            item {
+                Labelled(stringResource(R.string.widget_pattern_intensity)) {
+                    CalendarChoices(
+                        options = WidgetIntensity.entries,
+                        selected = current.patternIntensity,
+                        label = { intensityLabel(it) },
+                        onSelect = { choice -> viewModel.update { it.copy(patternIntensity = choice) } },
+                    )
+                }
             }
         }
         item {
@@ -425,11 +462,88 @@ private fun surfaceLabel(surface: WidgetSurface): String = stringResource(
     when (surface) {
         WidgetSurface.AUTO -> R.string.cal_automatic
         WidgetSurface.IVORY -> R.string.widget_surface_ivory
+        WidgetSurface.WHITE -> R.string.widget_surface_white
         WidgetSurface.SAND -> R.string.widget_surface_sand
+        WidgetSurface.STONE -> R.string.widget_surface_stone
+        WidgetSurface.SKY -> R.string.widget_surface_sky
+        WidgetSurface.ROSE -> R.string.widget_surface_rose
         WidgetSurface.PINE -> R.string.widget_surface_pine
+        WidgetSurface.NAVY -> R.string.widget_surface_navy
+        WidgetSurface.MAROON -> R.string.widget_surface_maroon
+        WidgetSurface.COFFEE -> R.string.widget_surface_coffee
         WidgetSurface.NIGHT -> R.string.widget_surface_night
+        WidgetSurface.BLACK -> R.string.widget_surface_black
     },
 )
+
+@Composable
+private fun weightLabel(weight: WidgetWeight): String = stringResource(
+    when (weight) {
+        WidgetWeight.REGULAR -> R.string.widget_weight_regular
+        WidgetWeight.BOLD -> R.string.widget_weight_bold
+    },
+)
+
+@Composable
+private fun intensityLabel(intensity: WidgetIntensity): String = stringResource(
+    when (intensity) {
+        WidgetIntensity.SOFT -> R.string.widget_intensity_soft
+        WidgetIntensity.NORMAL -> R.string.widget_intensity_normal
+        WidgetIntensity.STRONG -> R.string.widget_intensity_strong
+    },
+)
+
+@Composable
+private fun lineColorLabel(color: LineColor): String = stringResource(
+    when (color) {
+        LineColor.AUTO -> R.string.cal_automatic
+        LineColor.INK -> R.string.widget_color_ink
+        LineColor.SOFT -> R.string.widget_color_soft
+        LineColor.ACCENT -> R.string.widget_color_accent
+        LineColor.GREEN -> R.string.cal_color_green
+        LineColor.COPPER -> R.string.cal_color_copper
+        LineColor.GOLD -> R.string.widget_accent_gold
+        LineColor.BLUE -> R.string.cal_color_blue
+        LineColor.RED -> R.string.cal_color_red
+        LineColor.PURPLE -> R.string.cal_color_purple
+        LineColor.WHITE -> R.string.widget_color_white
+        LineColor.BLACK -> R.string.widget_color_black
+    },
+)
+
+/**
+ * The colours a line of words may take, each shown as it will look on the chosen paper;
+ * «automatic» shows the widget's own colour for it, [fallback].
+ */
+@Composable
+private fun LineColors(style: PrayerWidgetStyle, selected: LineColor, fallback: (WidgetPalette) -> Int, onSelect: (LineColor) -> Unit) {
+    val palette = WidgetPalette.of(style, MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    Swatches(
+        options = LineColor.entries,
+        selected = selected,
+        color = { Color(palette.line(it) ?: fallback(palette)) },
+        label = { lineColorLabel(it) },
+        onSelect = onSelect,
+    )
+}
+
+/** Android's own font, the one a widget is drawn in, so the preview's letters are the widget's. */
+private val WidgetFont = FontFamily.Default
+
+private fun WidgetWeight.font(): FontWeight = if (this == WidgetWeight.BOLD) FontWeight.Bold else FontWeight.Normal
+
+/** The pattern of the widget, drawn by the widget's own code under the preview's words. */
+private fun Modifier.pattern(style: PrayerWidgetStyle, palette: WidgetPalette): Modifier =
+    if (style.ornament != WidgetOrnament.PATTERN && style.ornament != WidgetOrnament.FRAME) {
+        this
+    } else {
+        drawBehind {
+            val color = (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24)
+            drawIntoCanvas {
+                IslamicPattern.draw(it.nativeCanvas, size.width, size.height, IslamicPattern.CELL_DP.dp.toPx(), color, IslamicPattern.STROKE_DP.dp.toPx())
+            }
+        }
+    }
 
 @Composable
 private fun accentLabel(accent: WidgetAccent): String = stringResource(
@@ -485,7 +599,7 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
     val now = Instant.now()
     val next = schedule?.next(now)
     val countdownTemplate = stringResource(R.string.widget_countdown)
-    val bold = if (style.weight == WidgetWeight.BOLD) FontWeight.Bold else FontWeight.Normal
+    val weight = style.weight.font()
     Box(
         Modifier
             .fillMaxWidth()
@@ -499,13 +613,25 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
                 .width(190.dp)
                 .clip(RoundedCornerShape(22.dp))
                 .background(Color(palette.surface).copy(alpha = style.opacity / 100f))
-                .then(if (style.ornament == WidgetOrnament.FRAME) Modifier.padding(6.dp).border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp)) else Modifier)
+                .pattern(style, palette)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .testTag("widget_next_preview"),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text(next?.let { text.name(it.prayer, it.time) } ?: stringResource(R.string.prayer_title), color = accent, fontSize = 15.sp, fontWeight = bold)
-                Text(next?.let { text.time(it.time) } ?: "–", color = Color(palette.text), fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    next?.let { text.name(it.prayer, it.time) } ?: stringResource(R.string.prayer_title),
+                    color = Color(palette.line(style.nameColor) ?: palette.accent),
+                    fontSize = 15.sp,
+                    fontFamily = WidgetFont,
+                    fontWeight = weight,
+                )
+                Text(
+                    next?.let { text.time(it.time) } ?: "–",
+                    color = Color(palette.line(style.timeColor) ?: palette.text),
+                    fontSize = 26.sp,
+                    fontFamily = WidgetFont,
+                    fontWeight = style.timeWeight.font(),
+                )
                 val lines = style.nextLines.filterNot { it.isEmpty }
                 if (style.ornament != WidgetOrnament.NONE && lines.isNotEmpty()) {
                     KhatamDivider(Modifier.padding(horizontal = 30.dp, vertical = 2.dp), color = accent.copy(alpha = 0.7f))
@@ -516,9 +642,10 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
                         listOf(line.right, line.left).filter { it != LineItem.NONE }.forEachIndexed { side, item ->
                             Text(
                                 sample(item, style, schedule, calendarText, text, now, countdownTemplate),
-                                color = Color(palette.textSoft),
+                                color = Color(palette.line(line.color) ?: palette.textSoft),
                                 fontSize = 12.sp,
-                                fontWeight = bold,
+                                fontFamily = WidgetFont,
+                                fontWeight = if (item == LineItem.COUNTDOWN) FontWeight.Normal else weight,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = if (single) TextAlign.Center else if (side == 0) TextAlign.Start else TextAlign.End,
@@ -533,9 +660,16 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
     }
 }
 
-/** One line: what stands on its right and on its left, and a way to remove it. */
+/** One line: what stands on its right and on its left, its colour, and a way to remove it. */
 @Composable
-private fun LineEditor(number: Int, line: WidgetLine, onChange: (WidgetLine) -> Unit, onRemove: () -> Unit) {
+private fun LineEditor(
+    number: Int,
+    line: WidgetLine,
+    style: PrayerWidgetStyle,
+    fallback: (WidgetPalette) -> Int,
+    onChange: (WidgetLine) -> Unit,
+    onRemove: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -549,6 +683,8 @@ private fun LineEditor(number: Int, line: WidgetLine, onChange: (WidgetLine) -> 
             ItemChooser(stringResource(R.string.widget_side_right), line.right, { onChange(line.copy(right = it)) }, Modifier.weight(1f))
             ItemChooser(stringResource(R.string.widget_side_left), line.left, { onChange(line.copy(left = it)) }, Modifier.weight(1f))
         }
+        Text(stringResource(R.string.widget_line_color), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LineColors(style, line.color, fallback) { onChange(line.copy(color = it)) }
     }
 }
 
@@ -588,7 +724,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
         WidgetScale.MEDIUM -> 1f
         WidgetScale.LARGE -> 1.18f
     }
-    val bold = if (style.weight == WidgetWeight.BOLD) FontWeight.Bold else FontWeight.Normal
+    val weight = style.weight.font()
     val accent = Color(palette.accent)
     val shape = RoundedCornerShape(22.dp)
     val now = Instant.now()
@@ -611,13 +747,13 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     .fillMaxWidth()
                     .clip(shape)
                     .background(Color(palette.surface).copy(alpha = style.opacity / 100f))
-                    .then(if (style.ornament == WidgetOrnament.FRAME) Modifier.padding(6.dp).border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp)) else Modifier)
+                    .pattern(style, palette)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
                     .testTag("widget_preview"),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     style.lines.filterNot { it.isEmpty }.forEachIndexed { index, line ->
-                        val color = if (index == 0) accent else Color(palette.textSoft)
+                        val color = Color(palette.line(line.color) ?: if (index == 0) palette.accent else palette.textSoft)
                         Row(Modifier.fillMaxWidth()) {
                             val single = line.right == LineItem.NONE || line.left == LineItem.NONE
                             listOf(line.right, line.left).filter { it != LineItem.NONE }.forEachIndexed { side, item ->
@@ -625,7 +761,8 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                                     sample(item, style, schedule, calendarText, text, now, countdownTemplate),
                                     color = color,
                                     fontSize = (12 * scale).sp,
-                                    fontWeight = bold,
+                                    fontFamily = WidgetFont,
+                                    fontWeight = if (item == LineItem.COUNTDOWN) FontWeight.Normal else weight,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     textAlign = if (single) TextAlign.Center else if (side == 0) TextAlign.Start else TextAlign.End,
@@ -638,6 +775,8 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                         KhatamDivider(Modifier.padding(horizontal = 60.dp, vertical = 2.dp), color = accent.copy(alpha = 0.7f))
                     }
                     Row(Modifier.fillMaxWidth().height((52 * scale).dp)) {
+                        val nameColor = palette.line(style.nameColor)
+                        val timeColor = palette.line(style.timeColor)
                         ObligatoryPrayers.forEach { prayer ->
                             val isNext = prayer == next?.prayer
                             val tile = RoundedCornerShape(12.dp)
@@ -645,32 +784,33 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(2.dp)
-                                    .then(
-                                        when {
-                                            !isNext -> Modifier
-                                            style.nextMark == NextMark.OUTLINE -> Modifier.border(1.5.dp, accent.copy(alpha = markAlpha), tile)
-                                            else -> Modifier.background(accent.copy(alpha = markAlpha), tile)
-                                        },
-                                    )
-                                    .padding(vertical = 4.dp),
+                                modifier = Modifier.weight(1f).padding(2.dp),
                             ) {
-                                val words = if (isNext) Color(palette.nextText(style.nextMark)) else null
                                 Text(
                                     text.name(prayer, day?.get(prayer)),
-                                    color = words ?: Color(palette.textSoft),
+                                    color = Color(nameColor ?: if (isNext) palette.accent else palette.textSoft),
                                     fontSize = (13 * scale).sp,
-                                    fontWeight = if (isNext) FontWeight.Bold else bold,
+                                    fontFamily = WidgetFont,
+                                    fontWeight = (if (isNext) WidgetWeight.BOLD else style.weight).font(),
                                     maxLines = 1,
                                 )
+                                // As in the widget: the next prayer is marked round its time alone.
                                 Text(
                                     day?.let { text.clock(it[prayer]) } ?: "–",
-                                    color = words ?: Color(palette.text),
+                                    color = Color(if (isNext) palette.nextText(style.nextMark) else timeColor ?: palette.text),
                                     fontSize = (15 * scale).sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = WidgetFont,
+                                    fontWeight = style.timeWeight.font(),
                                     maxLines = 1,
+                                    modifier = Modifier
+                                        .then(
+                                            when {
+                                                !isNext -> Modifier
+                                                style.nextMark == NextMark.OUTLINE -> Modifier.border(1.5.dp, accent.copy(alpha = markAlpha), tile)
+                                                else -> Modifier.background(accent.copy(alpha = markAlpha), tile)
+                                            },
+                                        )
+                                        .padding(horizontal = 5.dp, vertical = 1.dp),
                                 )
                             }
                         }

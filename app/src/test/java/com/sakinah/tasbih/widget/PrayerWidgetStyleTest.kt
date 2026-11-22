@@ -57,4 +57,31 @@ class PrayerWidgetStyleTest {
         assertNotEquals(gold.accent, gold.nextText(NextMark.FILLED))
         assertEquals(gold.accent, gold.nextText(NextMark.OUTLINE))
     }
+
+    @Test
+    fun aLineKeepsItsColourAndLinesSavedBeforeColoursReadAsAutomatic() {
+        val lines = listOf(WidgetLine(LineItem.PLACE, LineItem.HIJRI_DATE, LineColor.GOLD), WidgetLine(LineItem.DHIKR))
+        assertEquals(lines, WidgetLines.decode(WidgetLines.encode(lines)))
+        assertEquals(listOf(WidgetLine(LineItem.PLACE, LineItem.HIJRI_DATE, LineColor.AUTO)), WidgetLines.decode("PLACE|HIJRI_DATE"))
+        assertEquals(LineColor.AUTO, WidgetLines.decode("PLACE|NONE|NO_SUCH_COLOUR")!!.single().color)
+    }
+
+    @Test
+    fun anAutomaticLineHasNoColourOfItsOwnAndNamedColoursAreLiftedOnDarkPaper() {
+        val light = WidgetPalette.of(PrayerWidgetStyle(surface = WidgetSurface.IVORY), night = false)
+        val dark = WidgetPalette.of(PrayerWidgetStyle(surface = WidgetSurface.NAVY), night = false)
+        assertNull(light.line(LineColor.AUTO))
+        assertEquals(light.accent, light.line(LineColor.ACCENT))
+        assertNotEquals(light.line(LineColor.BLUE), dark.line(LineColor.BLUE))
+        assertEquals(dark.text, dark.line(LineColor.INK))
+    }
+
+    @Test
+    fun theSavedWeightsStillReadAndTimesStayBold() {
+        // Saved by earlier versions under these names.
+        assertEquals(WidgetWeight.REGULAR, WidgetWeight.valueOf("REGULAR"))
+        assertEquals(WidgetWeight.BOLD, WidgetWeight.valueOf("BOLD"))
+        assertEquals(WidgetWeight.BOLD, PrayerWidgetStyle().timeWeight)
+        assertEquals(WidgetWeight.REGULAR, PrayerWidgetStyle().weight)
+    }
 }

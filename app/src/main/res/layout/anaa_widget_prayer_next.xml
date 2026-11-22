@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     The next prayer: its name, its time, up to two lines the user composes, and a bar of the time
-    passed since the last prayer. Fixed views, nothing scrolls; the paper and ornament are tinted
-    pictures, as in the day's widget.
+    passed since the last prayer. Fixed views, nothing scrolls; the paper is a tinted picture and the
+    pattern is drawn from code, as in the day's widget.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
@@ -18,53 +18,13 @@
         android:scaleType="fitXY"
         android:src="@drawable/anaa_widget_paper" />
 
+    <!-- A pattern of eight-pointed stars over the paper, drawn from code at the widget's size. -->
     <ImageView
-        android:id="@+id/nx_frame"
+        android:id="@+id/nx_pattern"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
         android:scaleType="fitXY"
-        android:src="@drawable/anaa_widget_frame"
-        android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/nx_corner_0"
-        android:layout_width="11dp"
-        android:layout_height="11dp"
-        android:layout_gravity="top|start"
-        android:layout_margin="7dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/anaa_widget_khatam"
-        android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/nx_corner_1"
-        android:layout_width="11dp"
-        android:layout_height="11dp"
-        android:layout_gravity="top|end"
-        android:layout_margin="7dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/anaa_widget_khatam"
-        android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/nx_corner_2"
-        android:layout_width="11dp"
-        android:layout_height="11dp"
-        android:layout_gravity="bottom|start"
-        android:layout_margin="7dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/anaa_widget_khatam"
-        android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/nx_corner_3"
-        android:layout_width="11dp"
-        android:layout_height="11dp"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="7dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/anaa_widget_khatam"
         android:visibility="gone" />
 
     <LinearLayout
@@ -87,8 +47,7 @@
             android:id="@+id/nx_time"
             style="@style/AnaaWidgetLine"
             android:layout_weight="1.3"
-            android:autoSizeMaxTextSize="30sp"
-            android:textStyle="bold" />
+            android:autoSizeMaxTextSize="30sp" />
 
         <ImageView
             android:id="@+id/nx_divider"
