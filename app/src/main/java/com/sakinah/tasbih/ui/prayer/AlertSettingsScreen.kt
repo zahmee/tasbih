@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.alerts.AlertHealth
+import com.sakinah.tasbih.alerts.PrayerAlarms
 import com.sakinah.tasbih.alerts.PrayerSounds
 import com.sakinah.tasbih.prayer.AlertPrayers
 import com.sakinah.tasbih.prayer.AlertSettings
@@ -75,16 +76,47 @@ fun AlertSettingsScreen(
         onPauseOrDispose { }
     }
     var askNotifications by rememberSaveable { mutableStateOf(false) }
+    // Android 14 and later install the app without exact alarms, and then every alert comes up
+    // to ten minutes late, or an hour while the phone lies idle. Asked once per visit, after the
+    // notifications, as it needs the system's own screen rather than a dialog.
+    var askExact by rememberSaveable { mutableStateOf(false) }
+    var exactAsked by rememberSaveable { mutableStateOf(false) }
+    fun askExactIfMissing() {
+        if (!exactAsked && !PrayerAlarms.canScheduleExact(context) && AlertHealth.exactAlarmSettings(context) != null) {
+            exactAsked = true
+            askExact = true
+        }
+    }
     var testScheduled by rememberSaveable { mutableStateOf(false) }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         health = AlertHealth.read(context, alerts.tone)
+        askExactIfMissing()
     }
     val preview = rememberPreview()
 
     fun change(prayer: Prayer, alert: PrayerAlert) {
         val turningOn = alert.style != AlertStyle.OFF || alert.reminderMinutes > 0
-        if (turningOn && !health.notifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) askNotifications = true
+        if (turningOn && !health.notifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            askNotifications = true
+        } else if (turningOn) {
+            askExactIfMissing()
+        }
         viewModel.setAlert(prayer, alert)
+    }
+
+    if (askExact) {
+        AlertDialog(
+            onDismissRequest = { askExact = false },
+            title = { Text(stringResource(R.string.alert_exact_title)) },
+            text = { Text(stringResource(R.string.alert_exact_disclosure)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    askExact = false
+                    AlertHealth.exactAlarmSettings(context)?.let { runCatching { context.startActivity(it) } }
+                }) { Text(stringResource(R.string.prayer_location_continue)) }
+            },
+            dismissButton = { TextButton(onClick = { askExact = false }) { Text(stringResource(R.string.prayer_not_now)) } },
+        )
     }
 
     if (askNotifications) {
@@ -100,7 +132,12 @@ fun AlertSettingsScreen(
                     }
                 }) { Text(stringResource(R.string.prayer_location_continue)) }
             },
-            dismissButton = { TextButton(onClick = { askNotifications = false }) { Text(stringResource(R.string.prayer_not_now)) } },
+            dismissButton = {
+                TextButton(onClick = {
+                    askNotifications = false
+                    askExactIfMissing()
+                }) { Text(stringResource(R.string.prayer_not_now)) }
+            },
         )
     }
 
@@ -116,9 +153,14 @@ fun AlertSettingsScreen(
 
     SettingsPage(stringResource(R.string.alert_title), onBack, "prayer_alerts") {
         if (alerts.anyOn && !health.allGood) {
+            // Lateness is the commonest complaint, so its cause is named and mended in one tap.
+            val exactScreen = if (!health.exactAlarms) AlertHealth.exactAlarmSettings(context) else null
             item {
                 Surface(
-                    onClick = onOpenReliability,
+                    onClick = {
+                        if (exactScreen != null) runCatching { context.startActivity(exactScreen) }.onFailure { onOpenReliability() }
+                        else onOpenReliability()
+                    },
                     shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -127,7 +169,7 @@ fun AlertSettingsScreen(
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.WarningAmber, null)
                         Text(
-                            stringResource(R.string.alert_needs_attention),
+                            stringResource(if (exactScreen != null) R.string.alert_needs_exact else R.string.alert_needs_attention),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(start = 12.dp).weight(1f),
                         )
