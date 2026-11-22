@@ -50,6 +50,11 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
+        <!-- Google's map renderer still loads Apache HTTP classes, which Android 9 and later
+             leave out unless the app asks for them. Without this the satellite view crashes. -->
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
 
         <activity
             android:name=".MainActivity"
