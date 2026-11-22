@@ -657,6 +657,9 @@
     <string name="alert_permission_title">السماح بالإشعارات</string>
     <string name="alert_permission_disclosure">ليظهر لك تنبيه الصلاة، يحتاج آناء إذن الإشعارات. تُجدول التنبيهات على هاتفك، ولا يُرسل منها شيء إلى أي جهة. سيطلب منك النظام الإذن بعد هذه الرسالة.</string>
     <string name="alert_needs_attention">قد لا تصل التنبيهات في وقتها. اضغط هنا لمراجعة إعدادات الهاتف.</string>
+    <string name="alert_needs_exact">التنبيهات تتأخر عن وقت الصلاة لأن «المنبهات الدقيقة» غير مسموح بها. اضغط هنا للسماح بها.</string>
+    <string name="alert_exact_title">السماح بالمنبهات الدقيقة</string>
+    <string name="alert_exact_disclosure">يمنع أندرويد المنبهات الدقيقة عن التطبيقات حتى تسمح بها أنت. بدونها يتأخر تنبيه الصلاة حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل. في الصفحة التالية فعّل «السماح بضبط المنبّهات والتذكيرات» لآناء.</string>
     <string name="alert_section_prayers">تنبيه كل صلاة</string>
     <string name="alert_styles_hint">الإشعار يظهر بلا صوت، والصوت القصير أقل من نصف دقيقة، والأذان كامل ويُوقف من الإشعار.</string>
     <string name="alert_section_tone">الصوت القصير</string>
@@ -685,7 +688,7 @@
     <string name="alert_check_notifications_off">ممنوعة، فلن يظهر أي تنبيه.</string>
     <string name="alert_check_exact">المنبهات الدقيقة</string>
     <string name="alert_check_exact_ok">مسموح بها، فيصل التنبيه في دقيقته.</string>
-    <string name="alert_check_exact_off">غير مسموح بها، فقد يتأخر التنبيه حتى عشر دقائق، ولا يُرفع الأذان الكامل.</string>
+    <string name="alert_check_exact_off">غير مسموح بها، فقد يتأخر التنبيه حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل.</string>
     <string name="alert_check_battery">تحسين البطارية</string>
     <string name="alert_check_battery_ok">آناء مستثنى منه.</string>
     <string name="alert_check_battery_off">قد يوقف الهاتف آناء لتوفير البطارية. اختر لآناء «غير محسّن» أو «بلا قيود».</string>
