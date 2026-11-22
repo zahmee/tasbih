@@ -613,6 +613,8 @@
     <string name="qibla_map_saved_place">الخريطة الآن على المكان المحفوظ لا على موقعك. اسمح بالموقع لتظهر النقطة حيث تقف.</string>
     <string name="qibla_map_allow">السماح بالموقع</string>
     <string name="qibla_map_locating">جارٍ تحديد موقعك…</string>
+    <string name="qibla_map_approximate">إذن الموقع «تقريبي»، فيُبعد أندرويد النقطة عن مكانك عمدًا حتى كيلومترين، ولا يصلحه الخروج إلى مكان مكشوف. اسمح بالموقع الدقيق لتظهر النقطة حيث تقف.</string>
+    <string name="qibla_map_allow_precise">السماح بالموقع الدقيق</string>
     <string name="qibla_map_rough">موقعك تقريبي الآن، بدقة نحو %1$s متر. اخرج إلى مكان مكشوف ليصير أدق.</string>
     <string name="qibla_map_notice">تُحمَّل الصور من خرائط قوقل، فتصل إليها المنطقة المعروضة.</string>
     <string name="qibla_map_description">صورة بالقمر الصناعي تتوسطها نقطة موقعك، وخط من موقعك باتجاه القبلة</string>

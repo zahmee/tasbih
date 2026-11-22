@@ -2,9 +2,12 @@ package com.sakinah.tasbih.ui.prayer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -54,6 +57,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationListenerCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.batoulapps.adhan.Coordinates
 import com.batoulapps.adhan.Qibla
@@ -71,6 +75,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.sakinah.tasbih.BuildConfig
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.arabicNumber
+import com.sakinah.tasbih.prayer.BetterFix
 import com.sakinah.tasbih.prayer.DeviceLocation
 import com.sakinah.tasbih.prayer.PrayerSchedule
 import kotlin.math.abs
@@ -113,14 +118,17 @@ internal class LivePosition {
 /**
  * Follows the phone while the page is in front, and stops when the user leaves it: nothing is
  * read in the background. It listens to every source the phone has switched on, and keeps the
- * better fix, so a rough network position gives way to the satellites' once they answer.
+ * better fix by [BetterFix], so a rough network position gives way to the satellites' once they
+ * answer, and does not take their place again while theirs is still current.
  */
 @SuppressLint("MissingPermission")
 @Composable
-internal fun rememberLivePosition(granted: Boolean): LivePosition {
+internal fun rememberLivePosition(granted: Boolean, precise: Boolean): LivePosition {
     val context = LocalContext.current
     val state = remember { LivePosition() }
-    LifecycleStartEffect(context, granted) {
+    // Listeners made under the approximate permission keep their blurred positions after the
+    // user allows the precise one, so a change of either starts the listening afresh.
+    LifecycleStartEffect(context, granted, precise) {
         val manager = context.getSystemService(LocationManager::class.java)
         if (!granted || manager == null) return@LifecycleStartEffect onStopOrDispose { }
         val wanted = buildList {
@@ -129,14 +137,13 @@ internal fun rememberLivePosition(granted: Boolean): LivePosition {
             add(LocationManager.NETWORK_PROVIDER)
         }
         val providers = wanted.filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
-        state.location = providers
-            .mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
-            .maxByOrNull { it.time }
-        val listener = LocationListenerCompat { fix ->
+        fun offer(fix: Location) {
             val held = state.location
-            val better = held == null || fix.accuracy <= held.accuracy * LOOSER || fix.time - held.time > STALE_FIX_MS
-            if (better) state.location = fix
+            if (BetterFix.replaces(fix.accuracyOrNull(), fix.atMs(), held?.accuracyOrNull(), held?.atMs())) state.location = fix
         }
+        state.location = null
+        providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }.forEach(::offer)
+        val listener = LocationListenerCompat { fix -> offer(fix) }
         val request = LocationRequestCompat.Builder(FIX_EVERY_MS).setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY).build()
         providers.forEach { provider ->
             // Before Android 12 the satellites refuse an app that holds the approximate permission only.
@@ -148,6 +155,11 @@ internal fun rememberLivePosition(granted: Boolean): LivePosition {
     }
     return state
 }
+
+private fun Location.accuracyOrNull(): Float? = if (hasAccuracy()) accuracy else null
+
+/** On the phone's running clock, which every source shares, unlike the satellites' own time. */
+private fun Location.atMs(): Long = elapsedRealtimeNanos / 1_000_000
 
 /**
  * The page in its satellite form: the user stands at the middle of the pictures, the pictures
@@ -164,10 +176,32 @@ internal fun SatelliteQibla(
     val context = LocalContext.current
     val place = schedule.place
     var granted by remember { mutableStateOf(DeviceLocation.hasPermission(context)) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { answers ->
-        granted = answers.values.any { it }
+    var precise by remember { mutableStateOf(DeviceLocation.hasPrecisePermission(context)) }
+    // Once Android has been asked and still gives the approximate position, it shows no dialog
+    // again, so the next tap opens the app's own page in the phone's settings.
+    var askedPrecise by remember { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+        granted = DeviceLocation.hasPermission(context)
+        precise = DeviceLocation.hasPrecisePermission(context)
     }
-    val fix = rememberLivePosition(granted).location
+    // The user may change it in the settings and come back.
+    LifecycleResumeEffect(context) {
+        granted = DeviceLocation.hasPermission(context)
+        precise = DeviceLocation.hasPrecisePermission(context)
+        onPauseOrDispose { }
+    }
+    val askPrecise = {
+        if (askedPrecise) {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } else {
+            askedPrecise = true
+            permission.launch(DeviceLocation.PERMISSIONS)
+        }
+    }
+    val fix = rememberLivePosition(granted, precise).location
     // Until the phone knows where it is, the saved place stands in, and the page says so.
     val here = fix?.let { LatLng(it.latitude, it.longitude) } ?: LatLng(place.latitude, place.longitude)
     val qibla = remember(here) { Qibla(Coordinates(here.latitude, here.longitude)).direction.toFloat() }
@@ -224,6 +258,14 @@ internal fun SatelliteQibla(
                     onClick = { permission.launch(DeviceLocation.PERMISSIONS) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("qibla_map_allow"),
                 ) { Text(stringResource(R.string.qibla_map_allow)) }
+            }
+            // Going outside cannot help here: Android moves the position on purpose.
+            !precise -> {
+                Text(stringResource(R.string.qibla_map_approximate), style = MaterialTheme.typography.bodyMedium)
+                OutlinedButton(
+                    onClick = askPrecise,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("qibla_map_allow_precise"),
+                ) { Text(stringResource(R.string.qibla_map_allow_precise)) }
             }
             fix == null -> Text(stringResource(R.string.qibla_map_locating), style = MaterialTheme.typography.bodyMedium)
             fix.hasAccuracy() && fix.accuracy > ROUGH_METRES -> Text(
@@ -318,10 +360,6 @@ private fun UserMark(showsDirection: Boolean, modifier: Modifier = Modifier) {
 /** Near enough to tell one house from the next. */
 private const val START_ZOOM = 18f
 private const val FIX_EVERY_MS = 2_000L
-private const val STALE_FIX_MS = 10_000L
-
-/** A newer fix replaces the one held unless it is this much rougher. */
-private const val LOOSER = 1.5f
 
 /** Beyond this the mark may not be on the user's own building, and the page says how rough it is. */
 private const val ROUGH_METRES = 50f
