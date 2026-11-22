@@ -67,6 +67,22 @@
             </intent-filter>
         </activity>
 
+        <!--
+            A prayer widget's «customise»: Android opens it from a long press on the widget, and
+            when one is placed from the launcher's list. It hands over to the app at once.
+        -->
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Calendar widgets. They need no setup screen and no permission. -->
         <receiver
             android:name=".widget.CalendarDateWidget"

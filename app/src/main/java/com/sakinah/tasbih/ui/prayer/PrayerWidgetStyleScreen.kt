@@ -5,6 +5,38 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.ViewList
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import com.sakinah.tasbih.ui.SakinahContentMaxWidth
+import com.sakinah.tasbih.ui.SakinahSpacing
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +68,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,8 +103,6 @@ import com.sakinah.tasbih.prayer.ObligatoryPrayers
 import com.sakinah.tasbih.prayer.PrayerSchedule
 import com.sakinah.tasbih.ui.KhatamDivider
 import com.sakinah.tasbih.ui.KhatamMark
-import com.sakinah.tasbih.ui.SakinahSectionHeader
-import com.sakinah.tasbih.ui.SettingsPage
 import com.sakinah.tasbih.ui.SettingToggleRow
 import com.sakinah.tasbih.ui.calendar.CalendarChoices
 import com.sakinah.tasbih.ui.calendar.CalendarHint
@@ -119,301 +150,421 @@ class PrayerWidgetStyleViewModel(application: Application) : AndroidViewModel(ap
     fun reset() = update { PrayerWidgetStyle() }
 }
 
+/** The four tabs the options are gathered under. */
+private enum class StyleTab { CONTENT, COLORS, FONT, ORNAMENT }
+
+/**
+ * The prayer widgets' customisation: the preview of the chosen widget stays on top while the
+ * options below it, gathered in four tabs, scroll. Opened from the prayer settings, or from a
+ * widget's own «customise», on that widget.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrayerWidgetStyleScreen(
     schedule: PrayerSchedule?,
     calendarText: CalendarText?,
     onBack: () -> Unit,
+    startOnNext: Boolean = false,
     viewModel: PrayerWidgetStyleViewModel = viewModel(),
 ) {
     val style by viewModel.style.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val current = style ?: return
-    SettingsPage(stringResource(R.string.widget_style_title), onBack, "prayer_widget_style") {
-        item { SakinahSectionHeader(stringResource(R.string.widget_section_day)) }
-        item { WidgetPreview(current, schedule, calendarText) }
-        item {
-            OutlinedButton(
-                onClick = {
-                    val manager = AppWidgetManager.getInstance(context)
-                    val asked = manager.isRequestPinAppWidgetSupported &&
-                        manager.requestPinAppWidget(ComponentName(context, PrayerWidgetKind.DAY.receiver), null, null)
-                    if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
-                },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) {
-                Icon(Icons.Outlined.Add, null)
-                Text(stringResource(R.string.prayer_add_day_widget), Modifier.padding(start = 8.dp))
-            }
-        }
+    var next by rememberSaveable(startOnNext) { mutableStateOf(startOnNext) }
+    var tab by rememberSaveable { mutableStateOf(StyleTab.CONTENT) }
+    // On a short screen the preview scrolls with the options, so they keep room to be used.
+    val roomy = LocalConfiguration.current.screenHeightDp >= 600
 
-        item { SakinahSectionHeader(stringResource(R.string.widget_section_lines)) }
-        item { CalendarHint(stringResource(R.string.widget_lines_hint)) }
-        current.lines.forEachIndexed { index, line ->
-            item(key = "line_$index") {
-                LineEditor(
-                    number = index + 1,
-                    line = line,
-                    style = current,
-                    // The day widget's first line is a heading, in the accent.
-                    fallback = if (index == 0) WidgetPalette::accent else WidgetPalette::textSoft,
-                    onChange = { changed -> viewModel.update { s -> s.copy(lines = s.lines.toMutableList().also { it[index] = changed }) } },
-                    onRemove = { viewModel.update { s -> s.copy(lines = s.lines.toMutableList().also { it.removeAt(index) }) } },
-                )
-            }
-        }
-        item {
-            SettingToggleRow(
-                stringResource(R.string.widget_hijri_month_number),
-                stringResource(R.string.widget_hijri_month_number_hint),
-                current.hijriMonthNumber,
-                { on -> viewModel.update { it.copy(hijriMonthNumber = on) } },
-                "widget_hijri_month_number",
+    Scaffold(
+        modifier = Modifier.testTag("prayer_widget_style"),
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = { Text(stringResource(R.string.widget_style_title)) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
+                actions = {
+                    IconButton(onClick = viewModel::reset, modifier = Modifier.testTag("widget_reset")) {
+                        Icon(Icons.Outlined.Restore, stringResource(R.string.widget_reset))
+                    }
+                },
             )
-        }
-        item {
-            SettingToggleRow(
-                stringResource(R.string.widget_gregorian_month_number),
-                stringResource(R.string.widget_gregorian_month_number_hint),
-                current.gregorianMonthNumber,
-                { on -> viewModel.update { it.copy(gregorianMonthNumber = on) } },
-                "widget_gregorian_month_number",
-            )
-        }
-        if (current.lines.size < PrayerWidgetStyle.MAX_LINES) {
-            item {
-                TextButton(
-                    onClick = { viewModel.update { s -> s.copy(lines = s.lines + WidgetLine(LineItem.COUNTDOWN)) } },
-                    modifier = Modifier.testTag("widget_add_line"),
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val top: @Composable () -> Unit = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
                 ) {
-                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.widget_add_line))
+                    WidgetSwitch(next) { next = it }
+                    if (next) NextPreview(current, schedule, calendarText) else WidgetPreview(current, schedule, calendarText)
                 }
             }
-        }
-
-        item { SakinahSectionHeader(stringResource(R.string.widget_section_next)) }
-        item { NextPreview(current, schedule, calendarText) }
-        item {
-            OutlinedButton(
-                onClick = {
-                    val manager = AppWidgetManager.getInstance(context)
-                    val asked = manager.isRequestPinAppWidgetSupported &&
-                        manager.requestPinAppWidget(ComponentName(context, PrayerWidgetKind.NEXT.receiver), null, null)
-                    if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
-                },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) {
-                Icon(Icons.Outlined.Add, null)
-                Text(stringResource(R.string.prayer_add_next_widget), Modifier.padding(start = 8.dp))
-            }
-        }
-        item { CalendarHint(stringResource(R.string.widget_next_lines_hint)) }
-        current.nextLines.forEachIndexed { index, line ->
-            item(key = "next_line_$index") {
-                LineEditor(
-                    number = index + 1,
-                    line = line,
-                    style = current,
-                    fallback = WidgetPalette::textSoft,
-                    onChange = { changed -> viewModel.update { s -> s.copy(nextLines = s.nextLines.toMutableList().also { it[index] = changed }) } },
-                    onRemove = { viewModel.update { s -> s.copy(nextLines = s.nextLines.toMutableList().also { it.removeAt(index) }) } },
-                )
-            }
-        }
-        if (current.nextLines.size < PrayerWidgetStyle.MAX_NEXT_LINES) {
-            item {
-                TextButton(
-                    onClick = { viewModel.update { s -> s.copy(nextLines = s.nextLines + WidgetLine(LineItem.COUNTDOWN)) } },
-                    modifier = Modifier.testTag("widget_add_next_line"),
-                ) {
-                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.widget_add_line))
-                }
-            }
-        }
-
-        item { SakinahSectionHeader(stringResource(R.string.widget_section_look)) }
-        item { CalendarHint(stringResource(R.string.widget_look_hint)) }
-        item {
-            SettingToggleRow(
-                stringResource(R.string.widget_progress),
-                stringResource(R.string.widget_progress_hint),
-                current.progress,
-                { on -> viewModel.update { it.copy(progress = on) } },
-                "widget_progress",
-            )
-        }
-        item {
-            Labelled(stringResource(R.string.widget_surface)) {
-                Swatches(
-                    options = WidgetSurface.entries,
-                    selected = current.surface,
-                    color = { surfaceSample(it) },
-                    label = { surfaceLabel(it) },
-                    onSelect = { choice -> viewModel.update { it.copy(surface = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_opacity, com.sakinah.tasbih.data.arabicNumber(current.opacity))) {
-                // Saved when the finger lifts, so the widget is not redrawn at every step.
-                var value by remember(current.opacity) { mutableStateOf(current.opacity.toFloat()) }
-                Slider(
-                    value = value,
-                    onValueChange = { value = it },
-                    onValueChangeFinished = { viewModel.update { it.copy(opacity = value.toInt()) } },
-                    valueRange = 0f..100f,
-                    steps = 19,
-                    modifier = Modifier.testTag("widget_opacity"),
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_ink)) {
-                CalendarChoices(
-                    options = WidgetInk.entries,
-                    selected = current.ink,
-                    label = {
-                        stringResource(
-                            when (it) {
-                                WidgetInk.AUTO -> R.string.cal_automatic
-                                WidgetInk.DARK -> R.string.widget_ink_dark
-                                WidgetInk.LIGHT -> R.string.widget_ink_light
-                            },
-                        )
-                    },
-                    onSelect = { choice -> viewModel.update { it.copy(ink = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_accent)) {
-                Swatches(
-                    options = WidgetAccent.entries,
-                    selected = current.accent,
-                    color = { Color(WidgetPalette.of(current.copy(accent = it, surface = WidgetSurface.IVORY), false).accent) },
-                    label = { accentLabel(it) },
-                    onSelect = { choice -> viewModel.update { it.copy(accent = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_next_mark)) {
-                CalendarChoices(
-                    options = NextMark.entries,
-                    selected = current.nextMark,
-                    label = {
-                        stringResource(
-                            when (it) {
-                                NextMark.FILLED -> R.string.widget_mark_filled
-                                NextMark.FAINT -> R.string.widget_mark_faint
-                                NextMark.OUTLINE -> R.string.widget_mark_outline
-                            },
-                        )
-                    },
-                    onSelect = { choice -> viewModel.update { it.copy(nextMark = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_intensity)) {
-                CalendarChoices(
-                    options = WidgetIntensity.entries,
-                    selected = current.intensity,
-                    label = { intensityLabel(it) },
-                    onSelect = { choice -> viewModel.update { it.copy(intensity = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_scale)) {
-                CalendarChoices(
-                    options = WidgetScale.entries,
-                    selected = current.scale,
-                    label = {
-                        stringResource(
-                            when (it) {
-                                WidgetScale.SMALL -> R.string.widget_scale_small
-                                WidgetScale.MEDIUM -> R.string.widget_scale_medium
-                                WidgetScale.LARGE -> R.string.widget_scale_large
-                            },
-                        )
-                    },
-                    onSelect = { choice -> viewModel.update { it.copy(scale = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_weight)) {
-                CalendarChoices(
-                    options = WidgetWeight.entries,
-                    selected = current.weight,
-                    label = { weightLabel(it) },
-                    onSelect = { choice -> viewModel.update { it.copy(weight = choice) } },
-                )
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_time_weight)) {
-                CalendarChoices(
-                    options = WidgetWeight.entries,
-                    selected = current.timeWeight,
-                    label = { weightLabel(it) },
-                    onSelect = { choice -> viewModel.update { it.copy(timeWeight = choice) } },
-                )
-                CalendarHint(stringResource(R.string.widget_weight_hint))
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_name_color)) {
-                LineColors(current, current.nameColor, fallback = WidgetPalette::textSoft) { choice -> viewModel.update { it.copy(nameColor = choice) } }
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_time_color)) {
-                LineColors(current, current.timeColor, fallback = WidgetPalette::text) { choice -> viewModel.update { it.copy(timeColor = choice) } }
-            }
-        }
-        item {
-            Labelled(stringResource(R.string.widget_ornament)) {
-                CalendarChoices(
-                    // The frame is kept only to read old choices, which now show as the pattern.
-                    options = WidgetOrnament.entries - WidgetOrnament.FRAME,
-                    selected = current.ornament,
-                    label = {
-                        stringResource(
-                            when (it) {
-                                WidgetOrnament.NONE -> R.string.widget_ornament_none
-                                WidgetOrnament.DIVIDER -> R.string.widget_ornament_divider
-                                WidgetOrnament.PATTERN, WidgetOrnament.FRAME -> R.string.widget_ornament_pattern
-                            },
-                        )
-                    },
-                    onSelect = { choice -> viewModel.update { it.copy(ornament = choice) } },
-                )
-                CalendarHint(stringResource(R.string.widget_ornament_hint))
-            }
-        }
-        if (current.ornament == WidgetOrnament.PATTERN) {
-            item {
-                Labelled(stringResource(R.string.widget_pattern_intensity)) {
-                    CalendarChoices(
-                        options = WidgetIntensity.entries,
-                        selected = current.patternIntensity,
-                        label = { intensityLabel(it) },
-                        onSelect = { choice -> viewModel.update { it.copy(patternIntensity = choice) } },
+            if (roomy) top()
+            PrimaryTabRow(selectedTabIndex = tab.ordinal, modifier = Modifier.widthIn(max = SakinahContentMaxWidth)) {
+                StyleTab.entries.forEach { entry ->
+                    Tab(
+                        selected = tab == entry,
+                        onClick = { tab = entry },
+                        // A size smaller than a tab's own, so the four names fit with large text too.
+                        text = { Text(tabLabel(entry), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelMedium) },
+                        icon = { Icon(tabIcon(entry), null) },
+                        modifier = Modifier.testTag("widget_tab_${entry.name.lowercase()}"),
                     )
                 }
             }
-        }
-        item {
-            TextButton(onClick = viewModel::reset, modifier = Modifier.testTag("widget_reset")) {
-                Text(stringResource(R.string.widget_reset))
+            LazyColumn(
+                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().weight(1f).testTag("widget_style_options"),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
+            ) {
+                if (!roomy) item(key = "top") { top() }
+                when (tab) {
+                    StyleTab.CONTENT -> contentOptions(current, next, viewModel)
+                    StyleTab.COLORS -> colorOptions(current, viewModel)
+                    StyleTab.FONT -> fontOptions(current, viewModel)
+                    StyleTab.ORNAMENT -> ornamentOptions(current, viewModel)
+                }
             }
         }
+    }
+}
+
+/** Which widget the preview shows and the lines belong to; the look is shared by both. */
+@Composable
+private fun WidgetSwitch(next: Boolean, onNext: (Boolean) -> Unit) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("widget_switch")) {
+        listOf(false to R.string.widget_section_day, true to R.string.widget_section_next).forEachIndexed { index, (isNext, label) ->
+            SegmentedButton(
+                selected = next == isNext,
+                onClick = { onNext(isNext) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+            ) { Text(stringResource(label), maxLines = 1) }
+        }
+    }
+}
+
+@Composable
+private fun tabLabel(tab: StyleTab): String = stringResource(
+    when (tab) {
+        StyleTab.CONTENT -> R.string.widget_tab_content
+        StyleTab.COLORS -> R.string.widget_tab_colors
+        StyleTab.FONT -> R.string.widget_tab_font
+        StyleTab.ORNAMENT -> R.string.widget_tab_ornament
+    },
+)
+
+private fun tabIcon(tab: StyleTab): ImageVector = when (tab) {
+    StyleTab.CONTENT -> Icons.AutoMirrored.Outlined.ViewList
+    StyleTab.COLORS -> Icons.Outlined.Palette
+    StyleTab.FONT -> Icons.Outlined.TextFields
+    StyleTab.ORNAMENT -> Icons.Outlined.AutoAwesome
+}
+
+/** What the chosen widget says: its lines, the dates' month numbers, the bar, and a way to place it. */
+private fun LazyListScope.contentOptions(current: PrayerWidgetStyle, next: Boolean, viewModel: PrayerWidgetStyleViewModel) {
+    val lines = if (next) current.nextLines else current.lines
+    val max = if (next) PrayerWidgetStyle.MAX_NEXT_LINES else PrayerWidgetStyle.MAX_LINES
+    fun change(update: (MutableList<WidgetLine>) -> Unit) = viewModel.update { s ->
+        if (next) s.copy(nextLines = s.nextLines.toMutableList().also(update)) else s.copy(lines = s.lines.toMutableList().also(update))
+    }
+    item(key = "lines_hint_$next") { CalendarHint(stringResource(if (next) R.string.widget_next_lines_hint else R.string.widget_lines_hint)) }
+    lines.forEachIndexed { index, line ->
+        item(key = "line_${next}_$index") {
+            LineEditor(
+                number = index + 1,
+                line = line,
+                style = current,
+                // The day widget's first line is a heading, in the accent.
+                fallback = if (!next && index == 0) WidgetPalette::accent else WidgetPalette::textSoft,
+                onChange = { changed -> change { it[index] = changed } },
+                onRemove = { change { it.removeAt(index) } },
+            )
+        }
+    }
+    if (lines.size < max) {
+        item(key = "add_line_$next") {
+            TextButton(
+                onClick = { change { it.add(WidgetLine(LineItem.COUNTDOWN)) } },
+                modifier = Modifier.testTag(if (next) "widget_add_next_line" else "widget_add_line"),
+            ) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.widget_add_line))
+            }
+        }
+    }
+    item(key = "hijri_number") {
+        SettingToggleRow(
+            stringResource(R.string.widget_hijri_month_number),
+            stringResource(R.string.widget_hijri_month_number_hint),
+            current.hijriMonthNumber,
+            { on -> viewModel.update { it.copy(hijriMonthNumber = on) } },
+            "widget_hijri_month_number",
+        )
+    }
+    item(key = "gregorian_number") {
+        SettingToggleRow(
+            stringResource(R.string.widget_gregorian_month_number),
+            stringResource(R.string.widget_gregorian_month_number_hint),
+            current.gregorianMonthNumber,
+            { on -> viewModel.update { it.copy(gregorianMonthNumber = on) } },
+            "widget_gregorian_month_number",
+        )
+    }
+    item(key = "progress") {
+        SettingToggleRow(
+            stringResource(R.string.widget_progress),
+            stringResource(R.string.widget_progress_hint),
+            current.progress,
+            { on -> viewModel.update { it.copy(progress = on) } },
+            "widget_progress",
+        )
+    }
+    item(key = "place_$next") { PlaceWidgetButton(next) }
+}
+
+/** Asks the launcher to place the chosen widget, or says how to where it cannot be asked. */
+@Composable
+private fun PlaceWidgetButton(next: Boolean) {
+    val context = LocalContext.current
+    OutlinedButton(
+        onClick = {
+            val manager = AppWidgetManager.getInstance(context)
+            val kind = if (next) PrayerWidgetKind.NEXT else PrayerWidgetKind.DAY
+            val asked = manager.isRequestPinAppWidgetSupported &&
+                manager.requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
+            if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
+        },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+    ) {
+        Icon(Icons.Outlined.Add, null)
+        Text(stringResource(if (next) R.string.prayer_add_next_widget else R.string.prayer_add_day_widget), Modifier.padding(start = 8.dp))
+    }
+}
+
+/** The paper and every colour of the words, for both widgets. */
+private fun LazyListScope.colorOptions(current: PrayerWidgetStyle, viewModel: PrayerWidgetStyleViewModel) {
+    item(key = "look_hint") { CalendarHint(stringResource(R.string.widget_look_hint)) }
+    item(key = "surface") {
+        Labelled(stringResource(R.string.widget_surface)) {
+            Swatches(
+                options = WidgetSurface.entries,
+                selected = current.surface,
+                color = { surfaceSample(it) },
+                label = { surfaceLabel(it) },
+                onSelect = { choice -> viewModel.update { it.copy(surface = choice) } },
+            )
+        }
+    }
+    item(key = "opacity") {
+        Labelled(stringResource(R.string.widget_opacity, com.sakinah.tasbih.data.arabicNumber(current.opacity))) {
+            // Saved when the finger lifts, so the widget is not redrawn at every step.
+            var value by remember(current.opacity) { mutableStateOf(current.opacity.toFloat()) }
+            Slider(
+                value = value,
+                onValueChange = { value = it },
+                onValueChangeFinished = { viewModel.update { it.copy(opacity = value.toInt()) } },
+                valueRange = 0f..100f,
+                steps = 19,
+                modifier = Modifier.testTag("widget_opacity"),
+            )
+        }
+    }
+    item(key = "ink") {
+        Labelled(stringResource(R.string.widget_ink)) {
+            CalendarChoices(
+                options = WidgetInk.entries,
+                selected = current.ink,
+                label = {
+                    stringResource(
+                        when (it) {
+                            WidgetInk.AUTO -> R.string.cal_automatic
+                            WidgetInk.DARK -> R.string.widget_ink_dark
+                            WidgetInk.LIGHT -> R.string.widget_ink_light
+                        },
+                    )
+                },
+                onSelect = { choice -> viewModel.update { it.copy(ink = choice) } },
+            )
+        }
+    }
+    item(key = "accent") {
+        Labelled(stringResource(R.string.widget_accent)) {
+            Swatches(
+                options = WidgetAccent.entries,
+                selected = current.accent,
+                color = { Color(WidgetPalette.of(current.copy(accent = it, surface = WidgetSurface.IVORY), false).accent) },
+                label = { accentLabel(it) },
+                onSelect = { choice -> viewModel.update { it.copy(accent = choice) } },
+            )
+        }
+    }
+    item(key = "name_color") {
+        LineColorRow(stringResource(R.string.widget_name_color), current, current.nameColor, WidgetPalette::textSoft, "widget_name_color") { choice ->
+            viewModel.update { it.copy(nameColor = choice) }
+        }
+    }
+    item(key = "time_color") {
+        LineColorRow(stringResource(R.string.widget_time_color), current, current.timeColor, WidgetPalette::text, "widget_time_color") { choice ->
+            viewModel.update { it.copy(timeColor = choice) }
+        }
+    }
+}
+
+/** The size of the words and their weights. */
+private fun LazyListScope.fontOptions(current: PrayerWidgetStyle, viewModel: PrayerWidgetStyleViewModel) {
+    item(key = "scale") {
+        Labelled(stringResource(R.string.widget_scale)) {
+            CalendarChoices(
+                options = WidgetScale.entries,
+                selected = current.scale,
+                label = {
+                    stringResource(
+                        when (it) {
+                            WidgetScale.SMALL -> R.string.widget_scale_small
+                            WidgetScale.MEDIUM -> R.string.widget_scale_medium
+                            WidgetScale.LARGE -> R.string.widget_scale_large
+                        },
+                    )
+                },
+                onSelect = { choice -> viewModel.update { it.copy(scale = choice) } },
+            )
+        }
+    }
+    item(key = "weight") {
+        Labelled(stringResource(R.string.widget_weight)) {
+            CalendarChoices(
+                options = WidgetWeight.entries,
+                selected = current.weight,
+                label = { weightLabel(it) },
+                onSelect = { choice -> viewModel.update { it.copy(weight = choice) } },
+            )
+        }
+    }
+    item(key = "time_weight") {
+        Labelled(stringResource(R.string.widget_time_weight)) {
+            CalendarChoices(
+                options = WidgetWeight.entries,
+                selected = current.timeWeight,
+                label = { weightLabel(it) },
+                onSelect = { choice -> viewModel.update { it.copy(timeWeight = choice) } },
+            )
+            CalendarHint(stringResource(R.string.widget_weight_hint))
+        }
+    }
+}
+
+/** The Islamic touch, and how the next prayer stands out. */
+private fun LazyListScope.ornamentOptions(current: PrayerWidgetStyle, viewModel: PrayerWidgetStyleViewModel) {
+    item(key = "ornament") {
+        Labelled(stringResource(R.string.widget_ornament)) {
+            CalendarChoices(
+                // The frame is kept only to read old choices, which now show as the pattern.
+                options = WidgetOrnament.entries - WidgetOrnament.FRAME,
+                selected = current.ornament,
+                label = {
+                    stringResource(
+                        when (it) {
+                            WidgetOrnament.NONE -> R.string.widget_ornament_none
+                            WidgetOrnament.DIVIDER -> R.string.widget_ornament_divider
+                            WidgetOrnament.PATTERN, WidgetOrnament.FRAME -> R.string.widget_ornament_pattern
+                        },
+                    )
+                },
+                onSelect = { choice -> viewModel.update { it.copy(ornament = choice) } },
+            )
+            CalendarHint(stringResource(R.string.widget_ornament_hint))
+        }
+    }
+    if (current.ornament == WidgetOrnament.PATTERN) {
+        item(key = "pattern_intensity") {
+            Labelled(stringResource(R.string.widget_pattern_intensity)) {
+                CalendarChoices(
+                    options = WidgetIntensity.entries,
+                    selected = current.patternIntensity,
+                    label = { intensityLabel(it) },
+                    onSelect = { choice -> viewModel.update { it.copy(patternIntensity = choice) } },
+                )
+            }
+        }
+    }
+    item(key = "next_mark") {
+        Labelled(stringResource(R.string.widget_next_mark)) {
+            CalendarChoices(
+                options = NextMark.entries,
+                selected = current.nextMark,
+                label = {
+                    stringResource(
+                        when (it) {
+                            NextMark.FILLED -> R.string.widget_mark_filled
+                            NextMark.FAINT -> R.string.widget_mark_faint
+                            NextMark.OUTLINE -> R.string.widget_mark_outline
+                        },
+                    )
+                },
+                onSelect = { choice -> viewModel.update { it.copy(nextMark = choice) } },
+            )
+        }
+    }
+    item(key = "intensity") {
+        Labelled(stringResource(R.string.widget_intensity)) {
+            CalendarChoices(
+                options = WidgetIntensity.entries,
+                selected = current.intensity,
+                label = { intensityLabel(it) },
+                onSelect = { choice -> viewModel.update { it.copy(intensity = choice) } },
+            )
+        }
+    }
+}
+
+/**
+ * One colour, as a single row: its swatch and name, opening the whole choice in a dialog. Keeps
+ * the colours tab short where a row of twelve swatches per colour made it long.
+ */
+@Composable
+private fun LineColorRow(
+    title: String,
+    style: PrayerWidgetStyle,
+    selected: LineColor,
+    fallback: (WidgetPalette) -> Int,
+    tag: String,
+    onSelect: (LineColor) -> Unit,
+) {
+    val palette = WidgetPalette.of(style, MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    var open by rememberSaveable { mutableStateOf(false) }
+    val shown = Color(palette.line(selected) ?: fallback(palette))
+    val name = lineColorLabel(selected)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button) { open = true }
+            .semantics { contentDescription = "$title: $name" }
+            .testTag(tag),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        Box(Modifier.size(22.dp).clip(CircleShape).background(shown).border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text(name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = {
+                LineColors(style, selected, fallback) {
+                    onSelect(it)
+                    open = false
+                }
+            },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.close)) } },
+        )
     }
 }
 
@@ -427,14 +578,32 @@ private fun Labelled(title: String, content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun <T> Swatches(options: List<T>, selected: T, color: @Composable (T) -> Color, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+private fun <T> Swatches(
+    options: List<T>,
+    selected: T,
+    color: @Composable (T) -> Color,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    wrap: Boolean = false,
+) {
     val colors = MaterialTheme.colorScheme
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // A single row that scrolls sideways keeps a long choice to one line; a dialog wraps instead.
+    val arrange: @Composable (@Composable () -> Unit) -> Unit = { content ->
+        if (wrap) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+        } else {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+        }
+    }
+    arrange {
         options.forEach { option ->
             val chosen = option == selected
             val fill = color(option)
             val name = label(option)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // The chosen colour is brought into sight when the row first shows, wherever it lies.
+            val sight = remember { BringIntoViewRequester() }
+            if (chosen && !wrap) LaunchedEffect(Unit) { sight.bringIntoView() }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bringIntoViewRequester(sight)) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -524,6 +693,7 @@ private fun LineColors(style: PrayerWidgetStyle, selected: LineColor, fallback: 
         color = { Color(palette.line(it) ?: fallback(palette)) },
         label = { lineColorLabel(it) },
         onSelect = onSelect,
+        wrap = true,
     )
 }
 
@@ -683,8 +853,7 @@ private fun LineEditor(
             ItemChooser(stringResource(R.string.widget_side_right), line.right, { onChange(line.copy(right = it)) }, Modifier.weight(1f))
             ItemChooser(stringResource(R.string.widget_side_left), line.left, { onChange(line.copy(left = it)) }, Modifier.weight(1f))
         }
-        Text(stringResource(R.string.widget_line_color), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LineColors(style, line.color, fallback) { onChange(line.copy(color = it)) }
+        LineColorRow(stringResource(R.string.widget_line_color), style, line.color, fallback, "widget_line_color_$number") { onChange(line.copy(color = it)) }
     }
 }
 
@@ -733,7 +902,6 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
     val countdownTemplate = stringResource(R.string.widget_countdown)
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.widget_preview), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         // A strip of the home screen behind it, so transparency can be seen.
         Box(
             Modifier

@@ -711,6 +711,10 @@
     <string name="widget_section_lines">السطور</string>
     <string name="widget_section_day">مواقيت اليوم</string>
     <string name="widget_section_next">الصلاة القادمة</string>
+    <string name="widget_tab_content">المحتوى</string>
+    <string name="widget_tab_colors">الألوان</string>
+    <string name="widget_tab_font">الخط</string>
+    <string name="widget_tab_ornament">الزخرفة</string>
     <string name="widget_next_lines_hint">تحت اسم الصلاة ووقتها حتى سطرين، لكل سطر يمين ويسار.</string>
     <string name="widget_look_hint">المظهر واحد للأداتين، فتتشابهان على الشاشة الرئيسية.</string>
     <string name="widget_progress">شريط الوقت</string>

@@ -313,6 +313,9 @@ private fun SakinahNavigation(
         backStack.add(AppDestination.Calendar(date?.toEpochDay()))
     }
 
+    // Which widget the customisation opens on: the next prayer's when its own «customise» asked.
+    var widgetStyleOnNext by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(openRequest) {
         if (openRequest != null) tabFromBar = false
         when (val request = openRequest) {
@@ -340,6 +343,16 @@ private fun SakinahNavigation(
                 backStack.clear()
                 backStack.add(AppDestination.Home)
                 backStack.add(AppDestination.Qibla)
+                onOpenRequestHandled()
+            }
+            is AppOpenRequest.WidgetStyle -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                widgetStyleOnNext = request.next
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Prayer)
+                backStack.add(AppDestination.PrayerWidgetStyle)
                 onOpenRequestHandled()
             }
         }
@@ -633,7 +646,11 @@ private fun SakinahNavigation(
                             com.sakinah.tasbih.ui.prayer.PrayerWidgetStyleScreen(
                                 schedule = prayerState?.schedule,
                                 calendarText = calendarText,
-                                onBack = ::navigateBack,
+                                onBack = {
+                                    widgetStyleOnNext = false
+                                    navigateBack()
+                                },
+                                startOnNext = widgetStyleOnNext,
                             )
                         }
 
@@ -712,6 +729,9 @@ sealed interface AppOpenRequest {
     data class Calendar(val date: LocalDate, val showOccasions: Boolean = false) : AppOpenRequest
     data object Prayer : AppOpenRequest
     data object Qibla : AppOpenRequest
+
+    /** The widgets' customisation, from a widget's own «customise», on the widget it came from. */
+    data class WidgetStyle(val next: Boolean) : AppOpenRequest
 }
 
 /** Every calendar page belongs to the calendar tab, whichever month it opened on. */

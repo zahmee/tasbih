@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="com.sakinah.tasbih.widget.WidgetConfigureActivity"
     android:description="@string/prayer_next_widget_description"
     android:initialLayout="@layout/anaa_widget_prayer_next"
     android:minWidth="110dp"
@@ -12,4 +13,5 @@
     android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:updatePeriodMillis="21600000"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />
