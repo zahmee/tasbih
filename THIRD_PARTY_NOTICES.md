@@ -67,4 +67,16 @@
 | `adhan_recording_3.ogg` | [Azan.ogg](https://commons.wikimedia.org/wiki/File:Azan.ogg) | Andrewler | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ضبط الصوت |
 | `adhan_recording_4.ogg` | [Call to prayer.ogg](https://commons.wikimedia.org/wiki/File:Call_to_prayer.ogg) | Isaacayodele32 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ضبط الصوت |
 
-النغمات `prayer_tone_chime` و`prayer_tone_bell` و`prayer_tone_soft` من صنع المشروع، يولّدها `tools/generate_prayer_tones.py`.
+## نغمات التنبيه
+
+النغمات الثلاث من نغمات الإشعار في مشروع أندرويد مفتوح المصدر، من مجلد [data/sounds/notifications/material/ogg](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/data/sounds/notifications/material/ogg/) في `platform/frameworks/base`، نُزّلت في ٢٣ نوفمبر ٢٠٢٦.
+
+- الحقوق: Copyright The Android Open Source Project
+- الرخصة: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- التعديل: حُوّلت كل نغمة من نسختها بتردد 48 كيلوهرتز إلى صوت أحادي، وخُفض صوتها 0.8 ديسيبل
+
+| الملف في التطبيق | الأصل |
+|---|---|
+| `prayer_tone_ceres.ogg` | `Ceres_48k.ogg` |
+| `prayer_tone_tethys.ogg` | `Tethys_48k.ogg` |
+| `prayer_tone_rhea.ogg` | `Rhea_48k.ogg` |

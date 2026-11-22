@@ -83,7 +83,11 @@ object AlertNotifier {
             }
         }
         channels.forEach { it.group = GROUP }
-        manager.notificationChannels.filter { it.id.startsWith(OLD_TONE_PREFIX) }.forEach { manager.deleteNotificationChannel(it.id) }
+        // Channels of tones the app no longer ships would linger in the phone's settings.
+        val current = channels.map { it.id }.toSet()
+        manager.notificationChannels
+            .filter { it.id.startsWith(OLD_TONE_PREFIX) || (it.id.startsWith(TONE_PREFIX) && it.id !in current) }
+            .forEach { manager.deleteNotificationChannel(it.id) }
         manager.createNotificationChannels(channels)
     }
 

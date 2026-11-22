@@ -644,9 +644,9 @@
     <string name="alert_prayer_text">الوقت %1$s</string>
     <string name="alert_adhan_playing">يُرفع الأذان الآن</string>
     <string name="alert_stop">إيقاف</string>
-    <string name="alert_tone_chime">ثلاث نغمات</string>
-    <string name="alert_tone_bell">جرس</string>
-    <string name="alert_tone_soft">نغمة هادئة</string>
+    <string name="alert_tone_ceres">نغمة صافية</string>
+    <string name="alert_tone_tethys">نغمة رقيقة</string>
+    <string name="alert_tone_rhea">نقرة قصيرة</string>
     <string name="alert_adhan_tone">نغمة بلا صوت مؤذن</string>
     <string name="alert_tone_takbir_makkah">تكبير من المسجد الحرام</string>
     <string name="alert_adhan_makkah_maghrib">أذان المغرب في المسجد الحرام</string>
