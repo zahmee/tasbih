@@ -345,6 +345,15 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.Qibla)
                 onOpenRequestHandled()
             }
+            AppOpenRequest.CalendarSettings -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Calendar(null))
+                backStack.add(AppDestination.CalendarSettings)
+                onOpenRequestHandled()
+            }
             is AppOpenRequest.WidgetStyle -> {
                 isTasbihFocusMode = false
                 isReaderFocusMode = false
@@ -729,6 +738,9 @@ sealed interface AppOpenRequest {
     data class Calendar(val date: LocalDate, val showOccasions: Boolean = false) : AppOpenRequest
     data object Prayer : AppOpenRequest
     data object Qibla : AppOpenRequest
+
+    /** The calendar's settings, from a calendar widget's own «customise». */
+    data object CalendarSettings : AppOpenRequest
 
     /** The widgets' customisation, from a widget's own «customise», on the widget it came from. */
     data class WidgetStyle(val next: Boolean) : AppOpenRequest

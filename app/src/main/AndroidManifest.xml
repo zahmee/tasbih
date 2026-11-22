@@ -68,7 +68,7 @@
         </activity>
 
         <!--
-            A prayer widget's «customise»: Android opens it from a long press on the widget, and
+            A widget's «customise»: Android opens it from a long press on the widget, and
             when one is placed from the launcher's list. It hands over to the app at once.
         -->
         <activity
@@ -83,7 +83,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Calendar widgets. They need no setup screen and no permission. -->
+        <!-- Calendar widgets. They need no permission; their «customise» opens the calendar's settings. -->
         <receiver
             android:name=".widget.CalendarDateWidget"
             android:exported="true"

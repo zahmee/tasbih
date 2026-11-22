@@ -169,6 +169,80 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, tag: String, conten
     }
 }
 
+/** One tab of a [TabbedSettingsPage]: its name, its icon, and a tag for the device tests. */
+internal data class SettingsTab(val label: String, val icon: ImageVector, val tag: String)
+
+/**
+ * A settings page whose options are gathered in tabs, for pages long enough to scatter the eye.
+ * An optional [header], a preview say, stays on top while the chosen tab's options scroll under
+ * it; on a short screen it scrolls with them instead, so the options keep room to be used.
+ * The tabs' names take a size below a tab's own, so they fit with large text too.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TabbedSettingsPage(
+    title: String,
+    onBack: () -> Unit,
+    tag: String,
+    tabs: List<SettingsTab>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+    header: (@Composable () -> Unit)? = null,
+    content: LazyListScope.() -> Unit,
+) {
+    val roomy = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp >= 600
+    Scaffold(
+        modifier = Modifier.testTag(tag),
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = { Text(title) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
+                actions = actions,
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val top: @Composable () -> Unit = {
+                Box(Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) { header?.invoke() }
+            }
+            if (header != null && roomy) top()
+            PrimaryTabRow(selectedTabIndex = selected, modifier = Modifier.widthIn(max = SakinahContentMaxWidth)) {
+                tabs.forEachIndexed { index, tab ->
+                    // Own content rather than a tab's text and icon, which keep 16dp either side
+                    // of the name and so cut it short when five tabs share a phone's width.
+                    Tab(
+                        selected = selected == index,
+                        onClick = { onSelect(index) },
+                        modifier = Modifier.testTag(tab.tag),
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp),
+                        ) {
+                            Icon(tab.icon, null)
+                            Text(tab.label, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().weight(1f).testTag("${tag}_options"),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
+            ) {
+                if (header != null && !roomy) item(key = "header") { top() }
+                content()
+            }
+        }
+    }
+}
+
 @Composable
 internal fun SettingNavigationRow(title: String, description: String, icon: ImageVector, tag: String, onClick: () -> Unit) {
     Row(

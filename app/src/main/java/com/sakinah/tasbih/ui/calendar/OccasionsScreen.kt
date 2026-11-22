@@ -70,7 +70,7 @@ fun OccasionsScreen(
     onRemovePersonal: (id: String) -> Unit = {},
 ) {
     val calendar = text.calendar
-    val upcoming = remember(text, today) { Occasions.upcoming(calendar, today, text.settings.showOtherOccasions) }
+    val upcoming = remember(text, today) { Occasions.upcoming(calendar, today) }
     val personal = remember(text, today) { PersonalOccasions.upcoming(calendar, today, text.settings.personalOccasions) }
     val nextWhiteDay = remember(text, today) {
         if (!text.settings.showWhiteDays) {

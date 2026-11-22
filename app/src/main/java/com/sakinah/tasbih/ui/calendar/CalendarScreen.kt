@@ -318,6 +318,67 @@ private fun MonthContent(
     }
 }
 
+/**
+ * The week that holds [today], drawn by the calendar's own cells: the preview on top of the
+ * calendar's settings, so the leading calendar, the week's first day, the days off, the colours
+ * and the white days show as they will in the calendar.
+ */
+@Composable
+internal fun CalendarWeekPreview(text: CalendarText, today: LocalDate, modifier: Modifier = Modifier) {
+    val firstDay = text.firstDayOfWeek()
+    val week = remember(today, text.settings.primary, text.calendar, firstDay) {
+        CalendarMonth.containing(today, text.settings.primary, text.calendar)
+            ?.let { buildMonthGrid(it, text.calendar, firstDay) }
+            ?.firstOrNull { row -> row.any { it?.date == today } }
+    }
+    val weekend = text.settings.weekendDays
+    val band = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+    val copper = LocalSakinahBrandColors.current.antiqueGold
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .testTag("calendar_settings_preview"),
+    ) {
+        Row(Modifier.fillMaxWidth()) {
+            weekDays(firstDay).forEach { day ->
+                val off = day in weekend
+                Text(
+                    text = text.weekday(day).removePrefix("ال"),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (off) FontWeight.SemiBold else null,
+                    color = if (off) copper else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (off) band else Color.Transparent, RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                        .padding(vertical = 6.dp),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            val columns = weekDays(firstDay)
+            columns.forEachIndexed { column, day ->
+                val off = day in weekend
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp)
+                        .background(if (off) band else Color.Transparent, RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp)),
+                ) {
+                    week?.getOrNull(column)?.let { cell ->
+                        DayBox(cell, text, cell.date == today, off, emptyList(), 0, onClick = {})
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun DayBox(
     cell: DayCell,
@@ -331,7 +392,7 @@ private fun DayBox(
     val hijriFirst = text.settings.primary == PrimaryCalendar.HIJRI
     val hijriDay = cell.hijri?.let { text.number(it.day) }.orEmpty()
     val gregorianDay = text.number(cell.date.dayOfMonth)
-    val hasOccasion = cell.hijri?.let { Occasions.on(it, text.settings.showOtherOccasions).isNotEmpty() } == true ||
+    val hasOccasion = cell.hijri?.let { Occasions.on(it).isNotEmpty() } == true ||
         text.personalOn(cell.date).isNotEmpty()
     val isWhiteDay = text.settings.showWhiteDays && cell.hijri?.let(Occasions::isWhiteDay) == true
     val colors = MaterialTheme.colorScheme
@@ -422,9 +483,9 @@ private fun Marker(color: Color) {
 @Composable
 private fun TodaySummary(text: CalendarText, today: LocalDate, onOpenOccasions: () -> Unit) {
     val hijri = text.calendar.fromGregorian(today)
-    val todays = hijri?.let { Occasions.on(it, text.settings.showOtherOccasions) }.orEmpty()
+    val todays = hijri?.let { Occasions.on(it) }.orEmpty()
     val next = remember(text, today) {
-        Occasions.upcoming(text.calendar, today, text.settings.showOtherOccasions).firstOrNull { it.daysAway > 0 }
+        Occasions.upcoming(text.calendar, today).firstOrNull { it.daysAway > 0 }
     }
     Surface(
         onClick = onOpenOccasions,
@@ -483,7 +544,7 @@ private fun DaySheet(
             hijri?.let { Text(text.hijriDate(it), style = MaterialTheme.typography.headlineSmall) }
             Text(text.gregorianDate(date), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-            val occasions = hijri?.let { Occasions.on(it, text.settings.showOtherOccasions) }.orEmpty()
+            val occasions = hijri?.let { Occasions.on(it) }.orEmpty()
             occasions.forEach { occasion ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Icon(Icons.Outlined.Celebration, null, tint = LocalSakinahBrandColors.current.antiqueGold, modifier = Modifier.size(18.dp))

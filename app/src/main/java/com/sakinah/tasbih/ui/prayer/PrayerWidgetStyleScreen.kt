@@ -9,15 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -25,18 +18,12 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
-import com.sakinah.tasbih.ui.SakinahContentMaxWidth
-import com.sakinah.tasbih.ui.SakinahSpacing
+import com.sakinah.tasbih.ui.SettingsTab
+import com.sakinah.tasbih.ui.TabbedSettingsPage
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -158,7 +145,6 @@ private enum class StyleTab { CONTENT, COLORS, FONT, ORNAMENT }
  * options below it, gathered in four tabs, scroll. Opened from the prayer settings, or from a
  * widget's own «customise», on that widget.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrayerWidgetStyleScreen(
     schedule: PrayerSchedule?,
@@ -171,63 +157,30 @@ fun PrayerWidgetStyleScreen(
     val current = style ?: return
     var next by rememberSaveable(startOnNext) { mutableStateOf(startOnNext) }
     var tab by rememberSaveable { mutableStateOf(StyleTab.CONTENT) }
-    // On a short screen the preview scrolls with the options, so they keep room to be used.
-    val roomy = LocalConfiguration.current.screenHeightDp >= 600
-
-    Scaffold(
-        modifier = Modifier.testTag("prayer_widget_style"),
-        topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                title = { Text(stringResource(R.string.widget_style_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
-                actions = {
-                    IconButton(onClick = viewModel::reset, modifier = Modifier.testTag("widget_reset")) {
-                        Icon(Icons.Outlined.Restore, stringResource(R.string.widget_reset))
-                    }
-                },
-            )
+    TabbedSettingsPage(
+        title = stringResource(R.string.widget_style_title),
+        onBack = onBack,
+        tag = "prayer_widget_style",
+        tabs = StyleTab.entries.map { SettingsTab(tabLabel(it), tabIcon(it), "widget_tab_${it.name.lowercase()}") },
+        selected = tab.ordinal,
+        onSelect = { tab = StyleTab.entries[it] },
+        actions = {
+            IconButton(onClick = viewModel::reset, modifier = Modifier.testTag("widget_reset")) {
+                Icon(Icons.Outlined.Restore, stringResource(R.string.widget_reset))
+            }
         },
-    ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            val top: @Composable () -> Unit = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-                ) {
-                    WidgetSwitch(next) { next = it }
-                    if (next) NextPreview(current, schedule, calendarText) else WidgetPreview(current, schedule, calendarText)
-                }
+        header = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WidgetSwitch(next) { next = it }
+                if (next) NextPreview(current, schedule, calendarText) else WidgetPreview(current, schedule, calendarText)
             }
-            if (roomy) top()
-            PrimaryTabRow(selectedTabIndex = tab.ordinal, modifier = Modifier.widthIn(max = SakinahContentMaxWidth)) {
-                StyleTab.entries.forEach { entry ->
-                    Tab(
-                        selected = tab == entry,
-                        onClick = { tab = entry },
-                        // A size smaller than a tab's own, so the four names fit with large text too.
-                        text = { Text(tabLabel(entry), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelMedium) },
-                        icon = { Icon(tabIcon(entry), null) },
-                        modifier = Modifier.testTag("widget_tab_${entry.name.lowercase()}"),
-                    )
-                }
-            }
-            LazyColumn(
-                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().weight(1f).testTag("widget_style_options"),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
-            ) {
-                if (!roomy) item(key = "top") { top() }
-                when (tab) {
-                    StyleTab.CONTENT -> contentOptions(current, next, viewModel)
-                    StyleTab.COLORS -> colorOptions(current, viewModel)
-                    StyleTab.FONT -> fontOptions(current, viewModel)
-                    StyleTab.ORNAMENT -> ornamentOptions(current, viewModel)
-                }
-            }
+        },
+    ) {
+        when (tab) {
+            StyleTab.CONTENT -> contentOptions(current, next, viewModel)
+            StyleTab.COLORS -> colorOptions(current, viewModel)
+            StyleTab.FONT -> fontOptions(current, viewModel)
+            StyleTab.ORNAMENT -> ornamentOptions(current, viewModel)
         }
     }
 }

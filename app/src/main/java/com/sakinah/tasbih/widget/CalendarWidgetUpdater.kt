@@ -234,7 +234,7 @@ class CalendarWidgetUpdater(context: Context) {
             },
         )
 
-        val hasOccasion = cell.hijri?.let { Occasions.on(it, settings.showOtherOccasions).isNotEmpty() } == true ||
+        val hasOccasion = cell.hijri?.let { Occasions.on(it).isNotEmpty() } == true ||
             text.personalOn(cell.date).isNotEmpty()
         val hijriInk = settings.hijriColor.widgetColor()
         val gregorianInk = settings.gregorianColor.widgetColor()

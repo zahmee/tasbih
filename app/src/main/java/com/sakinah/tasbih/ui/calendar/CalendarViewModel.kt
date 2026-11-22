@@ -102,7 +102,6 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     fun setHijriOffset(days: Int) = save { repository.setHijriOffset(days) }
 
-    fun setShowOtherOccasions(show: Boolean) = save { repository.setShowOtherOccasions(show) }
 
     fun setShowWhiteDays(show: Boolean) = save { repository.setShowWhiteDays(show) }
 
