@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sakinah.tasbih.alerts.PrayerSounds
 import com.sakinah.tasbih.calendar.SavedMaps
 import com.sakinah.tasbih.prayer.AlertSettings
 import com.sakinah.tasbih.prayer.AlertStyle
@@ -130,7 +131,7 @@ class PrayerPreferencesRepository internal constructor(
             val minutes = value.substringAfter(':', "0").toIntOrNull()?.takeIf { it in AlertSettings.REMINDER_CHOICES } ?: 0
             prayer to PrayerAlert(style, minutes)
         }.toMap(),
-        tone = preferences[Keys.tone] ?: AlertSettings.DEFAULT_TONE,
+        tone = preferences[Keys.tone]?.let(PrayerSounds::currentToneId) ?: AlertSettings.DEFAULT_TONE,
         adhan = preferences[Keys.adhan] ?: AlertSettings.DEFAULT_ADHAN,
         fajrAdhan = preferences[Keys.fajrAdhan] ?: AlertSettings.DEFAULT_ADHAN,
         customAdhanUri = preferences[Keys.customAdhanUri],

@@ -12,10 +12,13 @@ data class PrayerSound(val id: String, @RawRes val raw: Int, @StringRes val labe
 
 /**
  * Every sound in one place, so a recording is added or removed here and nowhere else. The
- * recordings come from Wikimedia Commons under the licences below; THIRD_PARTY_NOTICES.md lists
- * them in full with what was changed. Each was trimmed to the adhan and levelled to one loudness.
+ * recordings come from Wikimedia Commons and the tones from Android's own source, under the
+ * licences below; THIRD_PARTY_NOTICES.md lists them in full with what was changed. Each adhan
+ * was trimmed to the adhan and levelled to one loudness.
  */
 object PrayerSounds {
+    private const val ANDROID_CREDIT = "Android Open Source Project – Apache 2.0"
+
     /** Short sounds a notification channel plays in full, under half a minute each. */
     val tones = listOf(
         PrayerSound(
@@ -24,11 +27,20 @@ object PrayerSounds {
             R.string.alert_tone_takbir_makkah,
             "Seyfula Islam – CC BY 3.0 – مقتطع من أذان المسجد الحرام",
         ),
-        // Original tones made by tools/generate_prayer_tones.py, free of any third-party rights.
-        PrayerSound("chime", R.raw.prayer_tone_chime, R.string.alert_tone_chime),
-        PrayerSound("bell", R.raw.prayer_tone_bell, R.string.alert_tone_bell),
-        PrayerSound("soft", R.raw.prayer_tone_soft, R.string.alert_tone_soft),
+        // Android's own Material notification tones, Apache 2.0, made mono and a touch quieter.
+        PrayerSound("ceres", R.raw.prayer_tone_ceres, R.string.alert_tone_ceres, ANDROID_CREDIT),
+        PrayerSound("tethys", R.raw.prayer_tone_tethys, R.string.alert_tone_tethys, ANDROID_CREDIT),
+        PrayerSound("rhea", R.raw.prayer_tone_rhea, R.string.alert_tone_rhea, ANDROID_CREDIT),
     )
+
+    /**
+     * The tones that came before, chosen by the user on November 23, 2026 to give way to these.
+     * A saved choice of one of them carries over to the tone that took its place.
+     */
+    private val RETIRED = mapOf("chime" to "ceres", "bell" to "tethys", "soft" to "rhea")
+
+    /** A saved tone as it stands today: a retired one becomes the tone that replaced it. */
+    fun currentToneId(id: String): String = RETIRED[id] ?: id
 
     /** Whole adhans, and a tone for those who want no voice at all. */
     val adhans: List<PrayerSound> = listOf(
@@ -42,10 +54,10 @@ object PrayerSounds {
         PrayerSound("recording_2", R.raw.adhan_recording_2, R.string.alert_adhan_recording_2, "Adam-synagda – ملك عام (CC0)"),
         PrayerSound("recording_3", R.raw.adhan_recording_3, R.string.alert_adhan_recording_3, "Andrewler – CC BY-SA 4.0 – مضبوط الصوت"),
         PrayerSound("recording_4", R.raw.adhan_recording_4, R.string.alert_adhan_recording_4, "Isaacayodele32 – CC BY-SA 4.0 – مضبوط الصوت"),
-        PrayerSound(AlertSettings.TONE_ADHAN, R.raw.prayer_tone_chime, R.string.alert_adhan_tone),
+        PrayerSound(AlertSettings.TONE_ADHAN, R.raw.prayer_tone_ceres, R.string.alert_adhan_tone, ANDROID_CREDIT),
     )
 
-    fun tone(id: String): PrayerSound = tones.firstOrNull { it.id == id } ?: tones.first()
+    fun tone(id: String): PrayerSound = currentToneId(id).let { current -> tones.firstOrNull { it.id == current } ?: tones.first() }
 
     fun adhan(id: String): PrayerSound = adhans.firstOrNull { it.id == id } ?: adhans.first()
 
