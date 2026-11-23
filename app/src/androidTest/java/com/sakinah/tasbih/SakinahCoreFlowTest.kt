@@ -454,7 +454,8 @@ class SakinahCoreFlowTest {
         waitForAbsentTag("reader_session_header")
         waitForAbsentTag("reader_reference_toggle")
         composeRule.onNodeWithTag("reader_count_button").assertIsDisplayed()
-        composeRule.onNodeWithText("إلغاء التوسيع").assertIsDisplayed()
+        // The exit is an icon alone since November 23, 2026; its name is still read out.
+        composeRule.onNodeWithContentDescription("إلغاء التوسيع").assertIsDisplayed()
         val previous = composeRule.onNodeWithTag("reader_previous_dhikr").fetchSemanticsNode().boundsInRoot
         val exit = composeRule.onNodeWithTag("reader_exit_focus_mode").fetchSemanticsNode().boundsInRoot
         val next = composeRule.onNodeWithTag("reader_next_dhikr").fetchSemanticsNode().boundsInRoot

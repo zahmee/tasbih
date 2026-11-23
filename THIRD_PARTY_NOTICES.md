@@ -56,27 +56,34 @@
 
 ## تسجيلات الأذان
 
-كلها من [ويكيميديا كومنز](https://commons.wikimedia.org/). اقتُطع من كل تسجيل الأذانُ وحده، وضُبط مستوى صوته، وحُوّل إلى ملف أحادي بصيغة أوغ. وتبقى الملفات المعدّلة من التسجيلات المرخّصة بالمشاركة بالمثل متاحة بالرخصة نفسها.
+هذان من [ويكيميديا كومنز](https://commons.wikimedia.org/). اقتُطع من كل تسجيل ما يلزم، وضُبط مستوى صوته، وحُوّل إلى ملف أحادي بصيغة أوغ. وحُذفت في ٢٣ نوفمبر ٢٠٢٦ أربعة تسجيلات أخرى من ويكيميديا كانت في التطبيق، باختيار صاحبه.
 
 | الملف في التطبيق | المصدر | صاحب التسجيل | الرخصة | التعديل |
 |---|---|---|---|---|
-| `adhan_makkah_maghrib.ogg` | [Maghrib Adhan at the Masjid al Haram, Mecca - 25 Feb, 2012](https://commons.wikimedia.org/wiki/File:Maghrib_Adhan_at_the_Masjid_al_Haram,_Mecca_-_25_Feb,_2012.webm) | 3omar Faruq | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | الصوت فقط، من الثانية 124 إلى 290 |
 | `prayer_tone_takbir_makkah.ogg` | [Adhan, Great Mosque of Mecca - Jan 21, 2013](https://commons.wikimedia.org/wiki/File:Adhan,_Great_Mosque_of_Mecca_-_Jan_21,_2013.webm) | Seyfula Islam | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | الصوت فقط، التكبيرتان الأوليان من الثانية 7.5 إلى 32 |
-| `adhan_recording_1.ogg` | [Adhan.ogg](https://commons.wikimedia.org/wiki/File:Adhan.ogg) | Aishatu98 | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | حذف الصمت في أوله |
 | `adhan_recording_2.ogg` | [Beautiful adhan.ogg](https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg) | Adam-synagda | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | ضبط الصوت |
-| `adhan_recording_3.ogg` | [Azan.ogg](https://commons.wikimedia.org/wiki/File:Azan.ogg) | Andrewler | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ضبط الصوت |
-| `adhan_recording_4.ogg` | [Call to prayer.ogg](https://commons.wikimedia.org/wiki/File:Call_to_prayer.ogg) | Isaacayodele32 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | ضبط الصوت |
+
+### أذانات أضافها صاحب التطبيق
+
+أُضيفت في ٢٣ نوفمبر ٢٠٢٦ من ملفات قدّمها صاحب التطبيق، وليست من ويكيميديا كومنز. **مصدرها ورخصتها لم يُتحقق منهما بعد**، ويجب التحقق منهما أو حذفها قبل النشر في المتجر. حُذف الصمت من طرفي كل تسجيل، وضُبط مستوى صوته، وحُوّل إلى ملف أحادي بصيغة أوغ.
+
+| الملف في التطبيق | المؤذن كما في بيانات الملف | الرخصة |
+|---|---|---|
+| `adhan_ali_mulla.ogg` | Ali Ibn Ahmed Mala، الحرم المكي، 2006 | لم تُعرف |
+| `adhan_ahmed_alamadi.ogg` | Ahmed El Amadi، قطر | لم تُعرف |
+| `adhan_nasser_alqatami.ogg` | Nasser Al Qatami | لم تُعرف |
+| `adhan_hamad_aldaghriri.ogg` | Hamad Al Daghriri | لم تُعرف |
 
 ## نغمات التنبيه
 
-النغمات الثلاث من نغمات الإشعار في مشروع أندرويد مفتوح المصدر، من مجلد [data/sounds/notifications/material/ogg](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/data/sounds/notifications/material/ogg/) في `platform/frameworks/base`، نُزّلت في ٢٣ نوفمبر ٢٠٢٦.
+نغمات أندرويد الثلاث التي كانت هنا حُذفت في ٢٣ نوفمبر ٢٠٢٦ باختيار صاحب التطبيق، وحلّت محلها النغمات التالية.
 
-- الحقوق: Copyright The Android Open Source Project
-- الرخصة: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
-- التعديل: حُوّلت كل نغمة من نسختها بتردد 48 كيلوهرتز إلى صوت أحادي، وخُفض صوتها 0.8 ديسيبل
+### نغمات من Pixabay
 
-| الملف في التطبيق | الأصل |
-|---|---|
-| `prayer_tone_ceres.ogg` | `Ceres_48k.ogg` |
-| `prayer_tone_tethys.ogg` | `Tethys_48k.ogg` |
-| `prayer_tone_rhea.ogg` | `Rhea_48k.ogg` |
+أُضيفت في ٢٣ نوفمبر ٢٠٢٦ من ملفات نزّلها صاحب التطبيق من [Pixabay](https://pixabay.com/)، وتسمح [رخصة محتوى Pixabay](https://pixabay.com/service/license-summary/) باستعمالها داخل تطبيق. حُذف الصمت من طرفيها، وضُبط صوتها، وحُوّلت إلى ملفات أحادية.
+
+| الملف في التطبيق | الأصل | صاحبه |
+|---|---|---|
+| `prayer_tone_clear.ogg` | `koiroylers-clear-notification-355970.mp3` | koiroylers |
+| `prayer_tone_light.ogg` | `universfield-new-notification-032-480570.mp3` | Universfield |
+| `prayer_tone_simple.ogg` | `universfield-simple-notification-152054.mp3` | Universfield |

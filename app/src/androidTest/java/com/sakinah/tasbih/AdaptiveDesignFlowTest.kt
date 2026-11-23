@@ -70,6 +70,7 @@ class AdaptiveDesignFlowTest {
         capture("reader-focus")
         tap("reader_exit_focus_mode"); back()
         // Each tab's settings sit behind the gear on its page since the «more» tab went.
+        // The gear stays in the bar, in a section too, as on every tab.
         tap("library_open_settings"); waitTag("adhkar_settings"); capture("reading-settings")
         tap("adhkar_tab_sound"); waitTag("open_sound_settings"); tap("open_sound_settings"); waitTag("sound_settings_screen"); capture("sound"); back()
         tap("open_achievements"); waitTag("achievements_list"); capture("activity")

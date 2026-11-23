@@ -25,11 +25,9 @@ data class AlertSettings(
     val anyOn: Boolean get() = AlertPrayers.any { alertFor(it).style != AlertStyle.OFF || alertFor(it).reminderMinutes > 0 }
 
     companion object {
-        /** The Haram's opening takbir for a short sound, and the Haram's Maghrib adhan in full. */
+        /** The Haram's opening takbir for a short sound, and Ali Ahmed Mulla's adhan from the Haram in full. */
         const val DEFAULT_TONE = "takbir_makkah"
-        const val DEFAULT_ADHAN = "makkah_maghrib"
-        /** A tone in place of a voice, for those who want the alarm without the adhan. */
-        const val TONE_ADHAN = "tone"
+        const val DEFAULT_ADHAN = "ali_mulla"
         const val CUSTOM_ADHAN = "custom"
         val REMINDER_CHOICES = listOf(0, 5, 10, 15, 20, 30)
     }

@@ -182,5 +182,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         val app = getApplication<Application>()
         PrayerAlarms.schedule(app)
         PrayerWidgetUpdater(app).updateAll()
+        // The wird's tasks set by a prayer move with its time, and with the place.
+        com.sakinah.tasbih.wird.WirdSync.changed(app)
     }
 }

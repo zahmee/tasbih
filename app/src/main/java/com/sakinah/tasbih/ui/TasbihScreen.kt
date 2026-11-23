@@ -263,11 +263,7 @@ fun TasbihScreen(
                     .align(Alignment.TopCenter)
                     .widthIn(max = SakinahContentMaxWidth)
                     .fillMaxSize()
-                    .testTag(if (isFocusMode) "tasbih_focus_screen" else "tasbih_standard_screen")
-                    .padding(
-                        horizontal = if (isFocusMode) 16.dp else 20.dp,
-                        vertical = if (isFocusMode) 8.dp else 16.dp,
-                    ),
+                    .testTag(if (isFocusMode) "tasbih_focus_screen" else "tasbih_standard_screen"),
             ) {
                 if (!isFocusMode) {
                     TasbihTopBar(
@@ -287,8 +283,16 @@ fun TasbihScreen(
                         onBack = onBack,
                         onOpenSettings = onOpenSettings,
                     )
-                    Spacer(Modifier.height(8.dp))
                 }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = if (isFocusMode) 16.dp else 20.dp,
+                            vertical = if (isFocusMode) 8.dp else 12.dp,
+                        ),
+                ) {
                 val phraseContent: @Composable (Modifier) -> Unit = { modifier ->
                     if (isFocusMode) {
                         FocusPhraseHeader(state, onSelectPhrase, onSetTextScale, { onFocusModeChange(false) }, modifier)
@@ -310,7 +314,8 @@ fun TasbihScreen(
                     counterContent(Modifier.fillMaxWidth())
                 }
             }
-        }
+            }
+            }
     }
 
     if (showResetConfirmation) {
@@ -659,42 +664,42 @@ private fun TasbihTopBar(
     onOpenSettings: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().testTag("tasbih_top_bar"), verticalAlignment = Alignment.CenterVertically) {
-        // The tasbih opens from the home screen and the adhkar, so it shows the way back.
-        if (onBack != null) {
-            IconButton(onClick = onBack, modifier = Modifier.testTag("tasbih_back")) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+    // The head every tab shares; the tasbih opens from the home screen and the adhkar too, so it
+    // shows the way back then. The gear is last, where it is on every tab.
+    AnaaTopBar(
+        title = stringResource(R.string.my_tasbih),
+        onBack = onBack,
+        modifier = Modifier.testTag("tasbih_top_bar"),
+        actions = {
+            FocusModeIconButton(false, stringResource(R.string.tasbih_focus_mode), onEnterFocusMode, Modifier.testTag("tasbih_focus_mode"))
+            Box {
+                IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("tasbih_actions")) {
+                    Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))
+                }
+                DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.edit_dhikr)) },
+                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_edit"), onClick = { expanded = false; onEdit() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.manage_tasbih_phrases)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ListAlt, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_manage_phrases"), onClick = { expanded = false; onManagePhrases() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.undo)) }, enabled = count > 0,
+                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_undo"), onClick = { expanded = false; onUndo() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.add_dhikr)) },
+                        leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_add"), onClick = { expanded = false; onAdd() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.tasbih_phrase_statistics)) },
+                        leadingIcon = { Icon(Icons.Outlined.BarChart, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_phrase_statistics"), onClick = { expanded = false; onOpenStatistics() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.reset)) }, enabled = count > 0,
+                        leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
+                        onClick = { expanded = false; onReset() })
+                }
             }
-        }
-        Text(stringResource(R.string.my_tasbih), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        FocusModeIconButton(false, stringResource(R.string.tasbih_focus_mode), onEnterFocusMode, Modifier.testTag("tasbih_focus_mode"))
-        SettingsGear(onOpenSettings, "tasbih_open_settings")
-        Box {
-            IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("tasbih_actions")) {
-                Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))
-            }
-            DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.edit_dhikr)) },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                    modifier = Modifier.testTag("tasbih_edit"), onClick = { expanded = false; onEdit() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.manage_tasbih_phrases)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ListAlt, contentDescription = null) },
-                    modifier = Modifier.testTag("tasbih_manage_phrases"), onClick = { expanded = false; onManagePhrases() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.undo)) }, enabled = count > 0,
-                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null) },
-                    modifier = Modifier.testTag("tasbih_undo"), onClick = { expanded = false; onUndo() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.add_dhikr)) },
-                    leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                    modifier = Modifier.testTag("tasbih_add"), onClick = { expanded = false; onAdd() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.tasbih_phrase_statistics)) },
-                    leadingIcon = { Icon(Icons.Outlined.BarChart, contentDescription = null) },
-                    modifier = Modifier.testTag("tasbih_phrase_statistics"), onClick = { expanded = false; onOpenStatistics() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.reset)) }, enabled = count > 0,
-                    leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
-                    onClick = { expanded = false; onReset() })
-            }
-        }
-    }
+            SettingsGear(onOpenSettings, "tasbih_open_settings")
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

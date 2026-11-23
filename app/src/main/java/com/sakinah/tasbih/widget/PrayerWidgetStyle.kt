@@ -51,9 +51,10 @@ enum class WidgetWeight { REGULAR, BOLD }
 enum class WidgetScale { SMALL, MEDIUM, LARGE }
 
 /**
- * The Islamic touch: none, a ruled star between the lines and the prayers, or that over a
- * pattern of eight-pointed stars filling the paper. [FRAME] was a ruled frame with stars at its
- * corners; the user found it too slight, and a saved choice of it now reads as [PATTERN].
+ * The Islamic touch: none, a ruled star between the lines and the prayers, or that with a light
+ * mihrab drawn round the paper. [PATTERN] keeps its stored name from when it was a pattern of
+ * interlaced stars, which the user found too busy on November 23, 2026. [FRAME] was a ruled frame
+ * with stars at its corners, found too slight; a saved choice of it reads as [PATTERN].
  */
 enum class WidgetOrnament { NONE, DIVIDER, PATTERN, FRAME }
 
@@ -85,6 +86,23 @@ data class PrayerWidgetStyle(
     val nextLines: List<WidgetLine> = listOf(WidgetLine(LineItem.PLACE)),
     /** A bar of the time passed since the last prayer, under the prayers. */
     val progress: Boolean = true,
+    /**
+     * The day widget's prayers together in one box, apart from the lines above them, as the user
+     * asked on November 23, 2026: its own fill, of [boxSurface] at [boxOpacity], and a fine line.
+     */
+    val prayersBox: Boolean = false,
+    val boxSurface: WidgetSurface = WidgetSurface.BLACK,
+    /** From 0, no fill and the line alone, to 100, the fill solid. */
+    val boxOpacity: Int = 25,
+    val boxLine: Boolean = true,
+    /** The colour that marks the next prayer; [LineColor.AUTO] is the accent. */
+    val markColor: LineColor = LineColor.AUTO,
+    /** The prayer whose time it is now is marked, rather than the one to come. */
+    val markCurrent: Boolean = false,
+    /** The bar's own colour, apart from the widget's; [LineColor.AUTO] is the accent. */
+    val progressColor: LineColor = LineColor.AUTO,
+    /** The bar goes from blue while the prayer is far to red as its adhan nears, in place of one colour. */
+    val progressGradient: Boolean = false,
 ) {
     companion object {
         const val MAX_LINES = 3
@@ -151,6 +169,14 @@ class PrayerWidgetStyleRepository internal constructor(private val dataStore: Da
         it[Keys.gregorianMonthNumber] = style.gregorianMonthNumber
         it[Keys.nextLines] = WidgetLines.encode(style.nextLines)
         it[Keys.progress] = style.progress
+        it[Keys.prayersBox] = style.prayersBox
+        it[Keys.boxSurface] = style.boxSurface.name
+        it[Keys.boxOpacity] = style.boxOpacity.coerceIn(0, 100)
+        it[Keys.boxLine] = style.boxLine
+        it[Keys.markColor] = style.markColor.name
+        it[Keys.markCurrent] = style.markCurrent
+        it[Keys.progressColor] = style.progressColor.name
+        it[Keys.progressGradient] = style.progressGradient
     }
 
     private fun read(p: Preferences): PrayerWidgetStyle {
@@ -174,6 +200,14 @@ class PrayerWidgetStyleRepository internal constructor(private val dataStore: Da
             gregorianMonthNumber = p[Keys.gregorianMonthNumber] ?: default.gregorianMonthNumber,
             nextLines = WidgetLines.decode(p[Keys.nextLines])?.take(PrayerWidgetStyle.MAX_NEXT_LINES) ?: default.nextLines,
             progress = p[Keys.progress] ?: default.progress,
+            prayersBox = p[Keys.prayersBox] ?: default.prayersBox,
+            boxSurface = enumOr(p[Keys.boxSurface], default.boxSurface),
+            boxOpacity = (p[Keys.boxOpacity] ?: default.boxOpacity).coerceIn(0, 100),
+            boxLine = p[Keys.boxLine] ?: default.boxLine,
+            markColor = enumOr(p[Keys.markColor], default.markColor),
+            markCurrent = p[Keys.markCurrent] ?: default.markCurrent,
+            progressColor = enumOr(p[Keys.progressColor], default.progressColor),
+            progressGradient = p[Keys.progressGradient] ?: default.progressGradient,
         )
     }
 
@@ -199,6 +233,14 @@ class PrayerWidgetStyleRepository internal constructor(private val dataStore: Da
         val gregorianMonthNumber = booleanPreferencesKey("day_gregorian_month_number")
         val nextLines = stringPreferencesKey("next_lines")
         val progress = booleanPreferencesKey("progress")
+        val prayersBox = booleanPreferencesKey("day_prayers_box")
+        val boxSurface = stringPreferencesKey("day_box_surface")
+        val boxOpacity = intPreferencesKey("day_box_opacity")
+        val boxLine = booleanPreferencesKey("day_box_line")
+        val markColor = stringPreferencesKey("mark_color")
+        val markCurrent = booleanPreferencesKey("mark_current")
+        val progressColor = stringPreferencesKey("progress_color")
+        val progressGradient = booleanPreferencesKey("progress_gradient")
     }
 }
 
@@ -237,6 +279,26 @@ data class WidgetPalette(
     }
 
     companion object {
+        /**
+         * The colours inside the prayers' box. Once its fill is strong enough to be what the
+         * words stand on, the ink and the accent follow it, so a dark box takes light words;
+         * a fainter box leaves them as on the paper. The next prayer's own colour, if the user
+         * chose one, is kept either way.
+         */
+        fun inner(style: PrayerWidgetStyle, night: Boolean): WidgetPalette {
+            val paper = of(style, night)
+            val onBox = style.prayersBox && style.boxOpacity >= BOX_SETS_INK
+            val base = if (onBox) of(style.copy(surface = style.boxSurface, ink = WidgetInk.AUTO), night) else paper
+            val mark = base.line(style.markColor) ?: base.accent
+            return base.copy(accent = mark, onAccent = if (luminance(mark) > 0.5) 0xFF0E1A16.toInt() else 0xFFFFFBF3.toInt())
+        }
+
+        /** The box's fill at this opacity or more decides the colour of the words on it. */
+        const val BOX_SETS_INK = 50
+
+        /** The box's own colour, solid; its strength is set apart, on the picture. */
+        fun boxColor(style: PrayerWidgetStyle): Int = of(style.copy(surface = style.boxSurface), false).surface
+
         fun of(style: PrayerWidgetStyle, night: Boolean): WidgetPalette {
             val surface = when (style.surface) {
                 WidgetSurface.AUTO -> if (night) 0xFF10251F else 0xFFFAF8F2
@@ -310,6 +372,27 @@ data class WidgetPalette(
 
     /** The words of the next prayer, on its tile. */
     fun nextText(mark: NextMark): Int = if (mark == NextMark.FILLED) onAccent else accent
+
+
+    /**
+     * The bar's colour with [passed] of the time between the prayers gone, from 0 to 1: its own
+     * colour, or on the way from blue to red, the red reached at the adhan.
+     */
+    fun progress(style: PrayerWidgetStyle, passed: Float): Int = when {
+        style.progressGradient -> blend(named(WidgetAccent.BLUE, darkPaper), named(WidgetAccent.RED, darkPaper), passed)
+        else -> line(style.progressColor) ?: accent
+    }
+}
+
+/** [from] turned towards [to] by [share], from 0 to 1, channel by channel. */
+internal fun blend(from: Int, to: Int, share: Float): Int {
+    val t = share.coerceIn(0f, 1f)
+    fun channel(shift: Int): Int {
+        val a = (from shr shift) and 0xFF
+        val b = (to shr shift) and 0xFF
+        return (a + (b - a) * t).toInt().coerceIn(0, 255) shl shift
+    }
+    return channel(24) or channel(16) or channel(8) or channel(0)
 }
 
 /** Short remembrances for the line of the day, one each day in turn. */

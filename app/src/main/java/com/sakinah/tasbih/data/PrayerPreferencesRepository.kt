@@ -132,8 +132,8 @@ class PrayerPreferencesRepository internal constructor(
             prayer to PrayerAlert(style, minutes)
         }.toMap(),
         tone = preferences[Keys.tone]?.let(PrayerSounds::currentToneId) ?: AlertSettings.DEFAULT_TONE,
-        adhan = preferences[Keys.adhan] ?: AlertSettings.DEFAULT_ADHAN,
-        fajrAdhan = preferences[Keys.fajrAdhan] ?: AlertSettings.DEFAULT_ADHAN,
+        adhan = preferences[Keys.adhan]?.let(PrayerSounds::currentAdhanId) ?: AlertSettings.DEFAULT_ADHAN,
+        fajrAdhan = preferences[Keys.fajrAdhan]?.let(PrayerSounds::currentAdhanId) ?: AlertSettings.DEFAULT_ADHAN,
         customAdhanUri = preferences[Keys.customAdhanUri],
     )
 

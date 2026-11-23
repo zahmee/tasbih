@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_PRAYER) return AppOpenRequest.Prayer
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_QIBLA) return AppOpenRequest.Qibla
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_CALENDAR_SETTINGS) return AppOpenRequest.CalendarSettings
+        if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIRD) return AppOpenRequest.Wird(intent.getStringExtra(EXTRA_COLLECTION))
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIDGET_STYLE) {
             return AppOpenRequest.WidgetStyle(next = intent.getBooleanExtra(EXTRA_NEXT, false))
         }
@@ -59,7 +60,9 @@ class MainActivity : ComponentActivity() {
         private const val OPEN_QIBLA = "qibla"
         private const val OPEN_WIDGET_STYLE = "widget_style"
         private const val OPEN_CALENDAR_SETTINGS = "calendar_settings"
+        private const val OPEN_WIRD = "wird"
         private const val EXTRA_NEXT = "next"
+        private const val EXTRA_COLLECTION = "collection"
         private const val EXTRA_DATE = "date"
         private const val EXTRA_OCCASIONS = "occasions"
 
@@ -80,6 +83,16 @@ class MainActivity : ComponentActivity() {
             Intent(context, MainActivity::class.java)
                 .putExtra(EXTRA_OPEN, OPEN_WIDGET_STYLE)
                 .putExtra(EXTRA_NEXT, next)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+        /**
+         * Opens the wird, from its widget or a reminder, and on [collectionId]'s adhkar when the
+         * task is their reading, so a tap goes straight to reading them.
+         */
+        fun wirdIntent(context: Context, collectionId: String? = null): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN, OPEN_WIRD)
+                .apply { if (collectionId != null) putExtra(EXTRA_COLLECTION, collectionId) }
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
         /** Opens the calendar's settings, from a calendar widget's own «customise». */

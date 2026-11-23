@@ -25,7 +25,7 @@ import com.sakinah.tasbih.data.arabicNumber
 
 /** Kept left to right, or in an Arabic line the colon lands before the hours and the clock reads backwards. */
 private fun resetClockText(settings: DailyResetSettings): String =
-    "⁦${arabicNumber(settings.time.hour).padStart(2, '٠')}:${arabicNumber(settings.time.minute).padStart(2, '٠')}⁩"
+    "⁦${com.sakinah.tasbih.data.twoDigits(settings.time.hour)}:${com.sakinah.tasbih.data.twoDigits(settings.time.minute)}⁩"
 
 @Composable
 internal fun isCompactSettingsInput(): Boolean {
@@ -87,8 +87,8 @@ private fun DailyResetTimeSetting(settings: DailyResetSettings, onSetTime: (Int)
 
 @Composable
 private fun DailyResetTimeEditor(settings: DailyResetSettings, onSave: (Int) -> Unit, onCancel: () -> Unit) {
-    var hour by rememberSaveable { mutableStateOf(arabicNumber(settings.time.hour).padStart(2, '٠')) }
-    var minute by rememberSaveable { mutableStateOf(arabicNumber(settings.time.minute).padStart(2, '٠')) }
+    var hour by rememberSaveable { mutableStateOf(com.sakinah.tasbih.data.twoDigits(settings.time.hour)) }
+    var minute by rememberSaveable { mutableStateOf(com.sakinah.tasbih.data.twoDigits(settings.time.minute)) }
     val validHour = hour.toIntOrNull()?.takeIf { it in 0..23 }
     val validMinute = minute.toIntOrNull()?.takeIf { it in 0..59 }
     val focus = LocalFocusManager.current

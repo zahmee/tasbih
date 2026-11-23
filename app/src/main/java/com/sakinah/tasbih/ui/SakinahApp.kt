@@ -109,6 +109,8 @@ private sealed interface AppDestination {
     data object PrayerReliability : AppDestination
     data object PrayerMonth : AppDestination
     data object PrayerWidgetStyle : AppDestination
+    /** The wird; [addOnEpochDay] opens a new task of one time on that day, as the calendar asks. */
+    data class Wird(val addOnEpochDay: Long? = null) : AppDestination
 }
 
 private fun AppDestination.route(): String = when (this) {
@@ -135,6 +137,7 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.PrayerReliability -> "prayer-reliability"
     AppDestination.PrayerMonth -> "prayer-month"
     AppDestination.PrayerWidgetStyle -> "prayer-widget-style"
+    is AppDestination.Wird -> "wird:${addOnEpochDay ?: ""}"
 }
 
 private fun destinationFromRoute(route: String): AppDestination? = when (route) {
@@ -171,6 +174,8 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
                 SettingsSection.Appearance -> AppDestination.GeneralSettings
             }
             "calendar" -> AppDestination.Calendar(parts.getOrNull(1)?.toLongOrNull())
+            // A request to add is not carried over a restart: the page opens as it is.
+            "wird" -> AppDestination.Wird()
             else -> null
         }
     }.getOrNull()
@@ -304,6 +309,18 @@ private fun SakinahNavigation(
         remember(calendarSettings, context) { calendarSettings?.let { CalendarText(context, it) } },
     )
 
+    val wirdViewModel: com.sakinah.tasbih.ui.wird.WirdViewModel = viewModel()
+    val wirdState by wirdViewModel.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        wirdViewModel.refresh()
+        onPauseOrDispose { }
+    }
+
+    fun openWird(addOn: LocalDate? = null) {
+        isReaderFocusMode = false
+        backStack.add(AppDestination.Wird(addOn?.toEpochDay()))
+    }
+
     val prayerViewModel: PrayerViewModel = viewModel()
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
     val placeSearch by prayerViewModel.search.collectAsStateWithLifecycle()
@@ -363,6 +380,20 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.Home)
                 backStack.add(AppDestination.Calendar(null))
                 backStack.add(AppDestination.CalendarSettings)
+                onOpenRequestHandled()
+            }
+            is AppOpenRequest.Wird -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.Wird())
+                // A reminder of adhkar opens on them, with the wird under them to come back to.
+                request.collectionId?.let { id ->
+                    if (latestState.value.catalog.collection(id) != null) {
+                        backStack.add(AppDestination.Reader(id, latestState.value.progressFor(id).completed))
+                    }
+                }
                 onOpenRequestHandled()
             }
             is AppOpenRequest.WidgetStyle -> {
@@ -457,9 +488,21 @@ private fun SakinahNavigation(
                                 onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
                                 onOpenCalendar = { navigateTopLevel(CalendarTab) },
                                 onOpenQibla = { backStack.add(AppDestination.Qibla) },
-                                onOpenMonth = { backStack.add(AppDestination.PrayerMonth) },
                                 onOpenTasbih = ::openTasbih,
                                 onOpenSettings = { backStack.add(AppDestination.GeneralSettings) },
+                                wird = wirdState?.board,
+                                onOpenWird = { openWird() },
+                            )
+                        }
+
+                        is AppDestination.Wird -> NavEntry(destination) {
+                            com.sakinah.tasbih.ui.wird.WirdScreen(
+                                state = wirdState,
+                                viewModel = wirdViewModel,
+                                onBack = ::navigateBack,
+                                onOpenCollection = ::openReader,
+                                onChoosePlace = { backStack.add(AppDestination.PrayerLocation) },
+                                addOn = destination.addOnEpochDay?.let(LocalDate::ofEpochDay),
                             )
                         }
 
@@ -593,6 +636,14 @@ private fun SakinahNavigation(
                                     agenda = calendarAgenda,
                                     onVisibleMonth = calendarViewModel::loadAgenda,
                                     onSetAgenda = { calendarViewModel.setAgendaEnabled(it) },
+                                    // Tasks of one day or of some days only; the daily ones would fill every day.
+                                    wirdOn = { date ->
+                                        wirdState?.tasks.orEmpty()
+                                            .filter { it.repeat != com.sakinah.tasbih.wird.WirdRepeat.DAILY }
+                                            .filter { com.sakinah.tasbih.wird.WirdPlanner.occursOn(it, date, text.calendar) }
+                                            .map { it.title }
+                                    },
+                                    onAddWird = { date -> openWird(date) },
                                 )
                             }
                         }
@@ -767,6 +818,9 @@ sealed interface AppOpenRequest {
 
     /** The widgets' customisation, from a widget's own «customise», on the widget it came from. */
     data class WidgetStyle(val next: Boolean) : AppOpenRequest
+
+    /** The wird, from its widget or a reminder, on [collectionId]'s adhkar when the task is their reading. */
+    data class Wird(val collectionId: String? = null) : AppOpenRequest
 }
 
 /** Every calendar page belongs to the calendar tab, whichever month it opened on. */

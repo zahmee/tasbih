@@ -24,8 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
@@ -90,12 +90,9 @@ import java.time.format.DecimalStyle
 import java.util.Locale
 import kotlinx.coroutines.delay
 
-/** Ramadan, when the month's prayer table becomes the fasting timetable. */
-private const val RAMADAN = 9
-
 /**
  * The day at a glance. On November 11, 2026 the user chose to put prayer and its services first:
- * the next prayer and the day's times lead, the Qibla, calendar and month table sit beside them,
+ * the next prayer and the day's times lead, the Qibla and the calendar sit beside them,
  * and the day's wird and the tasbih follow as one tap each.
  */
 @Composable
@@ -109,9 +106,11 @@ fun HomeScreen(
     onChoosePlace: () -> Unit = {},
     onOpenCalendar: () -> Unit = {},
     onOpenQibla: () -> Unit = {},
-    onOpenMonth: () -> Unit = {},
     onOpenTasbih: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    /** Today's wird, for its line: how much is done and what comes next. */
+    wird: com.sakinah.tasbih.wird.WirdBoard? = null,
+    onOpenWird: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val prayerText = remember(context) { PrayerText(context) }
@@ -148,16 +147,17 @@ fun HomeScreen(
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }
 
     val header: @Composable () -> Unit = {
-        HomeHeader(weekday, hijri, gregorian, schedule?.place?.name, prayerText, onOpenCalendar, onChoosePlace, onOpenSettings)
+        HomeDates(hijri, gregorian, schedule?.place?.name, onOpenCalendar, onChoosePlace)
     }
     val prayer: @Composable () -> Unit = {
         PrayerHero(next, next?.let { prayerText.remaining(Duration.between(now, it.time.toInstant())) }, prayerText, onOpenPrayer, onChoosePlace)
         if (day != null) DayTimes(day, next, prayerText, onOpenPrayer)
     }
     val services: @Composable () -> Unit = {
-        Services(schedule, calendarText, today, prayerText, onOpenQibla, onOpenCalendar, onOpenMonth, onChoosePlace)
+        Services(schedule, calendarText, today, prayerText, onOpenQibla, onOpenCalendar)
     }
     val remembrance: @Composable () -> Unit = {
+        if (wird != null) WirdTodayRow(wird, prayerText, onOpenWird)
         when {
             state.isLoading -> ContentStatusCard(stringResource(R.string.loading_book), false, onRetry)
             state.contentLoadFailed -> ContentStatusCard(stringResource(R.string.content_load_error), true, onRetry)
@@ -167,7 +167,20 @@ fun HomeScreen(
     }
 
     SakinahScreenBackground(showOrnament = false) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+      Column(Modifier.fillMaxSize()) {
+        // The head every tab shares: the weekday, which opens the calendar, the clock and the gear.
+        AnaaTopBar(
+            title = weekday,
+            onTitleClick = onOpenCalendar,
+            titleClickLabel = stringResource(R.string.cal_open),
+            modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = 920.dp),
+            actions = {
+                HomeClock(prayerText)
+                // What belongs to the whole app: its look, and about it.
+                SettingsGear(onOpenSettings, "home_open_settings")
+            },
+        )
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             // A short, wide window, as a phone on its side, puts prayer beside the rest.
             val twoColumns = maxWidth >= 560.dp && maxHeight < 480.dp
             Column(
@@ -181,7 +194,6 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 header()
-                KhatamDivider()
                 if (twoColumns) {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { prayer() }
@@ -198,62 +210,39 @@ fun HomeScreen(
                 Spacer(Modifier.height(8.dp))
             }
         }
+      }
     }
 }
 
-/**
- * The day by both calendars, which opens the calendar, and the place the times are for. The
- * weekday leads on the right and the clock stands opposite it on the left, as the user asked.
- */
+/** The day by both calendars, which opens the calendar, and the place the times are for. */
 @Composable
-private fun HomeHeader(
-    weekday: String,
+private fun HomeDates(
     hijri: String,
     gregorian: String,
     place: String?,
-    prayerText: PrayerText,
     onOpenCalendar: () -> Unit,
     onChoosePlace: () -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                weekday,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.small)
-                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
-                    .padding(4.dp)
-                    .semantics { heading() },
-            )
-            HomeClock(prayerText)
-            // What belongs to the whole app: its look, and about it.
-            SettingsGear(onOpenSettings, "home_open_settings")
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .testTag("home_open_calendar")
+                .clip(MaterialTheme.shapes.small)
+                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+        ) {
+            Text(hijri, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("home_open_calendar")
-                    .clip(MaterialTheme.shapes.small)
-                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+        if (place != null) {
+            TextButton(
+                onClick = onChoosePlace,
+                modifier = Modifier.widthIn(max = 168.dp).testTag("home_place"),
             ) {
-                Text(hijri, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (place != null) {
-                TextButton(
-                    onClick = onChoosePlace,
-                    modifier = Modifier.widthIn(max = 168.dp).testTag("home_place"),
-                ) {
-                    Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(place, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
-                }
+                Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(place, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -422,7 +411,11 @@ private fun TimeCell(name: String, clock: String, spoken: String, isNext: Boolea
     }
 }
 
-/** The Qibla, the calendar and the month's table, each with what it would show first. */
+/**
+ * The Qibla and the calendar, each with what it would show first, as two small tiles on one
+ * line. The month's table left the home on November 23, 2026, at the user's wish, to keep this
+ * short; it stays a tap away under the day's times in the prayer tab.
+ */
 @Composable
 private fun Services(
     schedule: PrayerSchedule?,
@@ -431,36 +424,28 @@ private fun Services(
     prayerText: PrayerText,
     onOpenQibla: () -> Unit,
     onOpenCalendar: () -> Unit,
-    onOpenMonth: () -> Unit,
-    onChoosePlace: () -> Unit,
 ) {
-    val ramadan = calendarText?.calendar?.fromGregorian(today)?.month == RAMADAN
     val occasion = calendarText?.let { text ->
         Occasions.nextMajor(text.calendar, today)?.let { "${text.occasionName(it.occasion)} ${text.countdown(it.daysAway)}" }
     }
     val tiles = listOf(
         ServiceTile(Icons.Outlined.Explore, stringResource(R.string.qibla_title), schedule?.let { prayerText.degrees(it.qiblaBearing) }, "home_open_qibla", onOpenQibla),
         ServiceTile(Icons.Outlined.CalendarMonth, stringResource(R.string.cal_title), occasion, "home_open_calendar_tile", onOpenCalendar),
-        ServiceTile(
-            Icons.AutoMirrored.Outlined.ListAlt,
-            stringResource(if (ramadan) R.string.prayer_month_ramadan_title else R.string.prayer_month_title),
-            null,
-            "home_open_month",
-            if (schedule != null) onOpenMonth else onChoosePlace,
-        ),
     )
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val fontScale = LocalDensity.current.fontScale
-        if (maxWidth >= 330.dp * fontScale.coerceAtLeast(1f)) {
+        // Side by side while each keeps room for its word and value; under each other on a narrow
+        // screen or with a large font.
+        if (maxWidth >= 240.dp * fontScale.coerceAtLeast(1f)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             ) {
-                tiles.forEach { tile -> ServiceBox(tile, Modifier.weight(1f).fillMaxHeight()) }
+                tiles.forEach { tile -> ServiceChip(tile, Modifier.weight(1f).fillMaxHeight()) }
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                tiles.forEach { tile -> ServiceRow(tile) }
+                tiles.forEach { tile -> ServiceChip(tile, Modifier.fillMaxWidth()) }
             }
         }
     }
@@ -474,62 +459,34 @@ private data class ServiceTile(
     val onClick: () -> Unit,
 )
 
+/** A small tile: the medallion beside the word, and what it would show first under the word. */
 @Composable
-private fun ServiceBox(tile: ServiceTile, modifier: Modifier) {
+private fun ServiceChip(tile: ServiceTile, modifier: Modifier) {
     Surface(
         onClick = tile.onClick,
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = sakinahCardBorder(),
-        modifier = modifier.heightIn(min = 92.dp).testTag(tile.tag),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Top),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
-        ) {
-            KhatamMedallion(tile.icon)
-            Spacer(Modifier.height(4.dp))
-            Text(tile.title, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
-            tile.value?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ServiceRow(tile: ServiceTile) {
-    Surface(
-        onClick = tile.onClick,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = sakinahCardBorder(),
-        modifier = Modifier.fillMaxWidth().testTag(tile.tag),
+        modifier = modifier.heightIn(min = 56.dp).testTag(tile.tag),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.heightIn(min = 60.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
-            KhatamMedallion(tile.icon)
-            Spacer(Modifier.width(12.dp))
+            KhatamMedallion(tile.icon, Modifier.size(32.dp))
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(tile.title, style = MaterialTheme.typography.titleMedium)
+                Text(tile.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 tile.value?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
-            Icon(
-                Icons.AutoMirrored.Outlined.ArrowForwardIos,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
-            )
         }
     }
 }
@@ -589,6 +546,59 @@ private fun WirdRow(collection: DhikrCollection, state: SakinahUiState, onClick:
                     modifier = Modifier.size(16.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * Today's wird in one line: how much of it is done, and the next task with its time. It opens
+ * the wird, where each task is ticked; added on November 23, 2026 with the wird itself.
+ */
+@Composable
+private fun WirdTodayRow(board: com.sakinah.tasbih.wird.WirdBoard, prayerText: PrayerText, onClick: () -> Unit) {
+    val next = board.nextToDo
+    val headline = when {
+        board.totalToday == 0 -> stringResource(R.string.home_wird_empty)
+        next == null -> stringResource(R.string.home_wird_all_done)
+        else -> stringResource(R.string.wird_done_of, arabicNumber(board.doneToday), arabicNumber(board.totalToday))
+    }
+    val nextLine = next?.let { item ->
+        stringResource(R.string.home_wird_next, listOfNotNull(item.task.title, item.time?.let(prayerText::time)).joinToString(" · "))
+    }
+    val openLabel = stringResource(R.string.home_wird_open)
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = sakinahCardBorder(),
+        modifier = Modifier.fillMaxWidth().testTag("home_wird").semantics { contentDescription = listOfNotNull(openLabel, headline, nextLine).joinToString("، ") },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Icon(
+                Icons.Outlined.TaskAlt,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.home_wird), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(headline, style = MaterialTheme.typography.titleSmall)
+                if (nextLine != null) {
+                    Text(nextLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (board.totalToday > 0) ProgressLine(board.doneToday.toFloat() / board.totalToday, height = 4.dp, modifier = Modifier.padding(top = 4.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Icon(
+                Icons.AutoMirrored.Outlined.ArrowForwardIos,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }

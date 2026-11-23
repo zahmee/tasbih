@@ -3,6 +3,8 @@ package com.sakinah.tasbih.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material3.Icon
@@ -147,98 +150,58 @@ internal fun SakinahScreenBackground(
     )
 }
 
-/** Branded heading used at the start of top-level destinations. */
+/**
+ * The bar at the top of every tab and of the pages opened from them, the same everywhere since
+ * the user asked on November 23, 2026 that the five tabs share one head: the title on the right,
+ * a way back before it when there is somewhere to go back to, the page's own buttons on the left
+ * with the settings gear always last, and the rule with its star under it.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-internal fun SakinahScreenHeader(
+internal fun AnaaTopBar(
     title: String,
     modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    eyebrow: String? = null,
-    trailing: (@Composable () -> Unit)? = null,
-    /** The app's mark beside the title; left off where the user found it one too many. */
-    showBrand: Boolean = true,
+    onBack: (() -> Unit)? = null,
+    backLabel: String? = null,
+    /** Set on the day's page, where the weekday opens the calendar. */
+    onTitleClick: (() -> Unit)? = null,
+    titleClickLabel: String? = null,
+    /** Off where the page sets its own rule lower down, under the day's dates. */
+    showRule: Boolean = true,
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
-  Column(modifier = modifier.fillMaxWidth()) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val useStackedActions = trailing != null && maxWidth < 520.dp
-
-        if (useStackedActions) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                SakinahHeaderCopy(
-                    title = title,
-                    subtitle = subtitle,
-                    eyebrow = eyebrow,
-                    modifier = Modifier.fillMaxWidth(),
+    Column(modifier.fillMaxWidth()) {
+        androidx.compose.material3.TopAppBar(
+            windowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+            colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            title = {
+                Text(
+                    title,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = if (onTitleClick != null) {
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = titleClickLabel, onClick = onTitleClick)
+                            .padding(horizontal = 4.dp)
+                    } else {
+                        Modifier
+                    }.semantics { heading() },
                 )
-                Spacer(Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    trailing()
+            },
+            navigationIcon = {
+                if (onBack != null) {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            backLabel ?: androidx.compose.ui.res.stringResource(com.sakinah.tasbih.R.string.back),
+                        )
+                    }
                 }
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                SakinahHeaderCopy(
-                    title = title,
-                    subtitle = subtitle,
-                    eyebrow = eyebrow,
-                    modifier = Modifier.weight(1f),
-                )
-                if (trailing != null) {
-                    Spacer(Modifier.width(12.dp))
-                    trailing()
-                } else if (showBrand) {
-                    AnaaAppIcon(modifier = Modifier.padding(top = 2.dp).size(42.dp))
-                }
-            }
-        }
-    }
-    // The same rule that sits under the date on the home screen.
-    Spacer(Modifier.height(12.dp))
-    KhatamDivider()
-  }
-}
-
-@Composable
-private fun SakinahHeaderCopy(
-    title: String,
-    subtitle: String?,
-    eyebrow: String?,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        if (!eyebrow.isNullOrBlank()) {
-            Text(
-                text = eyebrow,
-                style = MaterialTheme.typography.labelLarge,
-                color = LocalSakinahBrandColors.current.antiqueGold,
-            )
-            Spacer(Modifier.height(2.dp))
-        }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = 30.sp,
-                lineHeight = 38.sp,
-            ),
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() },
+            },
+            actions = actions,
         )
-        if (!subtitle.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        if (showRule) KhatamDivider(Modifier.padding(horizontal = 20.dp))
     }
 }
 

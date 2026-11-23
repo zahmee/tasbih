@@ -985,6 +985,8 @@ private fun ReaderFocusLayout(
                     previousTag = "reader_previous_dhikr",
                     nextTag = "reader_next_dhikr",
                     exitTag = "reader_exit_focus_mode",
+                    // The icon alone between the two text sizes, as the user asked on November 23, 2026.
+                    exitIconOnly = true,
                     beforeExit = {
                         FocusTextSizeButton(
                             larger = false,

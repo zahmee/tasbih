@@ -54,21 +54,8 @@ internal fun CalendarPage(
         Scaffold(
             modifier = Modifier.testTag(tag),
             containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = {
-                        if (onBack != null) {
-                            IconButton(onClick = onBack) {
-                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
-                            }
-                        }
-                    },
-                    actions = actions,
-                )
-            },
+            // The rule is drawn below, inside the page's width, so the bar leaves it out.
+            topBar = { com.sakinah.tasbih.ui.AnaaTopBar(title, onBack = onBack, showRule = false, actions = actions) },
         ) { padding ->
             Box(
                 modifier = Modifier
