@@ -54,6 +54,16 @@ class PrayerText(private val context: Context) {
         return context.getString(R.string.prayer_in, parts.joinToString(" و"))
     }
 
+    /** «منذ ٣ دقائق», or «الآن» within the first minute. */
+    fun since(duration: Duration): String {
+        val minutes = (duration.seconds / 60).coerceAtLeast(0)
+        if (minutes < 1) return context.getString(R.string.prayer_just_now)
+        val hours = (minutes / 60).toInt()
+        val rest = (minutes % 60).toInt()
+        val parts = listOfNotNull(hours.takeIf { it > 0 }?.let(::hoursCount), rest.takeIf { it > 0 }?.let(::minutesCount))
+        return context.getString(R.string.prayer_since, parts.joinToString(" و"))
+    }
+
     fun methodName(method: PrayerMethod): String = context.getString(method.nameRes)
 
     /** «تندحة، عسير، المملكة العربية السعودية», with whatever parts the place has. */

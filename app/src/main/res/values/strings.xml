@@ -547,6 +547,10 @@
     <string name="prayer_change_place">تغيير</string>
     <string name="prayer_next">الصلاة القادمة</string>
     <string name="prayer_next_tomorrow">الصلاة القادمة، غدًا</string>
+    <string name="prayer_iqama_label">الإقامة</string>
+    <string name="prayer_iqama_done">أقيمت الصلاة</string>
+    <string name="prayer_since">منذ %1$s</string>
+    <string name="prayer_just_now">الآن</string>
     <string name="prayer_current">وقتها الآن</string>
     <string name="prayer_method_auto_line">طريقة الحساب: %1$s، تلقائيًا حسب الدولة</string>
     <string name="prayer_method_line">طريقة الحساب: %1$s</string>
@@ -582,6 +586,10 @@
     <string name="prayer_adjust_less">إنقاص دقيقة من %1$s</string>
     <string name="prayer_adjust_more">إضافة دقيقة إلى %1$s</string>
     <string name="prayer_adjust_minutes">%1$s دقيقة</string>
+    <string name="prayer_section_iqama">الإقامة</string>
+    <string name="prayer_iqama_less">إنقاص دقيقة من إقامة %1$s</string>
+    <string name="prayer_iqama_more">إضافة دقيقة إلى إقامة %1$s</string>
+    <string name="prayer_iqama_hint">الدقائق بين الأذان والإقامة لكل صلاة. بعد الأذان يعدّ التطبيق وأدواته إلى الإقامة، ثم يعدّ ربع ساعة بعدها، ثم ينتقل إلى الصلاة التالية. اجعلها صفرًا لينتقل بعد الأذان مباشرة. وظهر الجمعة بلا عدّ للإقامة، لأنها بعد الخطبة.</string>
     <string name="prayer_section_high_latitude">خطوط العرض العالية</string>
     <string name="prayer_high_middle">منتصف الليل</string>
     <string name="prayer_high_seventh">سُبع الليل</string>
@@ -710,6 +718,11 @@
     <string name="prayer_next_widget_description">الصلاة القادمة ووقتها لمكانك.</string>
     <string name="prayer_day_widget_label">مواقيت اليوم</string>
     <string name="widget_countdown">%1$s بعد %2$s</string>
+    <string name="widget_exact_alarms">ليتبدّل عدّاد الأداة عند الأذان والإقامة في دقيقته، اسمح للتطبيق بالمنبهات الدقيقة. اضغط هنا.</string>
+    <string name="widget_iqama_countdown">إقامة %1$s بعد %2$s</string>
+    <string name="widget_iqama_said">إقامة %1$s %2$s</string>
+    <string name="widget_since_iqama">أقيمت %1$s &#x2066;+%2$s&#x2069;</string>
+    <string name="widget_since_iqama_said">أقيمت %1$s %2$s</string>
     <string name="widget_style_title">أدوات المواقيت</string>
     <string name="widget_style_entry">تخصيص أدوات المواقيت</string>
     <string name="widget_style_entry_hint">مواقيت اليوم والصلاة القادمة: السطور، وشريط الوقت، والألوان والشفافية والخط والزخرفة.</string>

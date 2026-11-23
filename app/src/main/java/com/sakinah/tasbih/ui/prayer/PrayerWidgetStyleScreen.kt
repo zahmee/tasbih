@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.ViewList
+import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
@@ -59,6 +60,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -88,6 +90,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.prayer.ObligatoryPrayers
+import com.sakinah.tasbih.prayer.PrayerPhase
 import com.sakinah.tasbih.prayer.PrayerSchedule
 import com.sakinah.tasbih.ui.KhatamDivider
 import com.sakinah.tasbih.ui.KhatamMark
@@ -172,6 +175,7 @@ fun PrayerWidgetStyleScreen(
         },
         header = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ExactAlarmRow()
                 WidgetSwitch(next) { next = it }
                 if (next) NextPreview(current, schedule, calendarText) else WidgetPreview(current, schedule, calendarText)
             }
@@ -182,6 +186,39 @@ fun PrayerWidgetStyleScreen(
             StyleTab.COLORS -> colorOptions(current, viewModel)
             StyleTab.FONT -> fontOptions(current, viewModel)
             StyleTab.ORNAMENT -> ornamentOptions(current, viewModel)
+        }
+    }
+}
+
+/**
+ * Asks for exact alarms while the app may not set them. The widget's clock turns at each adhan,
+ * iqama and end of the count after it only when the app redraws it then; without exact alarms
+ * Android may hold that back for minutes, and a countdown past its time shows a minus.
+ */
+@Composable
+private fun ExactAlarmRow() {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(com.sakinah.tasbih.alerts.PrayerAlarms.canScheduleExact(context)) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        allowed = com.sakinah.tasbih.alerts.PrayerAlarms.canScheduleExact(context)
+        onPauseOrDispose { }
+    }
+    val screen = com.sakinah.tasbih.alerts.AlertHealth.exactAlarmSettings(context)
+    if (allowed || screen == null) return
+    Surface(
+        onClick = { runCatching { context.startActivity(screen) } },
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.fillMaxWidth().testTag("widget_exact_alarms"),
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Alarm, null)
+            Text(
+                stringResource(R.string.widget_exact_alarms),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 12.dp).weight(1f),
+            )
         }
     }
 }
@@ -801,7 +838,7 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
     val accent = Color(palette.accent)
     val now = Instant.now()
     val next = schedule?.next(now)
-    val countdownTemplate = stringResource(R.string.widget_countdown)
+    val countdownTemplate = previewClock(schedule, now, PrayerText(LocalContext.current))
     val weight = style.weight.font()
     Box(
         Modifier
@@ -932,7 +969,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
     val now = Instant.now()
     val next = schedule?.next(now)
     val day = next?.let { schedule.day(it.time.toLocalDate()) }
-    val countdownTemplate = stringResource(R.string.widget_countdown)
+    val countdownTemplate = previewClock(schedule, now, PrayerText(LocalContext.current))
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // A strip of the home screen behind it, so transparency can be seen.
@@ -1046,6 +1083,34 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
     }
 }
 
+/** The countdown line as the widget shows it now: to the adhan, to the iqama, or up from the iqama. */
+@Composable
+private fun previewClock(schedule: PrayerSchedule?, now: Instant, text: PrayerText): String {
+    val phase = schedule?.phase(now) ?: return ""
+    fun clock(span: Duration): String {
+        val left = span.abs()
+        return "%d:%02d:%02d".format(java.util.Locale.ROOT, left.toHours(), left.toMinutes() % 60, left.seconds % 60)
+    }
+    return when (phase) {
+        is PrayerPhase.ToAdhan -> stringResource(
+            R.string.widget_countdown,
+            text.name(phase.next.prayer, phase.next.time),
+            "⁦" + clock(Duration.between(now, phase.next.time.toInstant())) + "⁩",
+        )
+        is PrayerPhase.ToIqama -> stringResource(
+            R.string.widget_iqama_countdown,
+            text.name(phase.prayer.prayer, phase.prayer.time),
+            "⁦" + clock(Duration.between(now, phase.iqama.toInstant())) + "⁩",
+        )
+        // This line isolates the sign with the clock itself.
+        is PrayerPhase.SinceIqama -> stringResource(
+            R.string.widget_since_iqama,
+            text.name(phase.prayer.prayer, phase.prayer.time),
+            clock(Duration.between(phase.iqama.toInstant(), now)),
+        )
+    }
+}
+
 private fun sample(item: LineItem, style: PrayerWidgetStyle, schedule: PrayerSchedule?, calendarText: CalendarText?, text: PrayerText, now: Instant, countdown: String): String {
     val next = schedule?.next(now)
     val date = next?.time?.toLocalDate() ?: LocalDate.now()
@@ -1056,11 +1121,7 @@ private fun sample(item: LineItem, style: PrayerWidgetStyle, schedule: PrayerSch
         LineItem.WEEKDAY -> calendarText?.weekday(date.dayOfWeek).orEmpty()
         LineItem.PLACE -> schedule?.place?.name.orEmpty()
         LineItem.NEXT_PRAYER -> next?.let { "${text.name(it.prayer, it.time)} ${text.time(it.time)}" }.orEmpty()
-        LineItem.COUNTDOWN -> next?.let {
-            val left = Duration.between(now, it.time.toInstant())
-            val clock = "%d:%02d:%02d".format(java.util.Locale.ROOT, left.toHours(), left.toMinutes() % 60, left.seconds % 60)
-            countdown.format(text.name(it.prayer, it.time), "\u2066$clock\u2069")
-        }.orEmpty()
+        LineItem.COUNTDOWN -> countdown
         LineItem.DHIKR -> WidgetDhikr[LocalDate.now().dayOfYear % WidgetDhikr.size]
     }
 }

@@ -31,6 +31,22 @@ data class PrayerDay(val date: LocalDate, val times: Map<Prayer, ZonedDateTime>,
 data class PrayerMoment(val prayer: Prayer, val time: ZonedDateTime, val tomorrow: Boolean = false)
 
 /**
+ * What the prayer clock counts toward. Since November 23, 2026, at the user's wish, the clock
+ * no longer runs past the adhan into a negative count: from the adhan it counts down to the
+ * iqama, then up from the iqama for a quarter of an hour, and only then to the next adhan.
+ */
+sealed interface PrayerPhase {
+    /** Before [next]'s adhan. */
+    data class ToAdhan(val next: PrayerMoment) : PrayerPhase
+
+    /** [prayer]'s adhan has come; its iqama is at [iqama]. */
+    data class ToIqama(val prayer: PrayerMoment, val iqama: ZonedDateTime) : PrayerPhase
+
+    /** [prayer]'s iqama was at [iqama]; the count up lasts until [until]. */
+    data class SinceIqama(val prayer: PrayerMoment, val iqama: ZonedDateTime, val until: ZonedDateTime) : PrayerPhase
+}
+
+/**
  * Works out the times on the phone, with no network: the same equations the online services
  * use, so the same place and method give the same times.
  */
@@ -112,6 +128,42 @@ class PrayerSchedule(
         }
         if (!now.isBefore(day[Prayer.SUNRISE].toInstant()) && now.isBefore(day[Prayer.DHUHR].toInstant())) return null
         return ObligatoryPrayers.lastOrNull { !now.isBefore(day[it].toInstant()) }?.let { PrayerMoment(it, day[it]) }
+    }
+
+    /**
+     * Minutes from [prayer]'s adhan to its iqama on [date], or zero for none. Friday's Dhuhr has
+     * none: the sermon comes between, and its length is the mosque's.
+     */
+    fun iqamaMinutes(prayer: Prayer, date: LocalDate): Int =
+        if (prayer == Prayer.DHUHR && date.dayOfWeek == java.time.DayOfWeek.FRIDAY) 0 else settings.iqamaFor(prayer)
+
+    /** Where the prayer clock stands at [now]: before an adhan, before an iqama, or just after one. */
+    fun phase(now: Instant = Instant.now()): PrayerPhase {
+        val next = next(now)
+        val previous = previous(now)
+        val minutes = iqamaMinutes(previous.prayer, previous.time.toLocalDate())
+        if (minutes > 0) {
+            // Fajr's time ends at sunrise, the others' at the next adhan.
+            val end = if (previous.prayer == Prayer.FAJR) day(previous.time.toLocalDate())[Prayer.SUNRISE] else next.time
+            val iqama = previous.time.plusMinutes(minutes.toLong())
+            if (iqama.isBefore(end)) {
+                val until = iqama.plusMinutes(PrayerSettings.AFTER_IQAMA_MINUTES).let { if (it.isAfter(end)) end else it }
+                if (now.isBefore(iqama.toInstant())) return PrayerPhase.ToIqama(previous, iqama)
+                if (now.isBefore(until.toInstant())) return PrayerPhase.SinceIqama(previous, iqama, until)
+            }
+        }
+        return PrayerPhase.ToAdhan(next)
+    }
+
+    /** The day's iqamas and the ends of the counts after them, where the prayer clock changes too. */
+    fun iqamaChanges(day: PrayerDay): List<ZonedDateTime> = ObligatoryPrayers.flatMap { prayer ->
+        val minutes = iqamaMinutes(prayer, day.date)
+        if (minutes == 0) {
+            emptyList()
+        } else {
+            val iqama = day[prayer].plusMinutes(minutes.toLong())
+            listOf(iqama, iqama.plusMinutes(PrayerSettings.AFTER_IQAMA_MINUTES))
+        }
     }
 
     /** Degrees clockwise from true north, as a compass that has been corrected would show. */

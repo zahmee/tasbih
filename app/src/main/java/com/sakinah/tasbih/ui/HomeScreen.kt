@@ -131,7 +131,7 @@ fun HomeScreen(
     val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
     val prayerDate = schedule?.today(now)
     val day = remember(schedule, prayerDate) { schedule?.let { s -> prayerDate?.let(s::day) } }
-    val next = remember(schedule, minute) { schedule?.next(now) }
+    val phase = remember(schedule, minute) { schedule?.phase(now) }
 
     val arabic = remember { Locale.forLanguageTag("ar") }
     val formatter = remember { DateTimeFormatter.ofPattern("d MMMM yyyy", arabic).withDecimalStyle(DecimalStyle.of(arabic)) }
@@ -150,8 +150,9 @@ fun HomeScreen(
         HomeDates(hijri, gregorian, schedule?.place?.name, onOpenCalendar, onChoosePlace)
     }
     val prayer: @Composable () -> Unit = {
-        PrayerHero(next, next?.let { prayerText.remaining(Duration.between(now, it.time.toInstant())) }, prayerText, onOpenPrayer, onChoosePlace)
-        if (day != null) DayTimes(day, next, prayerText, onOpenPrayer)
+        val words = phase?.let { com.sakinah.tasbih.ui.prayer.prayerClockWords(it, now, prayerText) }
+        PrayerHero(words, onOpenPrayer, onChoosePlace)
+        if (day != null) DayTimes(day, words?.marked, prayerText, onOpenPrayer)
     }
     val services: @Composable () -> Unit = {
         Services(schedule, calendarText, today, prayerText, onOpenQibla, onOpenCalendar)
@@ -274,13 +275,11 @@ private fun HomeClock(prayerText: PrayerText) {
 /** The next prayer and how long until it, or a way to choose a place before there are times. */
 @Composable
 private fun PrayerHero(
-    next: PrayerMoment?,
-    remaining: String?,
-    prayerText: PrayerText,
+    words: com.sakinah.tasbih.ui.prayer.PrayerClockWords?,
     onOpenPrayer: () -> Unit,
     onChoosePlace: () -> Unit,
 ) {
-    if (next == null || remaining == null) {
+    if (words == null) {
         Surface(
             shape = FeatureShape,
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -302,9 +301,11 @@ private fun PrayerHero(
         }
         return
     }
-    val label = stringResource(if (next.tomorrow) R.string.prayer_next_tomorrow else R.string.prayer_next)
-    val name = prayerText.name(next.prayer, next.time)
-    val time = prayerText.time(next.time)
+    // The next adhan, or the iqama of the prayer whose adhan has come, or the quarter hour after it.
+    val label = words.label
+    val name = words.name
+    val time = words.time
+    val remaining = words.span
     val spoken = stringResource(R.string.home_next_prayer_spoken, label, name, time, remaining)
     Surface(
         onClick = onOpenPrayer,

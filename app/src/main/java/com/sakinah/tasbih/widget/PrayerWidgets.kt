@@ -28,6 +28,7 @@ import com.sakinah.tasbih.calendar.HijriCalendar
 import com.sakinah.tasbih.data.CalendarPreferencesRepository
 import com.sakinah.tasbih.data.PrayerPreferencesRepository
 import com.sakinah.tasbih.prayer.ObligatoryPrayers
+import com.sakinah.tasbih.prayer.PrayerPhase
 import com.sakinah.tasbih.prayer.PrayerSchedule
 import com.sakinah.tasbih.ui.calendar.CalendarText
 import com.sakinah.tasbih.ui.prayer.PrayerText
@@ -246,22 +247,37 @@ class PrayerWidgetUpdater(context: Context) {
                     else -> Gravity.END or Gravity.CENTER_VERTICAL
                 }
                 if (item == LineItem.COUNTDOWN) {
-                    // A Chronometer counts down in the launcher itself, so the widget needs no
-                    // wake every second; the alarm at the prayer's time draws the next one.
+                    // A Chronometer counts in the launcher itself, so the widget needs no wake
+                    // every second; the alarm at each adhan, iqama and end of the count after it
+                    // draws the next. To the adhan, then to the iqama, then up from the iqama.
                     views.setViewVisibility(textId, View.GONE)
                     views.setViewVisibility(clockId, View.VISIBLE)
-                    val left = java.time.Duration.between(now, next.time.toInstant()).toMillis().coerceAtLeast(0)
-                    views.setChronometer(
-                        clockId,
-                        SystemClock.elapsedRealtime() + left,
-                        app.getString(R.string.widget_countdown, text.name(next.prayer, next.time), "%s"),
-                        true,
-                    )
-                    views.setChronometerCountDown(clockId, true)
+                    val (target, countDown, format, spoken) = when (val phase = schedule.phase(now)) {
+                        is PrayerPhase.ToAdhan -> {
+                            val name = text.name(phase.next.prayer, phase.next.time)
+                            Clock(phase.next.time, true, app.getString(R.string.widget_countdown, name, "%s"),
+                                app.getString(R.string.widget_countdown, name, text.time(phase.next.time)))
+                        }
+                        is PrayerPhase.ToIqama -> {
+                            val name = text.name(phase.prayer.prayer, phase.prayer.time)
+                            Clock(phase.iqama, true, app.getString(R.string.widget_iqama_countdown, name, "%s"),
+                                app.getString(R.string.widget_iqama_said, name, text.time(phase.iqama)))
+                        }
+                        is PrayerPhase.SinceIqama -> {
+                            val name = text.name(phase.prayer.prayer, phase.prayer.time)
+                            Clock(phase.iqama, false, app.getString(R.string.widget_since_iqama, name, "%s"),
+                                app.getString(R.string.widget_since_iqama_said, name, text.time(phase.iqama)))
+                        }
+                    }
+                    val apart = java.time.Duration.between(now, target.toInstant()).toMillis()
+                    // Counting down never starts below zero; counting up never starts above it.
+                    val base = SystemClock.elapsedRealtime() + if (countDown) apart.coerceAtLeast(0) else apart.coerceAtMost(0)
+                    views.setChronometer(clockId, base, format, true)
+                    views.setChronometerCountDown(clockId, countDown)
                     views.setInt(clockId, "setGravity", gravity)
                     views.setTextViewTextSize(clockId, TypedValue.COMPLEX_UNIT_SP, 12 * look.scale)
                     textColor(views, clockId, color, auto)
-                    said += app.getString(R.string.widget_countdown, text.name(next.prayer, next.time), text.time(next.time))
+                    said += spoken
                 } else {
                     val words = when (item) {
                         LineItem.HIJRI_DATE -> calendarText.hijriDate(day.date, look.style.hijriMonthNumber)
@@ -282,6 +298,9 @@ class PrayerWidgetUpdater(context: Context) {
         }
         return said
     }
+
+    /** What the countdown line counts toward or from, how, and what it says to a screen reader. */
+    private data class Clock(val target: java.time.ZonedDateTime, val countDown: Boolean, val format: String, val spoken: String)
 
     private fun widgetHeight(appWidgetId: Int, fallback: Int): Int =
         manager.getAppWidgetOptions(appWidgetId).getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: fallback

@@ -75,19 +75,9 @@ class ReaderNavigationFlowTest {
         }
         rule.onNodeWithTag("reader_count_button").assertIsDisplayed()
         rule.onNodeWithTag("reader_exit_focus_mode").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-        val layouts = mutableListOf<TextLayoutResult>()
-        val label = rule.onNodeWithText("إلغاء التوسيع", useUnmergedTree = true)
-        label.assertIsDisplayed().performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertTrue(layouts.isNotEmpty())
-        assertFalse("Exit text must not be truncated vertically", layouts.first().didOverflowHeight)
-        assertFalse(
-            "Exit text must fit its available width: font=${vm.uiState.value.arabicFontStyle}, " +
-                "size=${layouts.first().size}, paragraphWidth=${layouts.first().multiParagraph.width}",
-            layouts.first().didOverflowWidth,
-        )
-        val exitBounds = rule.onNodeWithTag("reader_exit_focus_mode").fetchSemanticsNode().boundsInRoot
-        val labelBounds = label.fetchSemanticsNode().boundsInRoot
-        assertTrue(labelBounds.top >= exitBounds.top && labelBounds.bottom <= exitBounds.bottom)
+        // The exit is an icon alone since November 23, 2026: no words to fit, but its name is still read out.
+        rule.onNodeWithText("إلغاء التوسيع").assertDoesNotExist()
+        rule.onNodeWithContentDescription("إلغاء التوسيع").assertIsDisplayed()
     }
 
     private fun capture(name: String) {

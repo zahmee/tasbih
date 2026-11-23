@@ -145,6 +145,8 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAdjustment(prayer: Prayer, minutes: Int) = save { repository.setAdjustment(prayer, minutes) }
 
+    fun setIqama(prayer: Prayer, minutes: Int) = save { repository.setIqama(prayer, minutes) }
+
     fun setAlert(prayer: Prayer, alert: PrayerAlert) = save { repository.setAlert(prayer, alert) }
 
     fun setTone(tone: String) = save { repository.setTone(tone) }

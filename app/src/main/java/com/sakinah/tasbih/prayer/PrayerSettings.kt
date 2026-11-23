@@ -45,8 +45,26 @@ data class PrayerSettings(
     val followDevice: Boolean = true,
     /** The Qibla over satellite pictures rather than as a compass, where the phone can show them. */
     val qiblaSatellite: Boolean = false,
+    /** Minutes from each prayer's adhan to its iqama, zero for none; the five only. */
+    val iqama: Map<Prayer, Int> = DEFAULT_IQAMA,
 ) {
+    fun iqamaFor(prayer: Prayer): Int =
+        if (prayer == Prayer.SUNRISE) 0 else (iqama[prayer] ?: DEFAULT_IQAMA[prayer] ?: 0).coerceIn(0, MAX_IQAMA)
+
     companion object {
         const val MAX_ADJUSTMENT = 30
+        const val MAX_IQAMA = 60
+
+        /** As most mosques in Saudi Arabia keep them, which the user chose on November 23, 2026. */
+        val DEFAULT_IQAMA: Map<Prayer, Int> = mapOf(
+            Prayer.FAJR to 25,
+            Prayer.DHUHR to 20,
+            Prayer.ASR to 20,
+            Prayer.MAGHRIB to 10,
+            Prayer.ISHA to 20,
+        )
+
+        /** How long the clock counts up after the iqama, about the length of the prayer, before it turns to the next. */
+        const val AFTER_IQAMA_MINUTES = 15L
     }
 }
