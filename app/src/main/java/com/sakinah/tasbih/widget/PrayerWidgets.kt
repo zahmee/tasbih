@@ -214,7 +214,6 @@ class PrayerWidgetUpdater(context: Context) {
         shown: List<WidgetLine>,
         look: Look,
         schedule: PrayerSchedule,
-        day: com.sakinah.tasbih.prayer.PrayerDay,
         text: PrayerText,
         calendarText: CalendarText,
         now: Instant,
@@ -222,6 +221,16 @@ class PrayerWidgetUpdater(context: Context) {
     ): List<String> {
         val palette = look.palette
         val next = schedule.next(now)
+        // The dates are today's, not the next prayer's: after Isha the next prayer is tomorrow's
+        // Fajr, and until November 23, 2026 the lines showed tomorrow's weekday from Isha to
+        // midnight. The Hijri day turns at Maghrib where the user chose so, as everywhere else.
+        val today = schedule.today(now)
+        val hijriDay = com.sakinah.tasbih.calendar.hijriDayFor(
+            today,
+            now,
+            schedule.day(today)[com.sakinah.tasbih.prayer.Prayer.MAGHRIB].toInstant(),
+            calendarText.settings.hijriDayFromMaghrib,
+        )
         val said = mutableListOf<String>()
         all.forEachIndexed { index, ids ->
             val line = shown.getOrNull(index)
@@ -280,9 +289,9 @@ class PrayerWidgetUpdater(context: Context) {
                     said += spoken
                 } else {
                     val words = when (item) {
-                        LineItem.HIJRI_DATE -> calendarText.hijriDate(day.date, look.style.hijriMonthNumber)
-                        LineItem.GREGORIAN_DATE -> calendarText.gregorianDate(day.date, look.style.gregorianMonthNumber)
-                        LineItem.WEEKDAY -> calendarText.weekday(day.date.dayOfWeek)
+                        LineItem.HIJRI_DATE -> calendarText.hijriDate(hijriDay, look.style.hijriMonthNumber)
+                        LineItem.GREGORIAN_DATE -> calendarText.gregorianDate(today, look.style.gregorianMonthNumber)
+                        LineItem.WEEKDAY -> calendarText.weekday(today.dayOfWeek)
                         LineItem.PLACE -> schedule.place.name
                         LineItem.NEXT_PRAYER -> "${text.name(next.prayer, next.time)} ${text.time(next.time)}"
                         LineItem.DHIKR -> WidgetDhikr[java.time.LocalDate.now().dayOfYear % WidgetDhikr.size]
@@ -343,7 +352,7 @@ class PrayerWidgetUpdater(context: Context) {
         val shown = lines.take((room / lineHeight).toInt().coerceIn(0, lines.size))
         val dividerFits = room - shown.size * lineHeight >= DIVIDER_DP
         views.setViewVisibility(R.id.nx_divider, if (look.divider && shown.isNotEmpty() && dividerFits) View.VISIBLE else View.GONE)
-        val said = drawLines(views, NEXT_CHROME.lines, shown, look, schedule, day, text, calendarText, now, firstIsHeading = false)
+        val said = drawLines(views, NEXT_CHROME.lines, shown, look, schedule, text, calendarText, now, firstIsHeading = false)
         drawProgress(views, R.id.nx_progress, look, schedule, now)
         views.setContentDescription(
             R.id.nx_root,
@@ -394,7 +403,7 @@ class PrayerWidgetUpdater(context: Context) {
         val shown = lines.take((room / lineHeight).toInt().coerceIn(0, lines.size))
         val dividerFits = room - shown.size * lineHeight >= DIVIDER_DP
         views.setViewVisibility(R.id.pd_divider, if (look.divider && shown.isNotEmpty() && dividerFits) View.VISIBLE else View.GONE)
-        val said = drawLines(views, LINES, shown, look, schedule, day, text, calendarText, now, firstIsHeading = true)
+        val said = drawLines(views, LINES, shown, look, schedule, text, calendarText, now, firstIsHeading = true)
 
         // The prayers' own colours: those of their box once it is what they stand on.
         val inner = WidgetPalette.inner(style, look.night)

@@ -1113,10 +1113,21 @@ private fun previewClock(schedule: PrayerSchedule?, now: Instant, text: PrayerTe
 
 private fun sample(item: LineItem, style: PrayerWidgetStyle, schedule: PrayerSchedule?, calendarText: CalendarText?, text: PrayerText, now: Instant, countdown: String): String {
     val next = schedule?.next(now)
-    val date = next?.time?.toLocalDate() ?: LocalDate.now()
+    // Today's date, as on the widget, not the next prayer's, which after Isha is tomorrow's.
+    val date = schedule?.today(now) ?: LocalDate.now()
+    val hijriDay = if (schedule != null && calendarText != null) {
+        com.sakinah.tasbih.calendar.hijriDayFor(
+            date,
+            now,
+            schedule.day(date)[com.sakinah.tasbih.prayer.Prayer.MAGHRIB].toInstant(),
+            calendarText.settings.hijriDayFromMaghrib,
+        )
+    } else {
+        date
+    }
     return when (item) {
         LineItem.NONE -> ""
-        LineItem.HIJRI_DATE -> calendarText?.hijriDate(date, style.hijriMonthNumber).orEmpty()
+        LineItem.HIJRI_DATE -> calendarText?.hijriDate(hijriDay, style.hijriMonthNumber).orEmpty()
         LineItem.GREGORIAN_DATE -> calendarText?.gregorianDate(date, style.gregorianMonthNumber).orEmpty()
         LineItem.WEEKDAY -> calendarText?.weekday(date.dayOfWeek).orEmpty()
         LineItem.PLACE -> schedule?.place?.name.orEmpty()

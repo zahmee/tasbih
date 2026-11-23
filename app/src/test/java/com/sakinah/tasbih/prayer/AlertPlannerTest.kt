@@ -61,6 +61,8 @@ class AlertPlannerTest {
         assertEquals(LocalTime.parse("14:45"), AlertPlanner.nextBoundary(riyadh, at("12:30")).toLocalTime())
         val night = AlertPlanner.nextBoundary(riyadh, at("20:00"))
         assertEquals(date.plusDays(1), night.toLocalDate())
+        // Midnight, where the widgets' weekday and Gregorian date turn, comes before Fajr.
+        assertEquals(LocalTime.MIDNIGHT, night.toLocalTime())
     }
 
     @Test
