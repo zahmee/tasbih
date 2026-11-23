@@ -196,6 +196,20 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     init {
         loadContent()
         watchForDailyRollover()
+        watchReadingsForWird()
+    }
+
+    /**
+     * A collection read to its end ticks its task in the wird, and undoing or restarting the
+     * reading takes the tick away; the wird's widget and any reminder still showing follow.
+     */
+    private fun watchReadingsForWird() {
+        viewModelScope.launch {
+            preferences
+                .map { prefs -> prefs.readingProgress.filterValues { it.completed }.keys }
+                .distinctUntilChanged()
+                .collectLatest { com.sakinah.tasbih.wird.WirdSync.refreshViews(getApplication()) }
+        }
     }
 
     fun retryContentLoad() {

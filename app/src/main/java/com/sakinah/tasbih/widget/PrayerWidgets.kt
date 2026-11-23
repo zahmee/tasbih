@@ -163,7 +163,7 @@ class PrayerWidgetUpdater(context: Context) {
         val divider = style.ornament != WidgetOrnament.NONE
     }
 
-    /** The paper, the pattern over it, and the ruled star's colour, as the user chose them. */
+    /** The paper, the mihrab over it, and the ruled star's colour, as the user chose them. */
     private fun drawChrome(views: RemoteViews, ids: Chrome, look: Look, appWidgetId: Int) {
         val palette = look.palette
         tintImage(views, ids.bg, palette.surface, if (look.style.surface == WidgetSurface.AUTO) R.color.anaa_widget_surface else null)
@@ -171,13 +171,13 @@ class PrayerWidgetUpdater(context: Context) {
         val density = app.resources.displayMetrics.density
         views.setViewPadding(ids.root, (10 * density).toInt(), (6 * density).toInt(), (10 * density).toInt(), (6 * density).toInt())
         if (look.pattern) {
-            // Drawn at the widget's own size, so its stars keep their shape whatever the size.
+            // Drawn at the widget's own size, so the arch keeps its shape whatever the size.
             val options = manager.getAppWidgetOptions(appWidgetId)
             val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 } ?: 250
             val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: 110
             val radius = app.resources.getDimension(R.dimen.anaa_widget_radius) / density
             val color = (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24)
-            views.setImageViewBitmap(ids.pattern, IslamicPattern.bitmap(width, height, density, radius, color))
+            views.setImageViewBitmap(ids.pattern, MihrabOrnament.bitmap(width, height, density, radius, color))
             views.setViewVisibility(ids.pattern, View.VISIBLE)
         } else {
             views.setViewVisibility(ids.pattern, View.GONE)
@@ -199,7 +199,9 @@ class PrayerWidgetUpdater(context: Context) {
         views.setViewVisibility(id, View.VISIBLE)
         views.setProgressBar(id, PROGRESS_MAX, share, false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            views.setColorStateList(id, "setProgressTintList", ColorStateList.valueOf(look.palette.accent))
+            // Its own colour, or blue turning red as the adhan nears; worked out again at every tick.
+            val color = look.palette.progress(look.style, share / PROGRESS_MAX.toFloat())
+            views.setColorStateList(id, "setProgressTintList", ColorStateList.valueOf(color))
             views.setColorStateList(id, "setProgressBackgroundTintList", ColorStateList.valueOf(look.palette.textSoft and 0x00FFFFFF or (0x40 shl 24)))
         }
     }
@@ -375,32 +377,40 @@ class PrayerWidgetUpdater(context: Context) {
         views.setViewVisibility(R.id.pd_divider, if (look.divider && shown.isNotEmpty() && dividerFits) View.VISIBLE else View.GONE)
         val said = drawLines(views, LINES, shown, look, schedule, day, text, calendarText, now, firstIsHeading = true)
 
-        val nameColor = palette.line(style.nameColor)
-        val timeColor = palette.line(style.timeColor)
+        // The prayers' own colours: those of their box once it is what they stand on.
+        val inner = WidgetPalette.inner(style, look.night)
+        val onBox = style.prayersBox && style.boxOpacity >= WidgetPalette.BOX_SETS_INK
+        val themed = look.followsTheme && !onBox
+        drawBox(views, look)
+        val nameColor = inner.line(style.nameColor)
+        val timeColor = inner.line(style.timeColor)
+        // The prayer marked: the next one, or the one whose time it is, as the user chose.
+        val marked = if (style.markCurrent) schedule.current(now)?.prayer ?: next.prayer else next.prayer
         ObligatoryPrayers.forEachIndexed { index, prayer ->
             val (_, name, time) = CELLS[index]
             val mark = MARKS[index]
-            val isNext = prayer == next.prayer
+            val isNext = prayer == marked
             val nameText = text.name(prayer, day[prayer])
             // The next prayer's name is bold, as its time alone carries the mark.
             views.setTextViewText(name, weighted(nameText, if (isNext) WidgetWeight.BOLD else style.weight))
-            views.setTextViewText(time, weighted(text.time(day[prayer]), style.timeWeight))
+            views.setTextViewText(time, timeWords(text.time(day[prayer]), style.timeWeight))
             views.setTextViewTextSize(name, TypedValue.COMPLEX_UNIT_SP, 13 * look.scale)
-            views.setTextViewTextSize(time, TypedValue.COMPLEX_UNIT_SP, 15 * look.scale)
+            // The Arabic digits «123» run wider than the Hindi ones, so they are set a little smaller.
+            views.setTextViewTextSize(time, TypedValue.COMPLEX_UNIT_SP, (if (com.sakinah.tasbih.data.DigitStyle.western) 13.5f else 15f) * look.scale)
             if (isNext) {
                 views.setViewVisibility(mark, View.VISIBLE)
                 views.setImageViewResource(
                     mark,
                     if (style.nextMark == NextMark.OUTLINE) R.drawable.anaa_widget_mark_outline else R.drawable.anaa_widget_mark_filled,
                 )
-                tintImage(views, mark, palette.accent, null)
-                views.setInt(mark, "setImageAlpha", palette.markAlpha)
-                textColor(views, name, nameColor ?: palette.accent, null)
-                textColor(views, time, palette.nextText(style.nextMark), null)
+                tintImage(views, mark, inner.accent, null)
+                views.setInt(mark, "setImageAlpha", inner.markAlpha)
+                textColor(views, name, nameColor ?: inner.accent, null)
+                textColor(views, time, inner.nextText(style.nextMark), null)
             } else {
                 views.setViewVisibility(mark, View.INVISIBLE)
-                textColor(views, name, nameColor ?: palette.textSoft, if (nameColor == null && look.followsTheme) R.color.anaa_widget_text_soft else null)
-                textColor(views, time, timeColor ?: palette.text, if (timeColor == null && look.followsTheme) R.color.anaa_widget_text else null)
+                textColor(views, name, nameColor ?: inner.textSoft, if (nameColor == null && themed) R.color.anaa_widget_text_soft else null)
+                textColor(views, time, timeColor ?: inner.text, if (timeColor == null && themed) R.color.anaa_widget_text else null)
             }
         }
         drawProgress(views, R.id.pd_progress, look, schedule, now)
@@ -412,11 +422,47 @@ class PrayerWidgetUpdater(context: Context) {
         return views
     }
 
+    /**
+     * The prayers' box: its fill, of the colour and strength the user chose, and its fine line in
+     * the accent. Each is a solid picture whose strength is its alpha, as only that the launcher keeps.
+     */
+    private fun drawBox(views: RemoteViews, look: Look) {
+        val style = look.style
+        val density = app.resources.displayMetrics.density
+        if (!style.prayersBox) {
+            views.setViewVisibility(R.id.pd_box_fill, View.GONE)
+            views.setViewVisibility(R.id.pd_box_line, View.GONE)
+            views.setViewPadding(R.id.pd_row, 0, 0, 0, 0)
+            return
+        }
+        val fill = style.boxOpacity * 255 / 100
+        views.setViewVisibility(R.id.pd_box_fill, if (fill > 0) View.VISIBLE else View.GONE)
+        views.setInt(R.id.pd_box_fill, "setColorFilter", WidgetPalette.boxColor(style))
+        views.setInt(R.id.pd_box_fill, "setImageAlpha", fill)
+        views.setViewVisibility(R.id.pd_box_line, if (style.boxLine) View.VISIBLE else View.GONE)
+        views.setInt(R.id.pd_box_line, "setColorFilter", look.palette.accent)
+        views.setInt(R.id.pd_box_line, "setImageAlpha", BOX_LINE_ALPHA)
+        views.setViewPadding(R.id.pd_row, (3 * density).toInt(), (3 * density).toInt(), (3 * density).toInt(), (3 * density).toInt())
+    }
+
     private fun showText(views: RemoteViews, textId: Int, clockId: Int, words: String, centred: Boolean, weight: WidgetWeight = WidgetWeight.REGULAR) {
         views.setViewVisibility(clockId, View.GONE)
         views.setViewVisibility(textId, View.VISIBLE)
         views.setTextViewText(textId, weighted(words, weight))
         if (centred) views.setInt(textId, "setGravity", Gravity.CENTER)
+    }
+
+    /**
+     * A prayer's time in five narrow cells: «ص» and «م» a size smaller than the digits, so the
+     * time keeps its whole width, the wider Arabic digits «123» too.
+     */
+    private fun timeWords(words: String, weight: WidgetWeight): CharSequence {
+        val space = words.lastIndexOf(' ')
+        // A thin space before «ص» and «م» rather than a whole one.
+        val narrow = if (space > 0) words.substring(0, space) + " " + words.substring(space + 1) else words
+        val styled = SpannableString(weighted(narrow, weight))
+        if (space > 0) styled.setSpan(android.text.style.RelativeSizeSpan(0.58f), space, narrow.length, Spanned.SPAN_INCLUSIVE_EXCLUSIVE)
+        return styled
     }
 
     /** Words in [weight]: bold is a span, the one kind a widget keeps. */
@@ -489,6 +535,8 @@ class PrayerWidgetUpdater(context: Context) {
             LineIds(R.id.pd_line_2, R.id.pd_l2_r, R.id.pd_l2_rc, R.id.pd_l2_l, R.id.pd_l2_lc),
         )
         val MARKS = listOf(R.id.pd_mark_0, R.id.pd_mark_1, R.id.pd_mark_2, R.id.pd_mark_3, R.id.pd_mark_4)
+        /** The box's line: clear, without competing with the words. */
+        const val BOX_LINE_ALPHA = 150
         val DAY_CHROME = Chrome(
             root = R.id.pd_root,
             bg = R.id.pd_bg,

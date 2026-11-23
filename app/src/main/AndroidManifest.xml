@@ -38,6 +38,7 @@
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
+        android:name=".SakinahApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -174,6 +175,32 @@
         <!-- Prayer alarms ringing, and everything that clears or moves them. -->
         <receiver
             android:name=".alerts.PrayerAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Today's wird on the home screen, each task ticked done from the widget itself. -->
+        <receiver
+            android:name=".wird.WirdWidget"
+            android:exported="true"
+            android:label="@string/wird_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/anaa_wird_widget" />
+        </receiver>
+
+        <!-- The wird's reminders ringing, their buttons, the widget's ticks, and what moves alarms. -->
+        <receiver
+            android:name=".wird.WirdReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

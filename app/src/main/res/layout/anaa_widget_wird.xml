@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Today's wird: its count, and up to six of its tasks, each with a ring to tick it done. The
+    rows a widget's height cannot hold are hidden from code; a line then says how many more.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/anaa_widget_background"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp">
+
+        <LinearLayout
+            android:id="@+id/wird_header"
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp">
+
+            <TextView
+                android:id="@+id/wird_heading"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:text="@string/wird_widget_heading"
+                android:textColor="@color/anaa_widget_accent"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/wird_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_0"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_0"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_0"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_0"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_1"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_1"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_1"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_2"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_2"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_2"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_3"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_3"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_4"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_4"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_4"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_4"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wird_row_5"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/wird_check_5"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@drawable/anaa_widget_check_off" />
+
+            <TextView
+                android:id="@+id/wird_title_5"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:paddingStart="4dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/wird_time_5"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:paddingStart="6dp"
+                android:singleLine="true"
+                android:textColor="@color/anaa_widget_text_soft"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wird_more"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="8dp"
+            android:singleLine="true"
+            android:textColor="@color/anaa_widget_text_soft"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/wird_empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/wird_widget_empty"
+            android:textColor="@color/anaa_widget_text_soft"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

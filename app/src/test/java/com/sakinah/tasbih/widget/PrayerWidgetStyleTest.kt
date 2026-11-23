@@ -84,4 +84,53 @@ class PrayerWidgetStyleTest {
         assertEquals(WidgetWeight.BOLD, PrayerWidgetStyle().timeWeight)
         assertEquals(WidgetWeight.REGULAR, PrayerWidgetStyle().weight)
     }
+
+    @Test
+    fun theBarTurnsFromBlueToRedAsTheAdhanNears() {
+        val palette = WidgetPalette.of(PrayerWidgetStyle(surface = WidgetSurface.IVORY), night = false)
+        val gradient = PrayerWidgetStyle(progressGradient = true)
+        assertEquals(palette.line(LineColor.BLUE), palette.progress(gradient, 0f))
+        assertEquals(palette.line(LineColor.RED), palette.progress(gradient, 1f))
+        val half = palette.progress(gradient, 0.5f)
+        assertNotEquals(palette.line(LineColor.BLUE), half)
+        assertNotEquals(palette.line(LineColor.RED), half)
+        // Without the gradient, the bar takes its own colour, or the accent.
+        assertEquals(palette.accent, palette.progress(PrayerWidgetStyle(), 0.5f))
+        assertEquals(palette.line(LineColor.GOLD), palette.progress(PrayerWidgetStyle(progressColor = LineColor.GOLD), 0.9f))
+    }
+
+    @Test
+    fun aStrongBoxSetsTheWordsOnItAndAFaintOneLeavesThemAsOnThePaper() {
+        val ivory = PrayerWidgetStyle(surface = WidgetSurface.IVORY)
+        val paper = WidgetPalette.of(ivory, night = false)
+        // A black box at three quarters: light words on it.
+        val strong = WidgetPalette.inner(ivory.copy(prayersBox = true, boxSurface = WidgetSurface.BLACK, boxOpacity = 75), night = false)
+        assertNotEquals(paper.text, strong.text)
+        assertEquals(WidgetPalette.of(PrayerWidgetStyle(surface = WidgetSurface.BLACK), night = false).text, strong.text)
+        // A faint one: the words stay as on the ivory paper.
+        val faint = WidgetPalette.inner(ivory.copy(prayersBox = true, boxSurface = WidgetSurface.BLACK, boxOpacity = 20), night = false)
+        assertEquals(paper.text, faint.text)
+        // No box at all: nothing changes.
+        assertEquals(paper, WidgetPalette.inner(ivory, night = false))
+    }
+
+    @Test
+    fun theMarkTakesItsOwnColourWithWordsThatReadOnIt() {
+        val ivory = PrayerWidgetStyle(surface = WidgetSurface.IVORY)
+        val paper = WidgetPalette.of(ivory, night = false)
+        val gold = WidgetPalette.inner(ivory.copy(markColor = LineColor.GOLD), night = false)
+        assertEquals(paper.line(LineColor.GOLD), gold.accent)
+        val white = WidgetPalette.inner(ivory.copy(markColor = LineColor.WHITE), night = false)
+        // Dark words on a white mark, light ones on a dark mark.
+        assertEquals(0xFF0E1A16.toInt(), white.onAccent)
+        val black = WidgetPalette.inner(ivory.copy(markColor = LineColor.BLACK), night = false)
+        assertEquals(0xFFFFFBF3.toInt(), black.onAccent)
+    }
+
+    @Test
+    fun blendingGoesChannelByChannel() {
+        assertEquals(0xFF7F7F7F.toInt(), blend(0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0.5f))
+        assertEquals(0xFF000000.toInt(), blend(0xFF000000.toInt(), 0xFFFFFFFF.toInt(), -1f))
+        assertEquals(0xFFFFFFFF.toInt(), blend(0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 2f))
+    }
 }

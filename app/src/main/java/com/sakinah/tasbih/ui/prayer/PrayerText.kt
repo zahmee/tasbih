@@ -39,7 +39,7 @@ class PrayerText(private val context: Context) {
 
     /** «٣:١٦» alone, for a table whose column already names the prayer. */
     fun clock(time: ZonedDateTime): String {
-        val minute = arabicNumber(time.minute).padStart(2, '٠')
+        val minute = com.sakinah.tasbih.data.twoDigits(time.minute)
         val hour = if (use24Hour) time.hour else (time.hour % 12).let { if (it == 0) 12 else it }
         return "${arabicNumber(hour)}:$minute"
     }

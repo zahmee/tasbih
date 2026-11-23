@@ -12,13 +12,11 @@ data class PrayerSound(val id: String, @RawRes val raw: Int, @StringRes val labe
 
 /**
  * Every sound in one place, so a recording is added or removed here and nowhere else. The
- * recordings come from Wikimedia Commons and the tones from Android's own source, under the
- * licences below; THIRD_PARTY_NOTICES.md lists them in full with what was changed. Each adhan
- * was trimmed to the adhan and levelled to one loudness.
+ * takbir and the second adhan come from Wikimedia Commons, the tones from Pixabay, and the other
+ * adhans from files the user gave; THIRD_PARTY_NOTICES.md lists them with what was changed.
+ * Each was trimmed of its silences and levelled to one loudness.
  */
 object PrayerSounds {
-    private const val ANDROID_CREDIT = "Android Open Source Project – Apache 2.0"
-
     /** Short sounds a notification channel plays in full, under half a minute each. */
     val tones = listOf(
         PrayerSound(
@@ -27,39 +25,49 @@ object PrayerSounds {
             R.string.alert_tone_takbir_makkah,
             "Seyfula Islam – CC BY 3.0 – مقتطع من أذان المسجد الحرام",
         ),
-        // Android's own Material notification tones, Apache 2.0, made mono and a touch quieter.
-        PrayerSound("ceres", R.raw.prayer_tone_ceres, R.string.alert_tone_ceres, ANDROID_CREDIT),
-        PrayerSound("tethys", R.raw.prayer_tone_tethys, R.string.alert_tone_tethys, ANDROID_CREDIT),
-        PrayerSound("rhea", R.raw.prayer_tone_rhea, R.string.alert_tone_rhea, ANDROID_CREDIT),
+        // Added by the user on November 23, 2026, from Pixabay; made mono and levelled.
+        PrayerSound("clear", R.raw.prayer_tone_clear, R.string.alert_tone_clear, "koiroylers – Pixabay"),
+        PrayerSound("light", R.raw.prayer_tone_light, R.string.alert_tone_light, "Universfield – Pixabay"),
+        PrayerSound("simple", R.raw.prayer_tone_simple, R.string.alert_tone_simple, "Universfield – Pixabay"),
     )
 
     /**
-     * The tones that came before, chosen by the user on November 23, 2026 to give way to these.
-     * A saved choice of one of them carries over to the tone that took its place.
+     * Tones the app shipped before, the first three until November 23, 2026 and Android's own
+     * after them until the user chose on the same day which sounds stay. A saved choice of one
+     * of them carries over to a tone that stays.
      */
-    private val RETIRED = mapOf("chime" to "ceres", "bell" to "tethys", "soft" to "rhea")
+    private val RETIRED_TONES = mapOf(
+        "chime" to "clear", "bell" to "light", "soft" to "simple",
+        "ceres" to "clear", "tethys" to "light", "rhea" to "simple",
+    )
 
     /** A saved tone as it stands today: a retired one becomes the tone that replaced it. */
-    fun currentToneId(id: String): String = RETIRED[id] ?: id
+    fun currentToneId(id: String): String = RETIRED_TONES[id] ?: id
 
-    /** Whole adhans, and a tone for those who want no voice at all. */
+    /**
+     * Whole adhans. The first is the default. The muezzin is in the name and the place below it;
+     * where the four the user added came from, and under what licence, is still to be confirmed.
+     */
     val adhans: List<PrayerSound> = listOf(
-        PrayerSound(
-            "makkah_maghrib",
-            R.raw.adhan_makkah_maghrib,
-            R.string.alert_adhan_makkah_maghrib,
-            "3omar Faruq – CC BY 3.0 – مقتطع ومضبوط الصوت",
-        ),
-        PrayerSound("recording_1", R.raw.adhan_recording_1, R.string.alert_adhan_recording_1, "Aishatu98 – ملك عام (CC0)"),
+        PrayerSound(AlertSettings.DEFAULT_ADHAN, R.raw.adhan_ali_mulla, R.string.alert_adhan_ali_mulla, "الحرم المكي، 2006"),
+        PrayerSound("ahmed_alamadi", R.raw.adhan_ahmed_alamadi, R.string.alert_adhan_ahmed_alamadi, "قطر"),
+        PrayerSound("nasser_alqatami", R.raw.adhan_nasser_alqatami, R.string.alert_adhan_nasser_alqatami, "السعودية"),
+        PrayerSound("hamad_aldaghriri", R.raw.adhan_hamad_aldaghriri, R.string.alert_adhan_hamad_aldaghriri),
         PrayerSound("recording_2", R.raw.adhan_recording_2, R.string.alert_adhan_recording_2, "Adam-synagda – ملك عام (CC0)"),
-        PrayerSound("recording_3", R.raw.adhan_recording_3, R.string.alert_adhan_recording_3, "Andrewler – CC BY-SA 4.0 – مضبوط الصوت"),
-        PrayerSound("recording_4", R.raw.adhan_recording_4, R.string.alert_adhan_recording_4, "Isaacayodele32 – CC BY-SA 4.0 – مضبوط الصوت"),
-        PrayerSound(AlertSettings.TONE_ADHAN, R.raw.prayer_tone_ceres, R.string.alert_adhan_tone, ANDROID_CREDIT),
     )
+
+    /**
+     * Adhans the user took out on November 23, 2026, the tone among them. A saved choice of one
+     * of them carries over to the default, so the phone still hears an adhan at the prayer.
+     */
+    private val RETIRED_ADHANS = setOf("makkah_maghrib", "recording_1", "recording_3", "recording_4", "tone")
+
+    /** A saved adhan as it stands today: a retired one becomes the default. */
+    fun currentAdhanId(id: String): String = if (id in RETIRED_ADHANS) AlertSettings.DEFAULT_ADHAN else id
 
     fun tone(id: String): PrayerSound = currentToneId(id).let { current -> tones.firstOrNull { it.id == current } ?: tones.first() }
 
-    fun adhan(id: String): PrayerSound = adhans.firstOrNull { it.id == id } ?: adhans.first()
+    fun adhan(id: String): PrayerSound = currentAdhanId(id).let { current -> adhans.firstOrNull { it.id == current } ?: adhans.first() }
 
     /**
      * By the file's name, not its number: a notification channel keeps the address it was made

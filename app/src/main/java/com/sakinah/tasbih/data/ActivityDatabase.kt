@@ -1,6 +1,7 @@
 package com.sakinah.tasbih.data
 
 import android.content.Context
+import androidx.room3.AutoMigration
 import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Database
@@ -319,12 +320,18 @@ interface ActivityDao {
 }
 
 @Database(
-    entities = [ActivityEvent::class, ActivityHourSummary::class, TasbihPhraseDaySummary::class],
-    version = 2,
+    entities = [
+        ActivityEvent::class, ActivityHourSummary::class, TasbihPhraseDaySummary::class,
+        WirdTaskRow::class, WirdDoneRow::class,
+    ],
+    version = 3,
     exportSchema = true,
+    // Version 3 adds the wird's tasks and ticks beside the statistics, which it leaves as they are.
+    autoMigrations = [AutoMigration(from = 2, to = 3)],
 )
 abstract class SakinahDatabase : RoomDatabase() {
     abstract fun activityDao(): ActivityDao
+    abstract fun wirdDao(): WirdDao
 
     companion object {
         @Volatile

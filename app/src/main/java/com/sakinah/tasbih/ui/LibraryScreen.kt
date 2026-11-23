@@ -110,21 +110,35 @@ fun LibraryScreen(
         filter = LibraryFilter.All
     }
     SakinahScreenBackground {
+      Column(Modifier.align(Alignment.TopCenter).widthIn(max = SakinahContentMaxWidth).fillMaxSize()) {
+        // The same head as every tab: in a section, its name with the way back to the sections.
+        AnaaTopBar(
+            title = selectedGroup?.let { stringResource(it.titleRes()) } ?: stringResource(R.string.hisn_library),
+            onBack = if (selectedGroup != null) {
+                {
+                    query = ""
+                    selectedGroup = null
+                    filter = LibraryFilter.All
+                }
+            } else {
+                null
+            },
+            backLabel = stringResource(R.string.back_to_sections),
+            actions = { SettingsGear(onOpenSettings, "library_open_settings") },
+        )
         LazyColumn(
-            modifier = Modifier.align(Alignment.TopCenter).widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("library_list"),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().testTag("library_list"),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium),
         ) {
-            item {
-                LibraryHeader(
-                    selectedGroup,
-                    onBackToSections = {
-                        query = ""
-                        selectedGroup = null
-                        filter = LibraryFilter.All
-                    },
-                    onOpenSettings = onOpenSettings,
-                )
+            if (selectedGroup == null) {
+                item {
+                    Text(
+                        stringResource(R.string.library_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (state.isLoading || state.contentLoadFailed) {
                 item { ContentStatusCard(state = state, onRetry = onRetry) }
@@ -204,6 +218,7 @@ fun LibraryScreen(
                 }
             }
         }
+      }
     }
 }
 
@@ -226,39 +241,6 @@ private fun LibraryEntryRow(result: DhikrSearchResult, state: SakinahUiState, on
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-    }
-}
-
-@Composable
-private fun LibraryHeader(selectedGroup: DhikrGroup?, onBackToSections: () -> Unit, onOpenSettings: () -> Unit) {
-    if (selectedGroup == null) {
-        SakinahScreenHeader(
-            title = stringResource(R.string.hisn_library),
-            subtitle = stringResource(R.string.library_subtitle),
-            // The user asked for the app's mark off this page, and the tasbih has its own tab now.
-            showBrand = false,
-            trailing = { SettingsGear(onOpenSettings, "library_open_settings") },
-        )
-    } else {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBackToSections) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(R.string.back_to_sections),
-                )
-            }
-            Spacer(Modifier.width(7.dp))
-            LibraryGroupIcon(group = selectedGroup, modifier = Modifier.size(52.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(selectedGroup.titleRes()), style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    stringResource(R.string.back_to_sections),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
     }
 }
 

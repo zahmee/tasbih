@@ -36,10 +36,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBackIos
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -103,6 +104,9 @@ fun CalendarScreen(
     agenda: AgendaState = AgendaState(),
     onVisibleMonth: (LocalDate) -> Unit = {},
     onSetAgenda: (Boolean) -> Unit = {},
+    /** The wird's tasks that fall on a day, by name. */
+    wirdOn: (LocalDate) -> List<String> = { emptyList() },
+    onAddWird: ((LocalDate) -> Unit)? = null,
 ) {
     val calendar = text.calendar
     val primary = text.settings.primary
@@ -163,9 +167,7 @@ fun CalendarScreen(
                 IconButton(onClick = onOpenConverter, modifier = Modifier.testTag("calendar_open_converter")) {
                     Icon(Icons.Outlined.SwapHoriz, stringResource(R.string.cal_converter))
                 }
-                IconButton(onClick = onOpenSettings, modifier = Modifier.testTag("calendar_open_settings")) {
-                    Icon(Icons.Outlined.Tune, stringResource(R.string.cal_settings))
-                }
+                com.sakinah.tasbih.ui.SettingsGear(onOpenSettings, "calendar_open_settings")
             },
         ) {
             MonthContent(text, today, hijriToday, first, pagerState, scroll, eventsOn, onSetPrimary, onSelect = { selected = it }, onOpenOccasions)
@@ -183,6 +185,8 @@ fun CalendarScreen(
             onShowAgenda = showAgenda,
             onCorrect = onCorrect,
             onDismiss = { selected = null },
+            wird = wirdOn(date),
+            onAddWird = onAddWird?.let { add -> { selected = null; add(date) } },
         )
     }
 }
@@ -526,6 +530,8 @@ private fun DaySheet(
     onShowAgenda: () -> Unit,
     onCorrect: (HijriMonth, Int) -> Unit,
     onDismiss: () -> Unit,
+    wird: List<String> = emptyList(),
+    onAddWird: (() -> Unit)? = null,
 ) {
     val calendar = text.calendar
     val hijri = calendar.fromGregorian(date)
@@ -561,6 +567,25 @@ private fun DaySheet(
             }
             if (hijri != null && text.settings.showWhiteDays && Occasions.isWhiteDay(hijri)) {
                 Text(stringResource(R.string.cal_white_day), style = MaterialTheme.typography.bodyMedium)
+            }
+
+            if (wird.isNotEmpty() || onAddWird != null) {
+                HorizontalDivider(Modifier.padding(vertical = 10.dp))
+                if (wird.isNotEmpty()) Text(stringResource(R.string.cal_wird_title), style = MaterialTheme.typography.titleSmall)
+                wird.forEach { title ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp).testTag("calendar_wird_task")) {
+                        Icon(Icons.Outlined.TaskAlt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(title, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                if (onAddWird != null) {
+                    TextButton(onClick = onAddWird, modifier = Modifier.testTag("calendar_add_wird")) {
+                        Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.cal_wird_add))
+                    }
+                }
             }
 
             HorizontalDivider(Modifier.padding(vertical = 10.dp))
@@ -621,7 +646,7 @@ private fun AgendaRow(text: CalendarText, day: LocalDate, event: AgendaEvent, ca
     val pm = stringResource(R.string.prayer_pm)
     fun clock(instant: java.time.Instant): String {
         val time = instant.atZone(zone)
-        val minute = text.number(time.minute).padStart(2, '٠')
+        val minute = com.sakinah.tasbih.data.twoDigits(time.minute)
         if (use24) return "${text.number(time.hour)}:$minute"
         val hour = (time.hour % 12).let { if (it == 0) 12 else it }
         return "${text.number(hour)}:$minute ${if (time.hour < 12) am else pm}"

@@ -131,6 +131,8 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             block()
             widgets.updateAll()
+            // A Hijri correction moves the wird's monthly tasks; the week's start and the rest cost it nothing.
+            com.sakinah.tasbih.wird.WirdSync.changed(getApplication())
         }
     }
 }

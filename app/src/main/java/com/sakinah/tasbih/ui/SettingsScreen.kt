@@ -1,5 +1,6 @@
 package com.sakinah.tasbih.ui
 
+import kotlinx.coroutines.launch
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -129,11 +130,14 @@ internal fun TabbedSettingsPage(
     onSelect: (Int) -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     header: (@Composable () -> Unit)? = null,
+    /** A page that adds things, as the wird's, keeps its button here, and its list room under it. */
+    floatingActionButton: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val roomy = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp >= 600
     Scaffold(
         modifier = Modifier.testTag(tag),
+        floatingActionButton = { floatingActionButton?.invoke() },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -173,7 +177,7 @@ internal fun TabbedSettingsPage(
             }
             LazyColumn(
                 modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().weight(1f).testTag("${tag}_options"),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = if (floatingActionButton != null) 96.dp else 24.dp),
                 verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
             ) {
                 if (header != null && !roomy) item(key = "header") { top() }
@@ -392,8 +396,43 @@ fun GeneralSettingsScreen(
     SettingsPage(stringResource(R.string.general_settings), onBack, "general_settings") {
         item { SakinahSectionHeader(stringResource(R.string.appearance)) }
         appearanceItems(state, onSetThemeMode, onSetArabicFontStyle, onSetDynamicColor)
+        item { HorizontalDivider(); Spacer(Modifier.height(16.dp)); DigitsSetting() }
         item { HorizontalDivider() }
         item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
+    }
+}
+
+/**
+ * The digits numbers are written in, for the app and its widgets: «١٢٣» or «123». Every screen
+ * is made again at once, and the widgets drawn again, so nothing keeps the old digits.
+ */
+@Composable
+internal fun DigitsSetting() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = androidx.activity.compose.LocalActivity.current
+    var western by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.sakinah.tasbih.data.DigitStyle.western) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.digits_title), style = MaterialTheme.typography.titleMedium)
+        com.sakinah.tasbih.ui.calendar.CalendarChoices(
+            options = listOf(false, true),
+            selected = western,
+            label = { stringResource(if (it) R.string.digits_western else R.string.digits_hindi) },
+            onSelect = { choice ->
+                if (choice != western) {
+                    western = choice
+                    val app = context.applicationContext
+                    com.sakinah.tasbih.data.DigitStyle.save(app, choice)
+                    com.sakinah.tasbih.widget.widgetScope.launch {
+                        runCatching { com.sakinah.tasbih.widget.PrayerWidgetUpdater(app).updateAll() }
+                        runCatching { com.sakinah.tasbih.widget.CalendarWidgetUpdater(app).updateAll() }
+                        runCatching { com.sakinah.tasbih.wird.WirdSync.refreshViews(app) }
+                    }
+                    activity?.recreate()
+                }
+            },
+            modifier = Modifier.testTag("setting_digits"),
+        )
+        com.sakinah.tasbih.ui.calendar.CalendarHint(stringResource(R.string.digits_hint))
     }
 }
 

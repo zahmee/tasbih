@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.sakinah.tasbih.prayer.AlertSettings
 import com.sakinah.tasbih.prayer.AlertStyle
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -98,9 +97,7 @@ fun PrayerTimesScreen(
             IconButton(onClick = onOpenQibla, modifier = Modifier.testTag("prayer_open_qibla")) {
                 Icon(Icons.Outlined.Explore, stringResource(R.string.qibla_title))
             }
-            IconButton(onClick = onOpenSettings, modifier = Modifier.testTag("prayer_open_settings")) {
-                Icon(Icons.Outlined.Tune, stringResource(R.string.prayer_settings))
-            }
+            com.sakinah.tasbih.ui.SettingsGear(onOpenSettings, "prayer_open_settings")
         },
     ) {
         val schedule = state.schedule

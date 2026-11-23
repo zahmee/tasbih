@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -94,7 +95,7 @@ import com.sakinah.tasbih.ui.SettingToggleRow
 import com.sakinah.tasbih.ui.calendar.CalendarChoices
 import com.sakinah.tasbih.ui.calendar.CalendarHint
 import com.sakinah.tasbih.ui.calendar.CalendarText
-import com.sakinah.tasbih.widget.IslamicPattern
+import com.sakinah.tasbih.widget.MihrabOrnament
 import com.sakinah.tasbih.widget.LineColor
 import com.sakinah.tasbih.widget.LineItem
 import com.sakinah.tasbih.widget.NextMark
@@ -365,6 +366,69 @@ private fun LazyListScope.colorOptions(current: PrayerWidgetStyle, viewModel: Pr
             viewModel.update { it.copy(timeColor = choice) }
         }
     }
+    item(key = "prayers_box") {
+        SettingToggleRow(
+            stringResource(R.string.widget_prayers_box),
+            stringResource(R.string.widget_prayers_box_hint),
+            current.prayersBox,
+            { on -> viewModel.update { it.copy(prayersBox = on) } },
+            "widget_prayers_box",
+        )
+    }
+    if (current.prayersBox) {
+        item(key = "box_surface") {
+            Labelled(stringResource(R.string.widget_box_surface)) {
+                Swatches(
+                    options = WidgetSurface.entries - WidgetSurface.AUTO,
+                    selected = current.boxSurface,
+                    color = { surfaceSample(it) },
+                    label = { surfaceLabel(it) },
+                    onSelect = { choice -> viewModel.update { it.copy(boxSurface = choice) } },
+                )
+            }
+        }
+        item(key = "box_opacity") {
+            Labelled(stringResource(R.string.widget_box_opacity, com.sakinah.tasbih.data.arabicNumber(current.boxOpacity))) {
+                var value by remember(current.boxOpacity) { mutableStateOf(current.boxOpacity.toFloat()) }
+                Slider(
+                    value = value,
+                    onValueChange = { value = it },
+                    onValueChangeFinished = { viewModel.update { it.copy(boxOpacity = value.toInt()) } },
+                    valueRange = 0f..100f,
+                    steps = 19,
+                    modifier = Modifier.testTag("widget_box_opacity"),
+                )
+                CalendarHint(stringResource(R.string.widget_box_opacity_hint))
+            }
+        }
+        item(key = "box_line") {
+            SettingToggleRow(
+                stringResource(R.string.widget_box_line),
+                stringResource(R.string.widget_box_line_hint),
+                current.boxLine,
+                { on -> viewModel.update { it.copy(boxLine = on) } },
+                "widget_box_line",
+            )
+        }
+    }
+    if (current.progress) {
+        item(key = "progress_gradient") {
+            SettingToggleRow(
+                stringResource(R.string.widget_progress_gradient),
+                stringResource(R.string.widget_progress_gradient_hint),
+                current.progressGradient,
+                { on -> viewModel.update { it.copy(progressGradient = on) } },
+                "widget_progress_gradient",
+            )
+        }
+        if (!current.progressGradient) {
+            item(key = "progress_color") {
+                LineColorRow(stringResource(R.string.widget_progress_color), current, current.progressColor, WidgetPalette::accent, "widget_progress_color") { choice ->
+                    viewModel.update { it.copy(progressColor = choice) }
+                }
+            }
+        }
+    }
 }
 
 /** The size of the words and their weights. */
@@ -408,6 +472,7 @@ private fun LazyListScope.fontOptions(current: PrayerWidgetStyle, viewModel: Pra
             CalendarHint(stringResource(R.string.widget_weight_hint))
         }
     }
+    item(key = "digits") { com.sakinah.tasbih.ui.DigitsSetting() }
 }
 
 /** The Islamic touch, and how the next prayer stands out. */
@@ -459,6 +524,21 @@ private fun LazyListScope.ornamentOptions(current: PrayerWidgetStyle, viewModel:
                     )
                 },
                 onSelect = { choice -> viewModel.update { it.copy(nextMark = choice) } },
+            )
+        }
+    }
+    item(key = "mark_color") {
+        LineColorRow(stringResource(R.string.widget_mark_color), current, current.markColor, WidgetPalette::accent, "widget_mark_color") { choice ->
+            viewModel.update { it.copy(markColor = choice) }
+        }
+    }
+    item(key = "mark_current") {
+        Labelled(stringResource(R.string.widget_mark_which)) {
+            CalendarChoices(
+                options = listOf(false, true),
+                selected = current.markCurrent,
+                label = { stringResource(if (it) R.string.widget_mark_current else R.string.widget_mark_next) },
+                onSelect = { choice -> viewModel.update { it.copy(markCurrent = choice) } },
             )
         }
     }
@@ -655,7 +735,7 @@ private val WidgetFont = FontFamily.Default
 
 private fun WidgetWeight.font(): FontWeight = if (this == WidgetWeight.BOLD) FontWeight.Bold else FontWeight.Normal
 
-/** The pattern of the widget, drawn by the widget's own code under the preview's words. */
+/** The mihrab of the widget, drawn by the widget's own code under the preview's words. */
 private fun Modifier.pattern(style: PrayerWidgetStyle, palette: WidgetPalette): Modifier =
     if (style.ornament != WidgetOrnament.PATTERN && style.ornament != WidgetOrnament.FRAME) {
         this
@@ -663,7 +743,7 @@ private fun Modifier.pattern(style: PrayerWidgetStyle, palette: WidgetPalette): 
         drawBehind {
             val color = (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24)
             drawIntoCanvas {
-                IslamicPattern.draw(it.nativeCanvas, size.width, size.height, IslamicPattern.CELL_DP.dp.toPx(), color, IslamicPattern.STROKE_DP.dp.toPx())
+                MihrabOrnament.draw(it.nativeCanvas, size.width, size.height, 1.dp.toPx(), color)
             }
         }
     }
@@ -696,7 +776,7 @@ private fun itemLabel(item: LineItem): String = stringResource(
 
 /** The bar of the time passed since the last prayer, as the widgets draw it. */
 @Composable
-private fun ProgressPreview(schedule: PrayerSchedule, now: Instant, palette: WidgetPalette) {
+private fun ProgressPreview(schedule: PrayerSchedule, now: Instant, palette: WidgetPalette, style: PrayerWidgetStyle) {
     val share = com.sakinah.tasbih.widget.passedShare(schedule.previous(now).time.toInstant(), schedule.next(now).time.toInstant(), now) / 1000f
     val track = Color(palette.textSoft).copy(alpha = 0.25f)
     Box(
@@ -707,7 +787,7 @@ private fun ProgressPreview(schedule: PrayerSchedule, now: Instant, palette: Wid
             .clip(RoundedCornerShape(2.dp))
             .background(track),
     ) {
-        Box(Modifier.fillMaxWidth(share).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(palette.accent)))
+        Box(Modifier.fillMaxWidth(share).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(palette.progress(style, share))))
     }
 }
 
@@ -777,7 +857,7 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
                         }
                     }
                 }
-                if (style.progress && schedule != null) ProgressPreview(schedule, now, palette)
+                if (style.progress && schedule != null) ProgressPreview(schedule, now, palette, style)
             }
         }
     }
@@ -895,21 +975,40 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     if (style.ornament != WidgetOrnament.NONE && style.lines.any { !it.isEmpty }) {
                         KhatamDivider(Modifier.padding(horizontal = 60.dp, vertical = 2.dp), color = accent.copy(alpha = 0.7f))
                     }
-                    Row(Modifier.fillMaxWidth().height((52 * scale).dp)) {
-                        val nameColor = palette.line(style.nameColor)
-                        val timeColor = palette.line(style.timeColor)
+                    val inner = WidgetPalette.inner(style, night)
+                    val boxShape = RoundedCornerShape(10.dp)
+                    val marked = if (style.markCurrent) schedule?.current(now)?.prayer ?: next?.prayer else next?.prayer
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            // The box's own margin is added, so the times keep the room they have without it.
+                            .height(((52 * scale) + if (style.prayersBox) 6 else 0).dp)
+                            .then(
+                                if (style.prayersBox) {
+                                    Modifier
+                                        .background(Color(WidgetPalette.boxColor(style)).copy(alpha = style.boxOpacity / 100f), boxShape)
+                                        .then(if (style.boxLine) Modifier.border(1.dp, accent.copy(alpha = 150 / 255f), boxShape) else Modifier)
+                                        .padding(3.dp)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    ) {
+                        val nameColor = inner.line(style.nameColor)
+                        val timeColor = inner.line(style.timeColor)
+                        val markAccent = Color(inner.accent)
                         ObligatoryPrayers.forEach { prayer ->
-                            val isNext = prayer == next?.prayer
+                            val isNext = prayer == marked
                             val tile = RoundedCornerShape(12.dp)
-                            val markAlpha = palette.markAlpha / 255f
+                            val markAlpha = inner.markAlpha / 255f
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.weight(1f).padding(2.dp),
+                                modifier = Modifier.weight(1f).fillMaxHeight().padding(2.dp),
                             ) {
                                 Text(
                                     text.name(prayer, day?.get(prayer)),
-                                    color = Color(nameColor ?: if (isNext) palette.accent else palette.textSoft),
+                                    color = Color(nameColor ?: if (isNext) inner.accent else inner.textSoft),
                                     fontSize = (13 * scale).sp,
                                     fontFamily = WidgetFont,
                                     fontWeight = (if (isNext) WidgetWeight.BOLD else style.weight).font(),
@@ -918,17 +1017,21 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                                 // As in the widget: the next prayer is marked round its time alone.
                                 Text(
                                     day?.let { text.clock(it[prayer]) } ?: "–",
-                                    color = Color(if (isNext) palette.nextText(style.nextMark) else timeColor ?: palette.text),
-                                    fontSize = (15 * scale).sp,
+                                    color = Color(if (isNext) inner.nextText(style.nextMark) else timeColor ?: inner.text),
+                                    // As in the widget, the wider Arabic digits «123» a little smaller.
+                                    fontSize = ((if (com.sakinah.tasbih.data.DigitStyle.western) 13.5f else 15f) * scale).sp,
                                     fontFamily = WidgetFont,
                                     fontWeight = style.timeWeight.font(),
                                     maxLines = 1,
+                                    softWrap = false,
+                                    // The sketch's cells are a little narrower than the widget's; a time is never cut.
+                                    overflow = TextOverflow.Visible,
                                     modifier = Modifier
                                         .then(
                                             when {
                                                 !isNext -> Modifier
-                                                style.nextMark == NextMark.OUTLINE -> Modifier.border(1.5.dp, accent.copy(alpha = markAlpha), tile)
-                                                else -> Modifier.background(accent.copy(alpha = markAlpha), tile)
+                                                style.nextMark == NextMark.OUTLINE -> Modifier.border(1.5.dp, markAccent.copy(alpha = markAlpha), tile)
+                                                else -> Modifier.background(markAccent.copy(alpha = markAlpha), tile)
                                             },
                                         )
                                         .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -936,7 +1039,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                             }
                         }
                     }
-                    if (style.progress && schedule != null) ProgressPreview(schedule, now, palette)
+                    if (style.progress && schedule != null) ProgressPreview(schedule, now, palette, style)
                 }
             }
         }

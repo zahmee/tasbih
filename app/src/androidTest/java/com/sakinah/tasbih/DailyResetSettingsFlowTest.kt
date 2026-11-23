@@ -21,6 +21,21 @@ import org.junit.Rule
 import org.junit.Test
 
 class DailyResetSettingsFlowTest {
+    companion object {
+        /**
+         * These steps type and read Hindi digits. Android's backup may bring back a phone's
+         * choice of the Arabic digits when the app is installed, so the test sets them first.
+         */
+        @JvmStatic
+        @org.junit.BeforeClass
+        fun hindiDigits() {
+            com.sakinah.tasbih.data.DigitStyle.save(
+                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext,
+                western = false,
+            )
+        }
+    }
+
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private fun waitTag(tag: String) = rule.waitUntil(10_000) { rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
