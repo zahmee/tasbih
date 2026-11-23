@@ -111,6 +111,7 @@ fun HomeScreen(
     onOpenQibla: () -> Unit = {},
     onOpenMonth: () -> Unit = {},
     onOpenTasbih: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val prayerText = remember(context) { PrayerText(context) }
@@ -147,7 +148,7 @@ fun HomeScreen(
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }
 
     val header: @Composable () -> Unit = {
-        HomeHeader(weekday, hijri, gregorian, schedule?.place?.name, prayerText, onOpenCalendar, onChoosePlace)
+        HomeHeader(weekday, hijri, gregorian, schedule?.place?.name, prayerText, onOpenCalendar, onChoosePlace, onOpenSettings)
     }
     val prayer: @Composable () -> Unit = {
         PrayerHero(next, next?.let { prayerText.remaining(Duration.between(now, it.time.toInstant())) }, prayerText, onOpenPrayer, onChoosePlace)
@@ -213,6 +214,7 @@ private fun HomeHeader(
     prayerText: PrayerText,
     onOpenCalendar: () -> Unit,
     onChoosePlace: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -228,6 +230,8 @@ private fun HomeHeader(
                     .semantics { heading() },
             )
             HomeClock(prayerText)
+            // What belongs to the whole app: its look, and about it.
+            SettingsGear(onOpenSettings, "home_open_settings")
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Column(

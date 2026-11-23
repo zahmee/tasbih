@@ -23,8 +23,9 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.DailyResetSettings
 import com.sakinah.tasbih.data.arabicNumber
 
+/** Kept left to right, or in an Arabic line the colon lands before the hours and the clock reads backwards. */
 private fun resetClockText(settings: DailyResetSettings): String =
-    "${arabicNumber(settings.time.hour).padStart(2, '٠')}:${arabicNumber(settings.time.minute).padStart(2, '٠')}"
+    "⁦${arabicNumber(settings.time.hour).padStart(2, '٠')}:${arabicNumber(settings.time.minute).padStart(2, '٠')}⁩"
 
 @Composable
 internal fun isCompactSettingsInput(): Boolean {
@@ -41,18 +42,24 @@ internal fun dailyResetSummary(settings: DailyResetSettings): String = when {
     else -> stringResource(R.string.daily_reset_adhkar_summary, resetClockText(settings))
 }
 
+/**
+ * The daily reset. Each tab's settings show only its own switch, [showTasbih] or [showAdhkar];
+ * the time is one for both, so it shows in each.
+ */
 internal fun LazyListScope.dailyResetSettingsItems(
     settings: DailyResetSettings,
     onSetTasbih: (Boolean) -> Unit,
     onSetAdhkar: (Boolean) -> Unit,
     onSetTime: (Int) -> Unit,
+    showTasbih: Boolean = true,
+    showAdhkar: Boolean = true,
 ) {
     item {
         Text(stringResource(R.string.daily_reset_intro), style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    item { SettingToggleRow(stringResource(R.string.daily_reset_tasbih), stringResource(R.string.daily_reset_tasbih_description), settings.tasbihEnabled, onSetTasbih, "setting_daily_reset_tasbih") }
-    item { SettingToggleRow(stringResource(R.string.daily_reset_adhkar), stringResource(R.string.daily_reset_adhkar_description), settings.adhkarEnabled, onSetAdhkar, "setting_daily_reset_adhkar") }
+    if (showTasbih) item { SettingToggleRow(stringResource(R.string.daily_reset_tasbih), stringResource(R.string.daily_reset_tasbih_description), settings.tasbihEnabled, onSetTasbih, "setting_daily_reset_tasbih") }
+    if (showAdhkar) item { SettingToggleRow(stringResource(R.string.daily_reset_adhkar), stringResource(R.string.daily_reset_adhkar_description), settings.adhkarEnabled, onSetAdhkar, "setting_daily_reset_adhkar") }
     item { HorizontalDivider(); DailyResetTimeSetting(settings, onSetTime) }
     item {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

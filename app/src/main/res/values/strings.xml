@@ -1,5 +1,4 @@
 <resources>
-    <string name="daily_reset_settings">التصفير اليومي</string>
     <string name="daily_reset_intro">اختر ما يُصفّر تلقائيًا كل يوم، وحدد الموعد المناسب لك.</string>
     <string name="daily_reset_tasbih">تصفير المسبحة يوميًا</string>
     <string name="daily_reset_tasbih_description">بدء عدادات جميع أذكار المسبحة من الصفر في الموعد المحدد.</string>
@@ -51,10 +50,6 @@
     <string name="no_recent_entries">ابدأ بذكر تحب قراءته</string>
     <string name="no_recent_entries_hint">ستظهر هنا آخر الأذكار التي فتحتها.</string>
     <string name="browse_library">تصفح المكتبة</string>
-    <string name="reading_settings_summary">حجم النص والتشكيل والمصدر والانتقال</string>
-    <string name="tasbih_settings_summary">حجم الذكر والاهتزاز مع العد</string>
-    <string name="appearance_settings_summary">المظهر الفاتح والداكن والخط العربي</string>
-    <string name="activity_entry_summary">ملخص اليوم والأسبوع وسجل النشاط</string>
     <string name="reader_actions">خيارات الذكر</string>
     <string name="undo_reader_count">تراجع عن آخر عدة</string>
     <string name="review_collection">عرض الأذكار</string>
@@ -88,7 +83,6 @@
     <string name="home">اليوم</string>
     <string name="library">المكتبة</string>
     <string name="tasbih">المسبحة</string>
-    <string name="more">المزيد</string>
     <string name="nav_prayer">الصلاة</string>
     <string name="nav_adhkar">الأذكار</string>
     <string name="back">رجوع</string>
@@ -247,8 +241,12 @@
     <string name="confirm_reset">تصفير</string>
 
     <!-- Settings -->
-    <string name="settings">المزيد</string>
-    <string name="settings_subtitle">خصّص القراءة والمسبحة والمظهر بما يناسبك</string>
+    <string name="adhkar_settings">إعدادات الأذكار</string>
+    <string name="tasbih_settings_title">إعدادات المسبحة</string>
+    <string name="general_settings">الإعدادات العامة</string>
+    <string name="settings_tab_sound">الصوت</string>
+    <string name="settings_tab_reset">التصفير</string>
+    <string name="open_settings">الإعدادات</string>
     <string name="achievements">سجل الإنجاز</string>
     <string name="achievements_teaser">أثر ذكرك محفوظ يومًا بعد يوم</string>
     <string name="achievements_teaser_count">%1$d ذكرًا مسجلًا • %2$d يومًا نشطًا</string>
@@ -622,7 +620,6 @@
     <string name="qibla_map_notice">تُحمَّل الصور من خرائط قوقل، فتصل إليها المنطقة المعروضة.</string>
     <string name="qibla_map_description">صورة بالقمر الصناعي تتوسطها نقطة موقعك، وخط من موقعك باتجاه القبلة</string>
     <string name="qibla_title">القبلة</string>
-    <string name="qibla_entry_summary">اتجاه الكعبة بالبوصلة، والمسافة إليها</string>
     <string name="qibla_no_compass">لا توجد بوصلة في هذا الهاتف. اتجاه القبلة %1$s من الشمال، باتجاه عقارب الساعة.</string>
     <string name="qibla_waiting">جارٍ قراءة البوصلة…</string>
     <string name="qibla_facing">أنت تواجه القبلة</string>

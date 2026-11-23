@@ -24,8 +24,10 @@ class DailyResetSettingsFlowTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private fun waitTag(tag: String) = rule.waitUntil(10_000) { rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    /** The settings page in front; each tab's settings list their options under their own tag. */
+    private var list = "adhkar_settings_options"
     private fun scrollSetting(tag: String): SemanticsNodeInteraction {
-        rule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag(tag))
+        rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag))
         return rule.onNodeWithTag(tag).performScrollTo()
     }
     private fun back() { rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() } }
@@ -41,7 +43,7 @@ class DailyResetSettingsFlowTest {
     }
 
     @Test fun settingsPersistWithoutResettingCountsAndOurQuranOpensItsOwnStorePage() {
-        waitTag("nav_settings")
+        waitTag("nav_tasbih")
         lateinit var vm: SakinahViewModel
         rule.activityRule.scenario.onActivity { vm = ViewModelProvider(it)[SakinahViewModel::class.java] }
         val theme = if (InstrumentationRegistry.getArguments().getString("gallery", "").contains("dark")) ThemeMode.Dark else ThemeMode.Light
@@ -57,12 +59,25 @@ class DailyResetSettingsFlowTest {
         rule.activityRule.scenario.onActivity { vm.incrementTasbih() }
         rule.waitUntil(10_000) { vm.uiState.value.tasbihCount == beforeIncrement + 1 }
         val before = vm.uiState.value.tasbihCount
-        rule.onNodeWithTag("nav_settings").performClick()
-        rule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("open_daily_reset_settings"))
-        rule.onNodeWithTag("open_daily_reset_settings").performClick()
-        waitTag("settings_detail_dailyreset")
+        // The tasbih's reset is in the tasbih's own settings, behind the gear on its page.
+        rule.onNodeWithTag("nav_tasbih").performClick()
+        waitTag("tasbih_open_settings")
+        rule.onNodeWithTag("tasbih_open_settings").performClick()
+        waitTag("tasbih_settings")
+        rule.onNodeWithTag("tasbih_tab_reset").performClick()
+        list = "tasbih_settings_options"
+        rule.onNodeWithTag("setting_daily_reset_adhkar").assertDoesNotExist()
         scrollSetting("setting_daily_reset_tasbih").assertIsOn().performClick()
         rule.waitUntil(10_000) { !vm.uiState.value.dailyReset.tasbihEnabled }
+        back()
+        // And the adhkar's in the adhkar's.
+        rule.onNodeWithTag("nav_library").performClick()
+        waitTag("library_open_settings")
+        rule.onNodeWithTag("library_open_settings").performClick()
+        waitTag("adhkar_settings")
+        rule.onNodeWithTag("adhkar_tab_reset").performClick()
+        list = "adhkar_settings_options"
+        rule.onNodeWithTag("setting_daily_reset_tasbih").assertDoesNotExist()
         scrollSetting("setting_daily_reset_adhkar").assertIsOn().performClick()
         rule.waitUntil(10_000) { !vm.uiState.value.dailyReset.adhkarEnabled }
         scrollSetting("daily_reset_summary").assertTextContains("متوقف", substring = true)
@@ -84,9 +99,9 @@ class DailyResetSettingsFlowTest {
         rule.waitUntil(10_000) { vm.uiState.value.dailyReset.minuteOfDay == 270 }
         assertEquals(before, vm.uiState.value.tasbihCount)
         rule.activityRule.scenario.recreate()
-        waitTag("settings_detail_dailyreset")
-        scrollSetting("setting_daily_reset_tasbih").assertIsOff().performClick()
+        waitTag("adhkar_settings")
         scrollSetting("setting_daily_reset_adhkar").assertIsOff().performClick()
+        rule.activityRule.scenario.onActivity { vm.setTasbihDailyReset(true) }
         rule.waitUntil(10_000) { vm.uiState.value.dailyReset == DailyResetSettings(minuteOfDay = 270) }
         scrollSetting("daily_reset_summary").assertTextContains("٠٤:٣٠", substring = true)
         capture("saved")
@@ -96,8 +111,12 @@ class DailyResetSettingsFlowTest {
         scrollSetting("daily_reset_time_cancel").performClick()
         assertEquals(270, vm.uiState.value.dailyReset.minuteOfDay)
         back()
-        waitTag("settings_list")
-        rule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("open_about"))
+        // About the app is in the general settings, behind the gear on the day's page.
+        rule.onNodeWithTag("nav_home").performClick()
+        waitTag("home_open_settings")
+        rule.onNodeWithTag("home_open_settings").performClick()
+        waitTag("general_settings")
+        rule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("open_about"))
         rule.onNodeWithTag("open_about").performClick()
         rule.onNodeWithTag("about_list").performScrollToNode(hasTestTag("about_quran_store"))
         rule.onNodeWithTag("about_quran_store").assertIsDisplayed()

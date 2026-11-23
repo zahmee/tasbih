@@ -88,9 +88,11 @@ private sealed interface AppDestination {
     data object Library : AppDestination
     data object Tasbih : AppDestination
     data object TasbihPhrases : AppDestination
-    data object Settings : AppDestination
+    /** Each tab's own settings, behind the gear on its page, since the «more» tab went. */
+    data object AdhkarSettings : AppDestination
+    data object TasbihSettings : AppDestination
+    data object GeneralSettings : AppDestination
     data object SoundSettings : AppDestination
-    data class SettingsDetail(val section: SettingsSection) : AppDestination
     data object Achievements : AppDestination
     data object About : AppDestination
     data class Reader(val collectionId: String, val reviewCompleted: Boolean = false) : AppDestination
@@ -114,11 +116,12 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.Library -> "library"
     AppDestination.Tasbih -> "tasbih"
     AppDestination.TasbihPhrases -> "phrases"
-    AppDestination.Settings -> "settings"
+    AppDestination.AdhkarSettings -> "adhkar-settings"
+    AppDestination.TasbihSettings -> "tasbih-settings"
+    AppDestination.GeneralSettings -> "general-settings"
     AppDestination.SoundSettings -> "sound"
     AppDestination.Achievements -> "achievements"
     AppDestination.About -> "about"
-    is AppDestination.SettingsDetail -> "settings:${section.name}"
     is AppDestination.Reader -> "reader:$collectionId:$reviewCompleted"
     is AppDestination.Calendar -> "calendar:${startEpochDay ?: ""}"
     AppDestination.CalendarOccasions -> "calendar-occasions"
@@ -139,7 +142,11 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "library" -> AppDestination.Library
     "tasbih" -> AppDestination.Tasbih
     "phrases" -> AppDestination.TasbihPhrases
-    "settings" -> AppDestination.Settings
+    "adhkar-settings" -> AppDestination.AdhkarSettings
+    "tasbih-settings" -> AppDestination.TasbihSettings
+    "general-settings" -> AppDestination.GeneralSettings
+    // Saved by versions with the «more» tab; their pages now live in the tabs' own settings.
+    "settings" -> AppDestination.GeneralSettings
     "sound" -> AppDestination.SoundSettings
     "achievements" -> AppDestination.Achievements
     "about" -> AppDestination.About
@@ -158,7 +165,11 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
         val parts = route.split(':')
         when (parts.first()) {
             "reader" -> AppDestination.Reader(parts[1], parts.getOrNull(2).toBoolean())
-            "settings" -> AppDestination.SettingsDetail(SettingsSection.valueOf(parts[1]))
+            "settings" -> when (SettingsSection.valueOf(parts[1])) {
+                SettingsSection.Reading -> AppDestination.AdhkarSettings
+                SettingsSection.Tasbih, SettingsSection.DailyReset -> AppDestination.TasbihSettings
+                SettingsSection.Appearance -> AppDestination.GeneralSettings
+            }
             "calendar" -> AppDestination.Calendar(parts.getOrNull(1)?.toLongOrNull())
             else -> null
         }
@@ -448,6 +459,7 @@ private fun SakinahNavigation(
                                 onOpenQibla = { backStack.add(AppDestination.Qibla) },
                                 onOpenMonth = { backStack.add(AppDestination.PrayerMonth) },
                                 onOpenTasbih = ::openTasbih,
+                                onOpenSettings = { backStack.add(AppDestination.GeneralSettings) },
                             )
                         }
 
@@ -459,6 +471,7 @@ private fun SakinahNavigation(
                                 onToggleFavorite = viewModel::toggleFavorite,
                                 onRetry = viewModel::retryContentLoad,
                                 onOpenTasbih = ::openTasbih,
+                                onOpenSettings = { backStack.add(AppDestination.AdhkarSettings) },
                             )
                         }
 
@@ -479,6 +492,7 @@ private fun SakinahNavigation(
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
                                 onSetTextScale = viewModel::setTasbihTextScale,
                                 onBack = backFor(destination),
+                                onOpenSettings = { backStack.add(AppDestination.TasbihSettings) },
                             )
                         }
 
@@ -494,35 +508,44 @@ private fun SakinahNavigation(
                             )
                         }
 
-                        AppDestination.Settings -> NavEntry(destination) {
-                            SettingsScreen(
-                                state = latestState.value,
-                                onOpenSection = { backStack.add(AppDestination.SettingsDetail(it)) },
-                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
-                                onOpenAbout = { backStack.add(AppDestination.About) },
-                                onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
-                                onOpenQibla = { backStack.add(AppDestination.Qibla) },
-                            )
-                        }
-
-                        is AppDestination.SettingsDetail -> NavEntry(destination) {
-                            SettingsDetailScreen(
-                                section = destination.section,
+                        AppDestination.AdhkarSettings -> NavEntry(destination) {
+                            AdhkarSettingsScreen(
                                 state = latestState.value,
                                 onBack = ::navigateBack,
                                 onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
+                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                onSetShowDiacritics = viewModel::setShowDiacritics,
+                                onSetTextScale = viewModel::setTextScale,
+                                onSetShowReference = viewModel::setShowReferenceByDefault,
+                                onSetAutoAdvance = viewModel::setAutoAdvanceDhikrEnabled,
+                                onSetReaderSoundEnabled = viewModel::setDhikrCompletionSoundEnabled,
+                                onSetAdhkarDailyReset = viewModel::setAdhkarDailyReset,
+                                onSetDailyResetTime = viewModel::setDailyResetTime,
+                            )
+                        }
+
+                        AppDestination.TasbihSettings -> NavEntry(destination) {
+                            TasbihSettingsScreen(
+                                state = latestState.value,
+                                onBack = ::navigateBack,
+                                onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
+                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                onSetTasbihTextScale = viewModel::setTasbihTextScale,
+                                onSetHaptics = viewModel::setHaptics,
+                                onSetTasbihSoundEnabled = viewModel::setTasbihCompletionSoundEnabled,
+                                onSetTasbihDailyReset = viewModel::setTasbihDailyReset,
+                                onSetDailyResetTime = viewModel::setDailyResetTime,
+                            )
+                        }
+
+                        AppDestination.GeneralSettings -> NavEntry(destination) {
+                            GeneralSettingsScreen(
+                                state = latestState.value,
+                                onBack = ::navigateBack,
+                                onOpenAbout = { backStack.add(AppDestination.About) },
                                 onSetThemeMode = viewModel::setThemeMode,
                                 onSetArabicFontStyle = viewModel::setArabicFontStyle,
                                 onSetDynamicColor = viewModel::setDynamicColor,
-                                onSetHaptics = viewModel::setHaptics,
-                                onSetShowDiacritics = viewModel::setShowDiacritics,
-                                onSetTextScale = viewModel::setTextScale,
-                                onSetTasbihTextScale = viewModel::setTasbihTextScale,
-                                onSetShowReference = viewModel::setShowReferenceByDefault,
-                                onSetAutoAdvance = viewModel::setAutoAdvanceDhikrEnabled,
-                                onSetTasbihDailyReset = viewModel::setTasbihDailyReset,
-                                onSetAdhkarDailyReset = viewModel::setAdhkarDailyReset,
-                                onSetDailyResetTime = viewModel::setDailyResetTime,
                             )
                         }
 
@@ -755,13 +778,13 @@ private fun Any?.topLevelDestination(): AppDestination? = when (this) {
     is AppDestination.Calendar -> CalendarTab
     AppDestination.Library -> AppDestination.Library
     AppDestination.Tasbih -> AppDestination.Tasbih
-    AppDestination.Settings -> AppDestination.Settings
     else -> null
 }
 
 /**
  * The bottom bar since November 20, 2026: the day, prayer and the calendar first, then the
- * adhkar and the tasbih, which the user wanted a tap away, and more.
+ * adhkar and the tasbih, which the user wanted a tap away. The «more» tab went on November 23,
+ * 2026, when each tab took its own settings behind a gear on its page.
  */
 private data class AppTab(
     val destination: AppDestination,
@@ -776,7 +799,6 @@ private val AppTabs = listOf(
     AppTab(CalendarTab, IslamicNavSymbol.Calendar, R.string.cal_title, "nav_calendar"),
     AppTab(AppDestination.Library, IslamicNavSymbol.Manuscript, R.string.nav_adhkar, "nav_library"),
     AppTab(AppDestination.Tasbih, IslamicNavSymbol.Tasbih, R.string.my_tasbih, "nav_tasbih"),
-    AppTab(AppDestination.Settings, IslamicNavSymbol.More, R.string.more, "nav_settings"),
 )
 
 @Composable

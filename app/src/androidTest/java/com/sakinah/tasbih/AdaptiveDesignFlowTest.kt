@@ -69,11 +69,10 @@ class AdaptiveDesignFlowTest {
         rule.onNodeWithTag("reader_count_button").assertIsDisplayed()
         capture("reader-focus")
         tap("reader_exit_focus_mode"); back()
-        tap("nav_settings"); waitTag("settings_list"); capture("more")
-        scrollTap("settings_list", "open_reading_settings"); waitTag("settings_detail_list"); capture("reading-settings"); back()
-        scrollTap("settings_list", "open_appearance_settings"); waitTag("settings_detail_list"); capture("appearance"); back()
-        scrollTap("settings_list", "open_sound_settings"); waitTag("sound_settings_screen"); capture("sound"); back()
-        scrollTap("settings_list", "open_achievements"); waitTag("achievements_list"); capture("activity")
+        // Each tab's settings sit behind the gear on its page since the «more» tab went.
+        tap("library_open_settings"); waitTag("adhkar_settings"); capture("reading-settings")
+        tap("adhkar_tab_sound"); waitTag("open_sound_settings"); tap("open_sound_settings"); waitTag("sound_settings_screen"); capture("sound"); back()
+        tap("open_achievements"); waitTag("achievements_list"); capture("activity")
         scrollTap("achievements_list", "activity_expand_hours")
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("hourly_activity"))
         capture("hours")
@@ -83,8 +82,9 @@ class AdaptiveDesignFlowTest {
         scrollTap("achievements_list", "activity_expand_calendar")
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_calendar"))
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_calendar_grid"))
-        capture("calendar"); back()
-        scrollTap("settings_list", "open_about"); waitTag("about_screen"); capture("about"); back()
+        capture("calendar"); back(); back()
+        tap("nav_home"); tap("home_open_settings"); waitTag("general_settings"); capture("appearance")
+        scrollTap("settings_detail_list", "open_about"); waitTag("about_screen"); capture("about"); back(); back()
         val longText = "سبحان الله والحمد لله ".repeat(22) + "نهاية الذكر"
         rule.activityRule.scenario.onActivity { vm.addCustomPhrase(longText, 33) }
         rule.waitUntil(10_000) { vm.uiState.value.selectedPhrase.text == longText }

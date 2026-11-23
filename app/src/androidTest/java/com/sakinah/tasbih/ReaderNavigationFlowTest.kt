@@ -49,7 +49,7 @@ class ReaderNavigationFlowTest {
         rule.onNodeWithTag("reader_focus_mode").assertIsDisplayed()
         rule.onNodeWithTag("reader_actions").assertIsDisplayed()
         rule.onNodeWithTag("reader_dhikr_text").assertIsDisplayed()
-        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_tasbih", "nav_settings").forEach {
+        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_tasbih").forEach {
             rule.onNodeWithTag(it).assertIsDisplayed()
         }
         rule.onNodeWithTag(selectedTag).assertIsSelected()
@@ -70,7 +70,7 @@ class ReaderNavigationFlowTest {
         waitTag("reader_focus_screen")
         rule.onNodeWithTag("reader_top_bar").assertDoesNotExist()
         rule.onNodeWithTag("reader_actions").assertDoesNotExist()
-        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_tasbih", "nav_settings").forEach {
+        listOf("nav_home", "nav_prayer", "nav_calendar", "nav_library", "nav_tasbih").forEach {
             rule.onNodeWithTag(it).assertDoesNotExist()
         }
         rule.onNodeWithTag("reader_count_button").assertIsDisplayed()

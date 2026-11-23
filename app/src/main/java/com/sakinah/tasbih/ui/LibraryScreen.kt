@@ -83,6 +83,7 @@ fun LibraryScreen(
     onToggleFavorite: (String) -> Unit,
     onRetry: () -> Unit,
     onOpenTasbih: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf<DhikrGroup?>(null) }
@@ -115,11 +116,15 @@ fun LibraryScreen(
             verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Medium),
         ) {
             item {
-                LibraryHeader(selectedGroup) {
-                    query = ""
-                    selectedGroup = null
-                    filter = LibraryFilter.All
-                }
+                LibraryHeader(
+                    selectedGroup,
+                    onBackToSections = {
+                        query = ""
+                        selectedGroup = null
+                        filter = LibraryFilter.All
+                    },
+                    onOpenSettings = onOpenSettings,
+                )
             }
             if (state.isLoading || state.contentLoadFailed) {
                 item { ContentStatusCard(state = state, onRetry = onRetry) }
@@ -225,13 +230,14 @@ private fun LibraryEntryRow(result: DhikrSearchResult, state: SakinahUiState, on
 }
 
 @Composable
-private fun LibraryHeader(selectedGroup: DhikrGroup?, onBackToSections: () -> Unit) {
+private fun LibraryHeader(selectedGroup: DhikrGroup?, onBackToSections: () -> Unit, onOpenSettings: () -> Unit) {
     if (selectedGroup == null) {
         SakinahScreenHeader(
             title = stringResource(R.string.hisn_library),
             subtitle = stringResource(R.string.library_subtitle),
             // The user asked for the app's mark off this page, and the tasbih has its own tab now.
             showBrand = false,
+            trailing = { SettingsGear(onOpenSettings, "library_open_settings") },
         )
     } else {
         Row(verticalAlignment = Alignment.CenterVertically) {

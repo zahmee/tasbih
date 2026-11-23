@@ -149,11 +149,12 @@ class SakinahCoreFlowTest {
         waitForText("ذِكْرٌ مُعَدَّل")
         waitForText("الدورة الحالية 1 من 9")
 
-        waitForTag("nav_settings")
-        composeRule.onNodeWithTag("nav_settings").performClick()
-        // The list is lazy: a row below the fold exists only once it is scrolled to, as below.
-        waitForTag("settings_list")
-        composeRule.onNodeWithTag("open_appearance_settings").performScrollTo().performClick()
+        // The look of the app is in the general settings, behind the gear on the day's page.
+        waitForTag("nav_home")
+        composeRule.onNodeWithTag("nav_home").performClick()
+        waitForTag("home_open_settings")
+        composeRule.onNodeWithTag("home_open_settings").performClick()
+        waitForTag("general_settings")
         composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("theme_dark"))
         composeRule.onNodeWithTag("theme_dark").performClick()
         composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("font_baqiyat"))
@@ -161,8 +162,12 @@ class SakinahCoreFlowTest {
         waitForSelectedTag("font_baqiyat")
         composeRule.onNodeWithTag("font_baqiyat").assertIsSelected()
         composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("open_achievements"))
-        composeRule.onNodeWithTag("open_achievements").performScrollTo().performClick()
+        // The record of what was done opens from the tasbih's own settings.
+        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        waitForTag("tasbih_open_settings")
+        composeRule.onNodeWithTag("tasbih_open_settings").performClick()
+        waitForTag("open_achievements")
+        composeRule.onNodeWithTag("open_achievements").performClick()
         waitForTag("achievements_screen")
 
         composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_expand_sources"))
@@ -199,9 +204,10 @@ class SakinahCoreFlowTest {
     fun aboutScreenShowsOfficialContactChannels() {
         waitForTag("home_featured")
 
-        composeRule.onNodeWithTag("nav_settings").performClick()
-        waitForTag("settings_list")
-        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("open_about"))
+        waitForTag("home_open_settings")
+        composeRule.onNodeWithTag("home_open_settings").performClick()
+        waitForTag("general_settings")
+        composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("open_about"))
         composeRule.onNodeWithTag("open_about").performClick()
 
         waitForTag("about_screen")
@@ -379,9 +385,13 @@ class SakinahCoreFlowTest {
     @Test
     fun completionSoundSettingsCanBePreviewedAndSurviveRecreation() {
         waitForTag("home_featured")
-        composeRule.onNodeWithTag("nav_settings").performClick()
-        waitForTag("settings_list")
-        composeRule.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("open_sound_settings"))
+        // The tone is reached from the tasbih's (and the adhkar's) own settings, on their sound tab.
+        composeRule.onNodeWithTag("nav_tasbih").performClick()
+        waitForTag("tasbih_open_settings")
+        composeRule.onNodeWithTag("tasbih_open_settings").performClick()
+        waitForTag("tasbih_tab_sound")
+        composeRule.onNodeWithTag("tasbih_tab_sound").performClick()
+        waitForTag("open_sound_settings")
         composeRule.onNodeWithTag("open_sound_settings").performClick()
         waitForTag("sound_settings_screen")
 
