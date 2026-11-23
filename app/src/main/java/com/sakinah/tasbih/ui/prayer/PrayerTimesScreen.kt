@@ -181,12 +181,9 @@ private fun Times(
             TextButton(onClick = onChoosePlace) { Text(stringResource(R.string.prayer_change_place)) }
         }
 
-        NextPrayerCard(
-            name = text.name(next.prayer, next.time),
-            time = text.time(next.time),
-            remaining = text.remaining(Duration.between(now, next.time.toInstant())),
-            tomorrow = next.tomorrow,
-        )
+        val phase = remember(schedule, now.epochSecond / 60) { schedule.phase(now) }
+        val words = prayerClockWords(phase, now, text)
+        NextPrayerCard(label = words.label, name = words.name, time = words.time, remaining = words.span)
 
         Surface(
             shape = MaterialTheme.shapes.large,
@@ -239,7 +236,7 @@ private fun Times(
 
 /** The next prayer, dressed as the home screen's lead card. */
 @Composable
-private fun NextPrayerCard(name: String, time: String, remaining: String, tomorrow: Boolean) {
+private fun NextPrayerCard(label: String, name: String, time: String, remaining: String) {
     Surface(
         shape = FeatureShape,
         color = MaterialTheme.colorScheme.primary,
@@ -248,10 +245,7 @@ private fun NextPrayerCard(name: String, time: String, remaining: String, tomorr
     ) {
         OrnamentedFeature(MaterialTheme.colorScheme.onPrimary) {
             Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    stringResource(if (tomorrow) R.string.prayer_next_tomorrow else R.string.prayer_next),
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                Text(label, style = MaterialTheme.typography.titleSmall)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         name,

@@ -16,6 +16,7 @@ import com.sakinah.tasbih.prayer.AlertStyle
 import com.sakinah.tasbih.prayer.PrayerAlert
 import com.sakinah.tasbih.prayer.AsrChoice
 import com.sakinah.tasbih.prayer.HighLatitudeChoice
+import com.sakinah.tasbih.prayer.ObligatoryPrayers
 import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerMethod
 import com.sakinah.tasbih.prayer.PrayerPlace
@@ -92,6 +93,12 @@ class PrayerPreferencesRepository internal constructor(
         preferences[Keys.adjustments] = SavedMaps.encode(updated)
     }
 
+    /** Every prayer's iqama is kept, a zero included, as the defaults are not zero. */
+    suspend fun setIqama(prayer: Prayer, minutes: Int) = dataStore.edit { preferences ->
+        val current = SavedMaps.decodeStrings(preferences[Keys.iqama])
+        preferences[Keys.iqama] = SavedMaps.encode(current + (prayer.name to minutes.coerceIn(0, PrayerSettings.MAX_IQAMA)))
+    }
+
     private fun read(preferences: Preferences): PrayerSettings {
         val latitude = preferences[Keys.latitude]
         val longitude = preferences[Keys.longitude]
@@ -120,6 +127,9 @@ class PrayerPreferencesRepository internal constructor(
             }.toMap(),
             followDevice = preferences[Keys.followDevice] ?: true,
             qiblaSatellite = preferences[Keys.qiblaSatellite] ?: false,
+            iqama = PrayerSettings.DEFAULT_IQAMA + SavedMaps.decodeStrings(preferences[Keys.iqama]).mapNotNull { (name, minutes) ->
+                ObligatoryPrayers.firstOrNull { it.name == name }?.let { it to minutes }
+            },
         )
     }
 
@@ -152,6 +162,7 @@ class PrayerPreferencesRepository internal constructor(
         val asr = stringPreferencesKey("asr")
         val highLatitude = stringPreferencesKey("high_latitude")
         val adjustments = stringSetPreferencesKey("adjustments")
+        val iqama = stringSetPreferencesKey("iqama")
         val alerts = stringSetPreferencesKey("alerts")
         val tone = stringPreferencesKey("alert_tone")
         val adhan = stringPreferencesKey("alert_adhan")

@@ -53,8 +53,12 @@ class AlertPlannerTest {
 
     @Test
     fun `widgets move on at every time of the day, sunrise included`() {
-        assertEquals(LocalTime.parse("06:06"), AlertPlanner.nextBoundary(riyadh, at("05:00")).toLocalTime())
-        assertEquals(LocalTime.parse("14:45"), AlertPlanner.nextBoundary(riyadh, at("12:00")).toLocalTime())
+        // Fajr's iqama at 05:11 first, then the end of the count after it, then sunrise.
+        assertEquals(LocalTime.parse("05:11"), AlertPlanner.nextBoundary(riyadh, at("05:00")).toLocalTime())
+        assertEquals(LocalTime.parse("06:06"), AlertPlanner.nextBoundary(riyadh, at("05:30")).toLocalTime())
+        // Dhuhr's iqama at 11:57 and the end of the count after it at 12:12 come before Asr.
+        assertEquals(LocalTime.parse("12:12"), AlertPlanner.nextBoundary(riyadh, at("12:00")).toLocalTime())
+        assertEquals(LocalTime.parse("14:45"), AlertPlanner.nextBoundary(riyadh, at("12:30")).toLocalTime())
         val night = AlertPlanner.nextBoundary(riyadh, at("20:00"))
         assertEquals(date.plusDays(1), night.toLocalDate())
     }

@@ -111,8 +111,10 @@ object AlertPlanner {
         val today = schedule.today(now)
         return (-1L..1L).asSequence()
             .map { schedule.day(today.plusDays(it)) }
-            .flatMap { day -> Prayer.entries.asSequence().map { day[it] } }
-            .first { it.toInstant().isAfter(now) }
+            // The iqamas and the ends of the counts after them change the widgets' clock too.
+            .flatMap { day -> Prayer.entries.map { day[it] } + schedule.iqamaChanges(day) }
+            .filter { it.toInstant().isAfter(now) }
+            .minBy { it.toInstant() }
     }
 
     private fun events(day: PrayerDay, settings: AlertSettings): Sequence<AlertEvent> = AlertPrayers.asSequence().flatMap { prayer ->

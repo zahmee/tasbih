@@ -1,5 +1,6 @@
 package com.sakinah.tasbih.ui.prayer
 
+import androidx.annotation.StringRes
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.widget.Toast
@@ -46,6 +47,7 @@ import com.sakinah.tasbih.R
 import com.sakinah.tasbih.data.arabicNumber
 import com.sakinah.tasbih.prayer.AsrChoice
 import com.sakinah.tasbih.prayer.HighLatitudeChoice
+import com.sakinah.tasbih.prayer.ObligatoryPrayers
 import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerMethod
 import com.sakinah.tasbih.prayer.PrayerSettings
@@ -183,6 +185,22 @@ fun PrayerSettingsScreen(
                         )
                     }
                 }
+                // The minutes from each adhan to its iqama, for the clock in the app and on the widgets.
+                item(key = "iqama-header") { SakinahSectionHeader(stringResource(R.string.prayer_section_iqama)) }
+                item(key = "iqama-hint") { CalendarHint(stringResource(R.string.prayer_iqama_hint)) }
+                ObligatoryPrayers.forEach { prayer ->
+                    item(key = "iqama-${prayer.name}") {
+                        AdjustRow(
+                            name = text.name(prayer),
+                            minutes = settings.iqamaFor(prayer),
+                            onChange = { viewModel.setIqama(prayer, it) },
+                            range = 0..PrayerSettings.MAX_IQAMA,
+                            signed = false,
+                            less = R.string.prayer_iqama_less,
+                            more = R.string.prayer_iqama_more,
+                        )
+                    }
+                }
             }
             PrayerTab.WIDGETS -> {
                 item {
@@ -281,19 +299,28 @@ private fun MethodRow(title: String, detail: String?, selected: Boolean, onClick
 }
 
 @Composable
-private fun AdjustRow(name: String, minutes: Int, onChange: (Int) -> Unit) {
-    val max = PrayerSettings.MAX_ADJUSTMENT
+private fun AdjustRow(
+    name: String,
+    minutes: Int,
+    onChange: (Int) -> Unit,
+    range: IntRange = -PrayerSettings.MAX_ADJUSTMENT..PrayerSettings.MAX_ADJUSTMENT,
+    /** A plus or minus before the minutes, for a change to a time; an iqama's minutes have none. */
+    signed: Boolean = true,
+    @StringRes less: Int = R.string.prayer_adjust_less,
+    @StringRes more: Int = R.string.prayer_adjust_more,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        IconButton(onClick = { onChange(minutes - 1) }, enabled = minutes > -max) {
-            Icon(Icons.Outlined.Remove, stringResource(R.string.prayer_adjust_less, name))
+        IconButton(onClick = { onChange(minutes - 1) }, enabled = minutes > range.first) {
+            Icon(Icons.Outlined.Remove, stringResource(less, name))
         }
         // Kept left to right, or the sign would land after the digits in Arabic.
         val value = when {
+            !signed -> arabicNumber(minutes)
             minutes > 0 -> "\u2066+${arabicNumber(minutes)}\u2069"
             minutes < 0 -> "\u2066−${arabicNumber(abs(minutes))}\u2069"
             else -> arabicNumber(0)
@@ -304,8 +331,8 @@ private fun AdjustRow(name: String, minutes: Int, onChange: (Int) -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.width(88.dp),
         )
-        IconButton(onClick = { onChange(minutes + 1) }, enabled = minutes < max) {
-            Icon(Icons.Outlined.Add, stringResource(R.string.prayer_adjust_more, name))
+        IconButton(onClick = { onChange(minutes + 1) }, enabled = minutes < range.last) {
+            Icon(Icons.Outlined.Add, stringResource(more, name))
         }
     }
 }
