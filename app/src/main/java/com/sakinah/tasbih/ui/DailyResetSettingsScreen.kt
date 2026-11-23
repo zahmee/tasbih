@@ -25,7 +25,7 @@ import com.sakinah.tasbih.data.arabicNumber
 
 /** Kept left to right, or in an Arabic line the colon lands before the hours and the clock reads backwards. */
 private fun resetClockText(settings: DailyResetSettings): String =
-    "⁦${com.sakinah.tasbih.data.twoDigits(settings.time.hour)}:${com.sakinah.tasbih.data.twoDigits(settings.time.minute)}⁩"
+    "\u2066${com.sakinah.tasbih.data.twoDigits(settings.time.hour)}:${com.sakinah.tasbih.data.twoDigits(settings.time.minute)}\u2069"
 
 @Composable
 internal fun isCompactSettingsInput(): Boolean {
