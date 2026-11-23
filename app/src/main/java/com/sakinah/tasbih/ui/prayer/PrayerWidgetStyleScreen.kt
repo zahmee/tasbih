@@ -1095,12 +1095,12 @@ private fun previewClock(schedule: PrayerSchedule?, now: Instant, text: PrayerTe
         is PrayerPhase.ToAdhan -> stringResource(
             R.string.widget_countdown,
             text.name(phase.next.prayer, phase.next.time),
-            "⁦" + clock(Duration.between(now, phase.next.time.toInstant())) + "⁩",
+            "\u2066" + clock(Duration.between(now, phase.next.time.toInstant())) + "\u2069",
         )
         is PrayerPhase.ToIqama -> stringResource(
             R.string.widget_iqama_countdown,
             text.name(phase.prayer.prayer, phase.prayer.time),
-            "⁦" + clock(Duration.between(now, phase.iqama.toInstant())) + "⁩",
+            "\u2066" + clock(Duration.between(now, phase.iqama.toInstant())) + "\u2069",
         )
         // This line isolates the sign with the clock itself.
         is PrayerPhase.SinceIqama -> stringResource(
