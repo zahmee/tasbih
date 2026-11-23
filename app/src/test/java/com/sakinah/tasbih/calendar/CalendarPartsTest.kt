@@ -28,7 +28,7 @@ class CalendarPartsTest {
     @Test
     fun `an occasion today counts as zero days away`() {
         val eid = LocalDate.parse("2026-05-27")
-        val first = Occasions.upcoming(calendar, eid, showOther = false).first()
+        val first = Occasions.upcoming(calendar, eid).first()
         assertEquals(Occasion.EID_AL_ADHA, first.occasion)
         assertEquals(0, first.daysAway)
     }
@@ -36,19 +36,17 @@ class CalendarPartsTest {
     @Test
     fun `upcoming occasions are each listed once, soonest first, within a year`() {
         val today = LocalDate.parse("2026-11-10")
-        val list = Occasions.upcoming(calendar, today, showOther = true)
+        val list = Occasions.upcoming(calendar, today)
         assertEquals(Occasion.entries.size, list.size)
         assertEquals(list.sortedBy { it.date }, list)
         assertTrue(list.all { it.daysAway in 0..355 })
     }
 
     @Test
-    fun `contested occasions are hidden unless asked for`() {
-        val mawlid = HijriDate(1448, 3, 12)
-        assertTrue(Occasions.on(mawlid, showOther = false).isEmpty())
-        assertEquals(listOf(Occasion.MAWLID), Occasions.on(mawlid, showOther = true))
-        val today = LocalDate.parse("2026-11-10")
-        assertFalse(Occasions.upcoming(calendar, today, showOther = false).any { it.occasion.kind == OccasionKind.CONTESTED })
+    fun `the Mawlid, the Isra and the middle of Shaban are no occasions of the calendar`() {
+        assertTrue(Occasions.on(HijriDate(1448, 3, 12)).isEmpty())
+        assertTrue(Occasions.on(HijriDate(1448, 7, 27)).isEmpty())
+        assertTrue(Occasions.on(HijriDate(1448, 8, 15)).isEmpty())
     }
 
     @Test

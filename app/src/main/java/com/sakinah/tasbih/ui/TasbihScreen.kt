@@ -155,6 +155,7 @@ fun TasbihScreen(
     onUpdatePhrase: (String, String, Int) -> Unit,
     onSetTextScale: (Float) -> Unit,
     onBack: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {},
 ) {
     // Saved, so turning the phone keeps a dialog or the editor open with what was typed in it.
     var showResetConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -284,6 +285,7 @@ fun TasbihScreen(
                         },
                         onEnterFocusMode = { onFocusModeChange(true) },
                         onBack = onBack,
+                        onOpenSettings = onOpenSettings,
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -654,6 +656,7 @@ private fun TasbihTopBar(
     onAdd: () -> Unit,
     onEnterFocusMode: () -> Unit,
     onBack: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().testTag("tasbih_top_bar"), verticalAlignment = Alignment.CenterVertically) {
@@ -665,6 +668,7 @@ private fun TasbihTopBar(
         }
         Text(stringResource(R.string.my_tasbih), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         FocusModeIconButton(false, stringResource(R.string.tasbih_focus_mode), onEnterFocusMode, Modifier.testTag("tasbih_focus_mode"))
+        SettingsGear(onOpenSettings, "tasbih_open_settings")
         Box {
             IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("tasbih_actions")) {
                 Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))

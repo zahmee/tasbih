@@ -177,9 +177,6 @@ val Occasion.nameRes: Int
         Occasion.NEW_YEAR -> R.string.cal_occasion_new_year
         Occasion.TASUA -> R.string.cal_occasion_tasua
         Occasion.ASHURA -> R.string.cal_occasion_ashura
-        Occasion.MAWLID -> R.string.cal_occasion_mawlid
-        Occasion.ISRA_MIRAJ -> R.string.cal_occasion_isra_miraj
-        Occasion.MID_SHABAN -> R.string.cal_occasion_mid_shaban
         Occasion.RAMADAN -> R.string.cal_occasion_ramadan
         Occasion.LAST_TEN_NIGHTS -> R.string.cal_occasion_last_ten_nights
         Occasion.EID_AL_FITR -> R.string.cal_occasion_eid_al_fitr

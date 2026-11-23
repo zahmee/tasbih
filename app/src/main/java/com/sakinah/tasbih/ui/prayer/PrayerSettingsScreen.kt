@@ -50,7 +50,15 @@ import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerMethod
 import com.sakinah.tasbih.prayer.PrayerSettings
 import com.sakinah.tasbih.ui.SakinahSectionHeader
-import com.sakinah.tasbih.ui.SettingsPage
+import com.sakinah.tasbih.ui.SettingsTab
+import com.sakinah.tasbih.ui.TabbedSettingsPage
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import com.sakinah.tasbih.prayer.PrayerSchedule
 import com.sakinah.tasbih.ui.calendar.CalendarChoices
 import com.sakinah.tasbih.ui.calendar.CalendarHint
 import kotlin.math.abs
@@ -102,101 +110,151 @@ fun PrayerSettingsScreen(
         )
     }
 
-    SettingsPage(stringResource(R.string.prayer_settings), onBack, "prayer_settings") {
-        item { SakinahSectionHeader(stringResource(R.string.prayer_section_method)) }
-        item {
-            val method = settings.method ?: countryMethod
-            SettingNavigationRow(
-                title = method?.let(text::methodName) ?: stringResource(R.string.prayer_method_auto),
-                description = stringResource(if (settings.method == null) R.string.prayer_method_auto else R.string.prayer_method_chosen),
-                icon = Icons.Outlined.Calculate,
-                tag = "prayer_choose_method",
-                onClick = { choosingMethod = true },
-            )
-        }
-        item { CalendarHint(stringResource(R.string.prayer_method_hint)) }
-
-        item { SakinahSectionHeader(stringResource(R.string.prayer_section_asr)) }
-        item {
-            CalendarChoices(
-                options = AsrChoice.entries,
-                selected = settings.asr,
-                label = {
-                    stringResource(
-                        when (it) {
-                            AsrChoice.AUTO -> R.string.cal_automatic
-                            AsrChoice.SHAFI -> R.string.prayer_asr_shafi
-                            AsrChoice.HANAFI -> R.string.prayer_asr_hanafi_short
-                        },
+    var tab by rememberSaveable { mutableStateOf(PrayerTab.METHOD) }
+    TabbedSettingsPage(
+        title = stringResource(R.string.prayer_settings),
+        onBack = onBack,
+        tag = "prayer_settings",
+        tabs = PrayerTab.entries.map { SettingsTab(prayerTabLabel(it), prayerTabIcon(it), "prayer_tab_${it.name.lowercase()}") },
+        selected = tab.ordinal,
+        onSelect = { tab = PrayerTab.entries[it] },
+        header = state.schedule?.let { schedule -> { TodayTimes(schedule, text) } },
+    ) {
+        when (tab) {
+            PrayerTab.METHOD -> {
+                item { SakinahSectionHeader(stringResource(R.string.prayer_section_method)) }
+                item {
+                    val method = settings.method ?: countryMethod
+                    SettingNavigationRow(
+                        title = method?.let(text::methodName) ?: stringResource(R.string.prayer_method_auto),
+                        description = stringResource(if (settings.method == null) R.string.prayer_method_auto else R.string.prayer_method_chosen),
+                        icon = Icons.Outlined.Calculate,
+                        tag = "prayer_choose_method",
+                        onClick = { choosingMethod = true },
                     )
-                },
-                onSelect = viewModel::setAsr,
-            )
-        }
-        item { CalendarHint(stringResource(R.string.prayer_asr_hint)) }
-
-        item { SakinahSectionHeader(stringResource(R.string.prayer_section_adjust)) }
-        item { CalendarHint(stringResource(R.string.prayer_adjust_hint)) }
-        Prayer.entries.forEach { prayer ->
-            item(key = "adjust-${prayer.name}") {
-                AdjustRow(
-                    name = text.name(prayer),
-                    minutes = settings.adjustments[prayer] ?: 0,
-                    onChange = { viewModel.setAdjustment(prayer, it) },
-                )
+                }
+                item { CalendarHint(stringResource(R.string.prayer_method_hint)) }
+                item { SakinahSectionHeader(stringResource(R.string.prayer_section_asr)) }
+                item {
+                    CalendarChoices(
+                        options = AsrChoice.entries,
+                        selected = settings.asr,
+                        label = {
+                            stringResource(
+                                when (it) {
+                                    AsrChoice.AUTO -> R.string.cal_automatic
+                                    AsrChoice.SHAFI -> R.string.prayer_asr_shafi
+                                    AsrChoice.HANAFI -> R.string.prayer_asr_hanafi_short
+                                },
+                            )
+                        },
+                        onSelect = viewModel::setAsr,
+                    )
+                }
+                item { CalendarHint(stringResource(R.string.prayer_asr_hint)) }
+                item { SakinahSectionHeader(stringResource(R.string.prayer_section_high_latitude)) }
+                item {
+                    CalendarChoices(
+                        options = HighLatitudeChoice.entries,
+                        selected = settings.highLatitude,
+                        label = {
+                            stringResource(
+                                when (it) {
+                                    HighLatitudeChoice.AUTO -> R.string.cal_automatic
+                                    HighLatitudeChoice.MIDDLE_OF_THE_NIGHT -> R.string.prayer_high_middle
+                                    HighLatitudeChoice.SEVENTH_OF_THE_NIGHT -> R.string.prayer_high_seventh
+                                    HighLatitudeChoice.TWILIGHT_ANGLE -> R.string.prayer_high_angle
+                                },
+                            )
+                        },
+                        onSelect = viewModel::setHighLatitude,
+                    )
+                }
+                item { CalendarHint(stringResource(R.string.prayer_high_latitude_hint)) }
             }
-        }
-
-        item { SakinahSectionHeader(stringResource(R.string.prayer_section_high_latitude)) }
-        item {
-            CalendarChoices(
-                options = HighLatitudeChoice.entries,
-                selected = settings.highLatitude,
-                label = {
-                    stringResource(
-                        when (it) {
-                            HighLatitudeChoice.AUTO -> R.string.cal_automatic
-                            HighLatitudeChoice.MIDDLE_OF_THE_NIGHT -> R.string.prayer_high_middle
-                            HighLatitudeChoice.SEVENTH_OF_THE_NIGHT -> R.string.prayer_high_seventh
-                            HighLatitudeChoice.TWILIGHT_ANGLE -> R.string.prayer_high_angle
-                        },
-                    )
-                },
-                onSelect = viewModel::setHighLatitude,
-            )
-        }
-        item { CalendarHint(stringResource(R.string.prayer_high_latitude_hint)) }
-
-        item { SakinahSectionHeader(stringResource(R.string.cal_section_widgets)) }
-        item {
-            SettingNavigationRow(
-                stringResource(R.string.widget_style_entry),
-                stringResource(R.string.widget_style_entry_hint),
-                Icons.Outlined.Widgets,
-                "prayer_open_widget_style",
-                onOpenWidgetStyle,
-            )
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    PrayerWidgetKind.NEXT to R.string.prayer_add_next_widget,
-                    PrayerWidgetKind.DAY to R.string.prayer_add_day_widget,
-                    PrayerWidgetKind.QIBLA to R.string.prayer_add_qibla_widget,
-                ).forEach { (kind, label) ->
-                    OutlinedButton(
-                        onClick = {
-                            val manager = AppWidgetManager.getInstance(context)
-                            val asked = manager.isRequestPinAppWidgetSupported &&
-                                manager.requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
-                            if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Icon(Icons.Outlined.Add, null)
-                        Text(stringResource(label), Modifier.padding(start = 8.dp))
+            PrayerTab.MINUTES -> {
+                item { CalendarHint(stringResource(R.string.prayer_adjust_hint)) }
+                Prayer.entries.forEach { prayer ->
+                    item(key = "adjust-${prayer.name}") {
+                        AdjustRow(
+                            name = text.name(prayer),
+                            minutes = settings.adjustments[prayer] ?: 0,
+                            onChange = { viewModel.setAdjustment(prayer, it) },
+                        )
                     }
                 }
+            }
+            PrayerTab.WIDGETS -> {
+                item {
+                    SettingNavigationRow(
+                        stringResource(R.string.widget_style_entry),
+                        stringResource(R.string.widget_style_entry_hint),
+                        Icons.Outlined.Widgets,
+                        "prayer_open_widget_style",
+                        onOpenWidgetStyle,
+                    )
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            PrayerWidgetKind.NEXT to R.string.prayer_add_next_widget,
+                            PrayerWidgetKind.DAY to R.string.prayer_add_day_widget,
+                            PrayerWidgetKind.QIBLA to R.string.prayer_add_qibla_widget,
+                        ).forEach { (kind, label) ->
+                            OutlinedButton(
+                                onClick = {
+                                    val manager = AppWidgetManager.getInstance(context)
+                                    val asked = manager.isRequestPinAppWidgetSupported &&
+                                        manager.requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
+                                    if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
+                                },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            ) {
+                                Icon(Icons.Outlined.Add, null)
+                                Text(stringResource(label), Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The three tabs the prayer settings are gathered under. */
+private enum class PrayerTab { METHOD, MINUTES, WIDGETS }
+
+@Composable
+private fun prayerTabLabel(tab: PrayerTab): String = stringResource(
+    when (tab) {
+        PrayerTab.METHOD -> R.string.prayer_tab_method
+        PrayerTab.MINUTES -> R.string.prayer_tab_minutes
+        PrayerTab.WIDGETS -> R.string.cal_tab_widgets
+    },
+)
+
+private fun prayerTabIcon(tab: PrayerTab): ImageVector = when (tab) {
+    PrayerTab.METHOD -> Icons.Outlined.Calculate
+    PrayerTab.MINUTES -> Icons.Outlined.Timer
+    PrayerTab.WIDGETS -> Icons.Outlined.Widgets
+}
+
+/** Today's six times as they now stand, so a change of method or minutes shows at once. */
+@Composable
+private fun TodayTimes(schedule: PrayerSchedule, text: PrayerText) {
+    val day = remember(schedule) { schedule.day(schedule.today()) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 6.dp, vertical = 10.dp)
+            .testTag("prayer_settings_preview"),
+    ) {
+        Prayer.entries.forEach { prayer ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text.name(prayer, day[prayer]), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Text(text.clock(day[prayer]), style = MaterialTheme.typography.titleSmall, maxLines = 1)
             }
         }
     }

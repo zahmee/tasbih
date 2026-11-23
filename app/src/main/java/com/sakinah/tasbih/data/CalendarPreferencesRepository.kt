@@ -68,7 +68,6 @@ class CalendarPreferencesRepository internal constructor(
 
     suspend fun setHijriOffset(days: Int) = dataStore.edit { it[Keys.hijriOffset] = days }
 
-    suspend fun setShowOtherOccasions(show: Boolean) = dataStore.edit { it[Keys.showOtherOccasions] = show }
 
     suspend fun setShowWhiteDays(show: Boolean) = dataStore.edit { it[Keys.showWhiteDays] = show }
 
@@ -127,7 +126,6 @@ class CalendarPreferencesRepository internal constructor(
         agendaEnabled = preferences[Keys.agendaEnabled] ?: false,
         agendaColors = readAgendaColors(preferences[Keys.agendaColors]),
         agendaHidden = preferences[Keys.agendaHidden].orEmpty().mapNotNullTo(mutableSetOf()) { it.toLongOrNull() },
-        showOtherOccasions = preferences[Keys.showOtherOccasions] ?: false,
         showWhiteDays = preferences[Keys.showWhiteDays] ?: true,
         hijriDayFromMaghrib = preferences[Keys.hijriDayFromMaghrib] ?: false,
         personalOccasions = com.sakinah.tasbih.calendar.PersonalOccasions.decode(preferences[Keys.personalOccasions].orEmpty()),
@@ -150,7 +148,6 @@ class CalendarPreferencesRepository internal constructor(
         val agendaEnabled = booleanPreferencesKey("agenda_enabled")
         val agendaColors = stringSetPreferencesKey("agenda_colors")
         val agendaHidden = stringSetPreferencesKey("agenda_hidden")
-        val showOtherOccasions = booleanPreferencesKey("show_other_occasions")
         val showWhiteDays = booleanPreferencesKey("show_white_days")
         val hijriDayFromMaghrib = booleanPreferencesKey("hijri_day_from_maghrib")
         val personalOccasions = stringSetPreferencesKey("personal_occasions")

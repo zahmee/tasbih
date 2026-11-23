@@ -42,6 +42,10 @@ class MainActivity : ComponentActivity() {
     private fun requestFrom(intent: Intent?): AppOpenRequest? {
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_PRAYER) return AppOpenRequest.Prayer
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_QIBLA) return AppOpenRequest.Qibla
+        if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_CALENDAR_SETTINGS) return AppOpenRequest.CalendarSettings
+        if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIDGET_STYLE) {
+            return AppOpenRequest.WidgetStyle(next = intent.getBooleanExtra(EXTRA_NEXT, false))
+        }
         if (intent?.getStringExtra(EXTRA_OPEN) != OPEN_CALENDAR) return null
         val day = intent.getLongExtra(EXTRA_DATE, Long.MIN_VALUE)
         val date = if (day == Long.MIN_VALUE) LocalDate.now() else LocalDate.ofEpochDay(day)
@@ -53,6 +57,9 @@ class MainActivity : ComponentActivity() {
         private const val OPEN_CALENDAR = "calendar"
         private const val OPEN_PRAYER = "prayer"
         private const val OPEN_QIBLA = "qibla"
+        private const val OPEN_WIDGET_STYLE = "widget_style"
+        private const val OPEN_CALENDAR_SETTINGS = "calendar_settings"
+        private const val EXTRA_NEXT = "next"
         private const val EXTRA_DATE = "date"
         private const val EXTRA_OCCASIONS = "occasions"
 
@@ -66,6 +73,19 @@ class MainActivity : ComponentActivity() {
         fun qiblaIntent(context: Context): Intent =
             Intent(context, MainActivity::class.java)
                 .putExtra(EXTRA_OPEN, OPEN_QIBLA)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+        /** Opens the prayer widgets' customisation, on the next prayer's widget when [next]. */
+        fun widgetStyleIntent(context: Context, next: Boolean): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN, OPEN_WIDGET_STYLE)
+                .putExtra(EXTRA_NEXT, next)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+        /** Opens the calendar's settings, from a calendar widget's own «customise». */
+        fun calendarSettingsIntent(context: Context): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN, OPEN_CALENDAR_SETTINGS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
         /** Opens the calendar on the month that holds [date], or on the coming occasions. */

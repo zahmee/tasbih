@@ -1,5 +1,4 @@
 <resources>
-    <string name="daily_reset_settings">التصفير اليومي</string>
     <string name="daily_reset_intro">اختر ما يُصفّر تلقائيًا كل يوم، وحدد الموعد المناسب لك.</string>
     <string name="daily_reset_tasbih">تصفير المسبحة يوميًا</string>
     <string name="daily_reset_tasbih_description">بدء عدادات جميع أذكار المسبحة من الصفر في الموعد المحدد.</string>
@@ -51,10 +50,6 @@
     <string name="no_recent_entries">ابدأ بذكر تحب قراءته</string>
     <string name="no_recent_entries_hint">ستظهر هنا آخر الأذكار التي فتحتها.</string>
     <string name="browse_library">تصفح المكتبة</string>
-    <string name="reading_settings_summary">حجم النص والتشكيل والمصدر والانتقال</string>
-    <string name="tasbih_settings_summary">حجم الذكر والاهتزاز مع العد</string>
-    <string name="appearance_settings_summary">المظهر الفاتح والداكن والخط العربي</string>
-    <string name="activity_entry_summary">ملخص اليوم والأسبوع وسجل النشاط</string>
     <string name="reader_actions">خيارات الذكر</string>
     <string name="undo_reader_count">تراجع عن آخر عدة</string>
     <string name="review_collection">عرض الأذكار</string>
@@ -88,7 +83,6 @@
     <string name="home">اليوم</string>
     <string name="library">المكتبة</string>
     <string name="tasbih">المسبحة</string>
-    <string name="more">المزيد</string>
     <string name="nav_prayer">الصلاة</string>
     <string name="nav_adhkar">الأذكار</string>
     <string name="back">رجوع</string>
@@ -247,8 +241,12 @@
     <string name="confirm_reset">تصفير</string>
 
     <!-- Settings -->
-    <string name="settings">المزيد</string>
-    <string name="settings_subtitle">خصّص القراءة والمسبحة والمظهر بما يناسبك</string>
+    <string name="adhkar_settings">إعدادات الأذكار</string>
+    <string name="tasbih_settings_title">إعدادات المسبحة</string>
+    <string name="general_settings">الإعدادات العامة</string>
+    <string name="settings_tab_sound">الصوت</string>
+    <string name="settings_tab_reset">التصفير</string>
+    <string name="open_settings">الإعدادات</string>
     <string name="achievements">سجل الإنجاز</string>
     <string name="achievements_teaser">أثر ذكرك محفوظ يومًا بعد يوم</string>
     <string name="achievements_teaser_count">%1$d ذكرًا مسجلًا • %2$d يومًا نشطًا</string>
@@ -423,9 +421,6 @@
     <string name="cal_occasion_new_year">رأس السنة الهجرية</string>
     <string name="cal_occasion_tasua">يوم تاسوعاء</string>
     <string name="cal_occasion_ashura">يوم عاشوراء</string>
-    <string name="cal_occasion_mawlid">المولد النبوي</string>
-    <string name="cal_occasion_isra_miraj">الإسراء والمعراج</string>
-    <string name="cal_occasion_mid_shaban">النصف من شعبان</string>
     <string name="cal_occasion_ramadan">بداية شهر رمضان</string>
     <string name="cal_occasion_last_ten_nights">العشر الأواخر من رمضان</string>
     <string name="cal_occasion_eid_al_fitr">عيد الفطر</string>
@@ -493,9 +488,17 @@
     <string name="cal_undo">تراجع</string>
     <string name="cal_show_white_days">تمييز الأيام البيض</string>
     <string name="cal_show_white_days_hint">علامة تحت الثالث عشر والرابع عشر والخامس عشر من كل شهر، عدا رمضان وأيام التشريق.</string>
-    <string name="cal_show_other">إظهار مناسبات أخرى</string>
-    <string name="cal_show_other_hint">المولد النبوي، والإسراء والمعراج، والنصف من شعبان. لا يحتفي بها كل المسلمين، فهي مخفية ما لم تفعّلها.</string>
     <string name="cal_section_widgets">أدوات الشاشة الرئيسية</string>
+    <string name="cal_tab_display">العرض</string>
+    <string name="cal_tab_hijri">الهجري</string>
+    <string name="cal_tab_agenda">المواعيد</string>
+    <string name="cal_tab_widgets">الأدوات</string>
+    <string name="prayer_tab_method">الحساب</string>
+    <string name="prayer_tab_minutes">الدقائق</string>
+    <string name="alert_tab_prayers">الصلوات</string>
+    <string name="alert_tab_tone">النغمة</string>
+    <string name="alert_tab_adhan">الأذان</string>
+    <string name="alert_tab_test">التجربة</string>
     <string name="cal_widgets_hint">تتبع ألوان آناء والوضع الليلي في الهاتف، وتتغير وحدها بعد منتصف الليل.</string>
     <string name="cal_add_date_widget">إضافة أداة التاريخ</string>
     <string name="cal_add_month_widget">إضافة أداة الشهر</string>
@@ -619,7 +622,6 @@
     <string name="qibla_map_notice">تُحمَّل الصور من خرائط قوقل، فتصل إليها المنطقة المعروضة.</string>
     <string name="qibla_map_description">صورة بالقمر الصناعي تتوسطها نقطة موقعك، وخط من موقعك باتجاه القبلة</string>
     <string name="qibla_title">القبلة</string>
-    <string name="qibla_entry_summary">اتجاه الكعبة بالبوصلة، والمسافة إليها</string>
     <string name="qibla_no_compass">لا توجد بوصلة في هذا الهاتف. اتجاه القبلة %1$s من الشمال، باتجاه عقارب الساعة.</string>
     <string name="qibla_waiting">جارٍ قراءة البوصلة…</string>
     <string name="qibla_facing">أنت تواجه القبلة</string>
@@ -659,6 +661,9 @@
     <string name="alert_permission_title">السماح بالإشعارات</string>
     <string name="alert_permission_disclosure">ليظهر لك تنبيه الصلاة، يحتاج آناء إذن الإشعارات. تُجدول التنبيهات على هاتفك، ولا يُرسل منها شيء إلى أي جهة. سيطلب منك النظام الإذن بعد هذه الرسالة.</string>
     <string name="alert_needs_attention">قد لا تصل التنبيهات في وقتها. اضغط هنا لمراجعة إعدادات الهاتف.</string>
+    <string name="alert_needs_exact">التنبيهات تتأخر عن وقت الصلاة لأن «المنبهات الدقيقة» غير مسموح بها. اضغط هنا للسماح بها.</string>
+    <string name="alert_exact_title">السماح بالمنبهات الدقيقة</string>
+    <string name="alert_exact_disclosure">يمنع أندرويد المنبهات الدقيقة عن التطبيقات حتى تسمح بها أنت. بدونها يتأخر تنبيه الصلاة حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل. في الصفحة التالية فعّل «السماح بضبط المنبّهات والتذكيرات» لآناء.</string>
     <string name="alert_section_prayers">تنبيه كل صلاة</string>
     <string name="alert_styles_hint">الإشعار يظهر بلا صوت، والصوت القصير أقل من نصف دقيقة، والأذان كامل ويُوقف من الإشعار.</string>
     <string name="alert_section_tone">الصوت القصير</string>
@@ -687,7 +692,7 @@
     <string name="alert_check_notifications_off">ممنوعة، فلن يظهر أي تنبيه.</string>
     <string name="alert_check_exact">المنبهات الدقيقة</string>
     <string name="alert_check_exact_ok">مسموح بها، فيصل التنبيه في دقيقته.</string>
-    <string name="alert_check_exact_off">غير مسموح بها، فقد يتأخر التنبيه حتى عشر دقائق، ولا يُرفع الأذان الكامل.</string>
+    <string name="alert_check_exact_off">غير مسموح بها، فقد يتأخر التنبيه حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل.</string>
     <string name="alert_check_battery">تحسين البطارية</string>
     <string name="alert_check_battery_ok">آناء مستثنى منه.</string>
     <string name="alert_check_battery_off">قد يوقف الهاتف آناء لتوفير البطارية. اختر لآناء «غير محسّن» أو «بلا قيود».</string>
@@ -713,6 +718,10 @@
     <string name="widget_section_lines">السطور</string>
     <string name="widget_section_day">مواقيت اليوم</string>
     <string name="widget_section_next">الصلاة القادمة</string>
+    <string name="widget_tab_content">المحتوى</string>
+    <string name="widget_tab_colors">الألوان</string>
+    <string name="widget_tab_font">الخط</string>
+    <string name="widget_tab_ornament">الزخرفة</string>
     <string name="widget_next_lines_hint">تحت اسم الصلاة ووقتها حتى سطرين، لكل سطر يمين ويسار.</string>
     <string name="widget_look_hint">المظهر واحد للأداتين، فتتشابهان على الشاشة الرئيسية.</string>
     <string name="widget_progress">شريط الوقت</string>
@@ -741,6 +750,14 @@
     <string name="widget_surface_sand">رملي</string>
     <string name="widget_surface_pine">أخضر</string>
     <string name="widget_surface_night">ليلي</string>
+    <string name="widget_surface_white">أبيض</string>
+    <string name="widget_surface_stone">رمادي فاتح</string>
+    <string name="widget_surface_sky">سماوي</string>
+    <string name="widget_surface_rose">وردي</string>
+    <string name="widget_surface_navy">كحلي</string>
+    <string name="widget_surface_maroon">عنابي</string>
+    <string name="widget_surface_coffee">بني</string>
+    <string name="widget_surface_black">أسود</string>
     <string name="widget_opacity">قوة الخلفية: %1$s٪</string>
     <string name="widget_ink">لون الخط</string>
     <string name="widget_ink_dark">داكن</string>
@@ -759,14 +776,25 @@
     <string name="widget_scale_small">صغير</string>
     <string name="widget_scale_medium">متوسط</string>
     <string name="widget_scale_large">كبير</string>
-    <string name="widget_weight">سماكة الخط</string>
+    <string name="widget_weight">سماكة خط الأسطر وأسماء الصلوات</string>
+    <string name="widget_time_weight">سماكة خط الأوقات</string>
     <string name="widget_weight_regular">عادي</string>
     <string name="widget_weight_bold">عريض</string>
+    <string name="widget_weight_hint">تُرسم أدوات الشاشة الرئيسية بخط أندرويد العربي، وله وزنان فقط: عادي وعريض. عدّاد الوقت المتبقي يبقى بالعادي.</string>
+    <string name="widget_name_color">لون أسماء الصلوات</string>
+    <string name="widget_time_color">لون الأوقات</string>
+    <string name="widget_line_color">لون السطر</string>
+    <string name="widget_color_ink">الخط</string>
+    <string name="widget_color_soft">الخط الهادئ</string>
+    <string name="widget_color_accent">لون الصلاة القادمة</string>
+    <string name="widget_color_white">أبيض</string>
+    <string name="widget_color_black">أسود</string>
     <string name="widget_ornament">الزخرفة</string>
     <string name="widget_ornament_none">بدون</string>
     <string name="widget_ornament_divider">فاصل بنجمة</string>
-    <string name="widget_ornament_frame">إطار ونجوم</string>
-    <string name="widget_ornament_hint">الفاصل خط تتوسطه نجمة ثمانية، والإطار يضيف حدًا رفيعًا في أركانه نجوم صغيرة، بلون الصلاة القادمة.</string>
+    <string name="widget_ornament_pattern">زخرفة في الخلفية</string>
+    <string name="widget_ornament_hint">الفاصل خط تتوسطه نجمة ثمانية. وزخرفة الخلفية نجوم ثمانية متشابكة تملأ الأداة كالعلامة المائية، ومعها الفاصل، بلون الصلاة القادمة.</string>
+    <string name="widget_pattern_intensity">وضوح الزخرفة</string>
     <string name="widget_reset">إعادة الأداة إلى شكلها الأصلي</string>
     <string name="widget_next_said">الصلاة القادمة %1$s</string>
     <string name="prayer_add_next_widget">إضافة أداة الصلاة القادمة</string>

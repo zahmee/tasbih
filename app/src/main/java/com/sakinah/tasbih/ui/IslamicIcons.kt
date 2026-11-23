@@ -28,7 +28,6 @@ internal enum class IslamicNavSymbol {
     Calendar,
     Manuscript,
     Tasbih,
-    More,
 }
 
 /**
@@ -60,11 +59,6 @@ internal fun IslamicNavigationIcon(
             IslamicNavSymbol.Calendar -> drawCalendarPage(color, unit, stroke, selection)
             IslamicNavSymbol.Manuscript -> drawManuscript(color, unit, stroke, selection)
             IslamicNavSymbol.Tasbih -> drawTasbih(color, unit, stroke, selection)
-            IslamicNavSymbol.More -> {
-                listOf(24f, 50f, 76f).forEach { x ->
-                    drawCircle(color, radius = 6f * unit, center = Offset(x * unit, 50f * unit))
-                }
-            }
         }
     }
 }

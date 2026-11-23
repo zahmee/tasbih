@@ -33,8 +33,6 @@ data class CalendarSettings(
     val agendaColors: Map<Long, DayColor> = emptyMap(),
     /** Phone calendars the user chose not to show here. */
     val agendaHidden: Set<Long> = emptySet(),
-    /** Occasions that not all Muslims mark, such as the Mawlid. Off unless chosen. */
-    val showOtherOccasions: Boolean = false,
     val showWhiteDays: Boolean = true,
     /** The Islamic day begins with its night, so the user may let the Hijri date turn at Maghrib. */
     val hijriDayFromMaghrib: Boolean = false,

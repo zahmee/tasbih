@@ -14,13 +14,14 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,105 +45,44 @@ import kotlin.math.roundToInt
 
 enum class SettingsSection { Reading, Tasbih, Appearance, DailyReset }
 
-@Composable
-fun SettingsScreen(
+/**
+ * The look of the whole app: light or dark, the Arabic font, and Android's own colours. In the
+ * general settings, which the gear on the day's page opens, since the user moved each tab's
+ * settings into that tab on November 23, 2026 and the «more» tab went.
+ */
+internal fun LazyListScope.appearanceItems(
     state: SakinahUiState,
-    onOpenSection: (SettingsSection) -> Unit,
-    onOpenAchievements: () -> Unit,
-    onOpenAbout: () -> Unit,
-    onOpenSoundSettings: () -> Unit,
-    onOpenQibla: () -> Unit = {},
-) {
-    SakinahScreenBackground {
-        LazyColumn(
-            modifier = Modifier.align(Alignment.TopCenter).widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("settings_list"),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small),
-        ) {
-            item { SakinahScreenHeader(stringResource(R.string.settings), subtitle = stringResource(R.string.settings_subtitle)) }
-            item { SettingNavigationRow(stringResource(R.string.reading), stringResource(R.string.reading_settings_summary), Icons.Outlined.AutoStories, "open_reading_settings") { onOpenSection(SettingsSection.Reading) } }
-            item { SettingNavigationRow(stringResource(R.string.tasbih_settings), stringResource(R.string.tasbih_settings_summary), Icons.Outlined.TouchApp, "open_tasbih_settings") { onOpenSection(SettingsSection.Tasbih) } }
-            item { SettingNavigationRow(stringResource(R.string.sound_settings), completionSoundName(state.completionSound), Icons.AutoMirrored.Outlined.VolumeUp, "open_sound_settings", onOpenSoundSettings) }
-            item { SettingNavigationRow(stringResource(R.string.daily_reset_settings), dailyResetSummary(state.dailyReset), Icons.Outlined.Update, "open_daily_reset_settings") { onOpenSection(SettingsSection.DailyReset) } }
-            item { SettingNavigationRow(stringResource(R.string.appearance), stringResource(R.string.appearance_settings_summary), Icons.Outlined.Palette, "open_appearance_settings") { onOpenSection(SettingsSection.Appearance) } }
-            item { Spacer(Modifier.height(8.dp)); KhatamDivider(); Spacer(Modifier.height(8.dp)) }
-            item { SettingNavigationRow(stringResource(R.string.qibla_title), stringResource(R.string.qibla_entry_summary), Icons.Outlined.Explore, "open_qibla", onOpenQibla) }
-            item { SettingNavigationRow(stringResource(R.string.achievements), stringResource(R.string.activity_entry_summary), Icons.Outlined.BarChart, "open_achievements", onOpenAchievements) }
-            item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
-        }
-    }
-}
-
-@Composable
-fun SettingsDetailScreen(
-    section: SettingsSection,
-    state: SakinahUiState,
-    onBack: () -> Unit,
-    onOpenSoundSettings: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
     onSetArabicFontStyle: (ArabicFontStyle) -> Unit,
     onSetDynamicColor: (Boolean) -> Unit,
-    onSetHaptics: (Boolean) -> Unit,
-    onSetShowDiacritics: (Boolean) -> Unit,
-    onSetTextScale: (Float) -> Unit,
-    onSetTasbihTextScale: (Float) -> Unit,
-    onSetShowReference: (Boolean) -> Unit,
-    onSetAutoAdvance: (Boolean) -> Unit,
-    onSetTasbihDailyReset: (Boolean) -> Unit,
-    onSetAdhkarDailyReset: (Boolean) -> Unit,
-    onSetDailyResetTime: (Int) -> Unit,
 ) {
-    val title = stringResource(when (section) {
-        SettingsSection.Reading -> R.string.reading
-        SettingsSection.Tasbih -> R.string.tasbih_settings
-        SettingsSection.Appearance -> R.string.appearance
-        SettingsSection.DailyReset -> R.string.daily_reset_settings
-    })
-    SettingsPage(title, onBack, "settings_detail_${section.name.lowercase()}") {
-        when (section) {
-            SettingsSection.DailyReset -> dailyResetSettingsItems(state.dailyReset, onSetTasbihDailyReset, onSetAdhkarDailyReset, onSetDailyResetTime)
-            SettingsSection.Reading -> {
-                item { TextScaleSetting(stringResource(R.string.text_size), state.textScale, dhikrFontFor(state.arabicFontStyle), ReaderTextScaleRange, 8, "reader_text_scale", onSetTextScale) }
-                item { SettingToggleRow(stringResource(R.string.show_diacritics), stringResource(R.string.show_diacritics_description), state.showDiacritics, onSetShowDiacritics, "setting_diacritics") }
-                item { SettingToggleRow(stringResource(R.string.show_reference_by_default), stringResource(R.string.show_reference_by_default_description), state.showReferenceByDefault, onSetShowReference, "setting_reference") }
-                item { SettingToggleRow(stringResource(R.string.auto_advance_dhikr), stringResource(R.string.auto_advance_dhikr_description), state.autoAdvanceDhikrEnabled, onSetAutoAdvance, "setting_auto_advance") }
-            }
-            SettingsSection.Tasbih -> {
-                item { TextScaleSetting(stringResource(R.string.tasbih_text_size), state.tasbihTextScale, dhikrFontFor(state.arabicFontStyle), TasbihTextScaleRange, 7, "tasbih_text_scale", onSetTasbihTextScale) }
-                item { SettingToggleRow(stringResource(R.string.haptics), stringResource(R.string.haptics_description), state.hapticsEnabled, onSetHaptics, "setting_haptics") }
-                item { SettingNavigationRow(stringResource(R.string.sound_settings), completionSoundName(state.completionSound), Icons.AutoMirrored.Outlined.VolumeUp, "tasbih_open_sound_settings", onOpenSoundSettings) }
-            }
-            SettingsSection.Appearance -> {
-                item { Text(stringResource(R.string.theme_mode), style = MaterialTheme.typography.titleMedium) }
-                item {
-                    Column(Modifier.selectableGroup()) {
-                        ThemeMode.entries.forEach { mode ->
-                            SettingRadioRow(stringResource(when (mode) {
-                                ThemeMode.System -> R.string.theme_system
-                                ThemeMode.Light -> R.string.theme_light
-                                ThemeMode.Dark -> R.string.theme_dark
-                            }), state.themeMode == mode, "theme_${mode.name.lowercase()}", { onSetThemeMode(mode) })
-                        }
-                    }
-                }
-                item { HorizontalDivider(); Spacer(Modifier.height(16.dp)); Text(stringResource(R.string.arabic_font), style = MaterialTheme.typography.titleMedium) }
-                item {
-                    Column(Modifier.selectableGroup()) {
-                        ArabicFontStyle.entries.forEach { font ->
-                            SettingRadioRow(stringResource(when (font) {
-                                ArabicFontStyle.Sakinah -> R.string.font_sakinah
-                                ArabicFontStyle.Amiri -> R.string.font_amiri
-                                ArabicFontStyle.Ruqaa -> R.string.font_ruqaa
-                                ArabicFontStyle.Baqiyat -> R.string.font_baqiyat
-                            }), state.arabicFontStyle == font, "font_${font.name.lowercase()}", { onSetArabicFontStyle(font) }, dhikrFontFor(font))
-                        }
-                    }
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    item { HorizontalDivider(); SettingToggleRow(stringResource(R.string.dynamic_colors), stringResource(R.string.dynamic_colors_description), state.dynamicColorEnabled, onSetDynamicColor, "setting_dynamic_color") }
-                }
+    item { Text(stringResource(R.string.theme_mode), style = MaterialTheme.typography.titleMedium) }
+    item {
+        Column(Modifier.selectableGroup()) {
+            ThemeMode.entries.forEach { mode ->
+                SettingRadioRow(stringResource(when (mode) {
+                    ThemeMode.System -> R.string.theme_system
+                    ThemeMode.Light -> R.string.theme_light
+                    ThemeMode.Dark -> R.string.theme_dark
+                }), state.themeMode == mode, "theme_${mode.name.lowercase()}", { onSetThemeMode(mode) })
             }
         }
+    }
+    item { HorizontalDivider(); Spacer(Modifier.height(16.dp)); Text(stringResource(R.string.arabic_font), style = MaterialTheme.typography.titleMedium) }
+    item {
+        Column(Modifier.selectableGroup()) {
+            ArabicFontStyle.entries.forEach { font ->
+                SettingRadioRow(stringResource(when (font) {
+                    ArabicFontStyle.Sakinah -> R.string.font_sakinah
+                    ArabicFontStyle.Amiri -> R.string.font_amiri
+                    ArabicFontStyle.Ruqaa -> R.string.font_ruqaa
+                    ArabicFontStyle.Baqiyat -> R.string.font_baqiyat
+                }), state.arabicFontStyle == font, "font_${font.name.lowercase()}", { onSetArabicFontStyle(font) }, dhikrFontFor(font))
+            }
+        }
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        item { HorizontalDivider(); SettingToggleRow(stringResource(R.string.dynamic_colors), stringResource(R.string.dynamic_colors_description), state.dynamicColorEnabled, onSetDynamicColor, "setting_dynamic_color") }
     }
 }
 
@@ -163,6 +103,80 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, tag: String, conten
                 verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
             ) {
                 if (!compactInput) item(key = "page_ornament") { KhatamDivider() }
+                content()
+            }
+        }
+    }
+}
+
+/** One tab of a [TabbedSettingsPage]: its name, its icon, and a tag for the device tests. */
+internal data class SettingsTab(val label: String, val icon: ImageVector, val tag: String)
+
+/**
+ * A settings page whose options are gathered in tabs, for pages long enough to scatter the eye.
+ * An optional [header], a preview say, stays on top while the chosen tab's options scroll under
+ * it; on a short screen it scrolls with them instead, so the options keep room to be used.
+ * The tabs' names take a size below a tab's own, so they fit with large text too.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TabbedSettingsPage(
+    title: String,
+    onBack: () -> Unit,
+    tag: String,
+    tabs: List<SettingsTab>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+    header: (@Composable () -> Unit)? = null,
+    content: LazyListScope.() -> Unit,
+) {
+    val roomy = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp >= 600
+    Scaffold(
+        modifier = Modifier.testTag(tag),
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = { Text(title) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
+                actions = actions,
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val top: @Composable () -> Unit = {
+                Box(Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) { header?.invoke() }
+            }
+            if (header != null && roomy) top()
+            PrimaryTabRow(selectedTabIndex = selected, modifier = Modifier.widthIn(max = SakinahContentMaxWidth)) {
+                tabs.forEachIndexed { index, tab ->
+                    // Own content rather than a tab's text and icon, which keep 16dp either side
+                    // of the name and so cut it short when five tabs share a phone's width.
+                    Tab(
+                        selected = selected == index,
+                        onClick = { onSelect(index) },
+                        modifier = Modifier.testTag(tab.tag),
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp),
+                        ) {
+                            Icon(tab.icon, null)
+                            Text(tab.label, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxWidth().weight(1f).testTag("${tag}_options"),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
+            ) {
+                if (header != null && !roomy) item(key = "header") { top() }
                 content()
             }
         }
@@ -228,5 +242,165 @@ private fun TextScaleSetting(title: String, scale: Float, font: FontFamily, valu
         Text(stringResource(R.string.text_size_sample), style = TextStyle(fontFamily = font, fontSize = (23 * draft).sp, lineHeight = (39 * draft).sp), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
         Slider(value = draft, onValueChange = { draft = it }, onValueChangeFinished = { onChange(draft) }, valueRange = valueRange, steps = steps,
             modifier = Modifier.testTag(tag).semantics { contentDescription = title })
+    }
+}
+
+/** The three tabs the adhkar's settings are gathered under. */
+private enum class AdhkarTab { READING, SOUND, RESET }
+
+/**
+ * The adhkar's own settings, opened by the gear on the adhkar's page: reading, the sound at a
+ * dhikr's end, and the daily reset of the day's adhkar. The record of what was done opens from
+ * the top bar, as it is the adhkar's and the tasbih's alike.
+ */
+@Composable
+fun AdhkarSettingsScreen(
+    state: SakinahUiState,
+    onBack: () -> Unit,
+    onOpenSoundSettings: () -> Unit,
+    onOpenAchievements: () -> Unit,
+    onSetShowDiacritics: (Boolean) -> Unit,
+    onSetTextScale: (Float) -> Unit,
+    onSetShowReference: (Boolean) -> Unit,
+    onSetAutoAdvance: (Boolean) -> Unit,
+    onSetReaderSoundEnabled: (Boolean) -> Unit,
+    onSetAdhkarDailyReset: (Boolean) -> Unit,
+    onSetDailyResetTime: (Int) -> Unit,
+) {
+    var tab by rememberSaveable { mutableStateOf(AdhkarTab.READING) }
+    TabbedSettingsPage(
+        title = stringResource(R.string.adhkar_settings),
+        onBack = onBack,
+        tag = "adhkar_settings",
+        tabs = listOf(
+            SettingsTab(stringResource(R.string.reading), Icons.Outlined.AutoStories, "adhkar_tab_reading"),
+            SettingsTab(stringResource(R.string.settings_tab_sound), Icons.AutoMirrored.Outlined.VolumeUp, "adhkar_tab_sound"),
+            SettingsTab(stringResource(R.string.settings_tab_reset), Icons.Outlined.Update, "adhkar_tab_reset"),
+        ),
+        selected = tab.ordinal,
+        onSelect = { tab = AdhkarTab.entries[it] },
+        actions = { AchievementsAction(onOpenAchievements) },
+    ) {
+        when (tab) {
+            AdhkarTab.READING -> {
+                item { TextScaleSetting(stringResource(R.string.text_size), state.textScale, dhikrFontFor(state.arabicFontStyle), ReaderTextScaleRange, 8, "reader_text_scale", onSetTextScale) }
+                item { SettingToggleRow(stringResource(R.string.show_diacritics), stringResource(R.string.show_diacritics_description), state.showDiacritics, onSetShowDiacritics, "setting_diacritics") }
+                item { SettingToggleRow(stringResource(R.string.show_reference_by_default), stringResource(R.string.show_reference_by_default_description), state.showReferenceByDefault, onSetShowReference, "setting_reference") }
+                item { SettingToggleRow(stringResource(R.string.auto_advance_dhikr), stringResource(R.string.auto_advance_dhikr_description), state.autoAdvanceDhikrEnabled, onSetAutoAdvance, "setting_auto_advance") }
+            }
+            AdhkarTab.SOUND -> {
+                item {
+                    SettingToggleRow(
+                        stringResource(R.string.reader_completion_sound),
+                        stringResource(R.string.reader_completion_sound_description),
+                        state.dhikrCompletionSoundEnabled,
+                        onSetReaderSoundEnabled,
+                        "reader_sound_enabled",
+                    )
+                }
+                item { CompletionToneRow(state, onOpenSoundSettings) }
+            }
+            AdhkarTab.RESET -> dailyResetSettingsItems(state.dailyReset, {}, onSetAdhkarDailyReset, onSetDailyResetTime, showTasbih = false)
+        }
+    }
+}
+
+/** The three tabs the tasbih's settings are gathered under. */
+private enum class TasbihTab { TASBIH, SOUND, RESET }
+
+/** The tasbih's own settings, opened by the gear on the tasbih's page, in the adhkar's form. */
+@Composable
+fun TasbihSettingsScreen(
+    state: SakinahUiState,
+    onBack: () -> Unit,
+    onOpenSoundSettings: () -> Unit,
+    onOpenAchievements: () -> Unit,
+    onSetTasbihTextScale: (Float) -> Unit,
+    onSetHaptics: (Boolean) -> Unit,
+    onSetTasbihSoundEnabled: (Boolean) -> Unit,
+    onSetTasbihDailyReset: (Boolean) -> Unit,
+    onSetDailyResetTime: (Int) -> Unit,
+) {
+    var tab by rememberSaveable { mutableStateOf(TasbihTab.TASBIH) }
+    TabbedSettingsPage(
+        title = stringResource(R.string.tasbih_settings_title),
+        onBack = onBack,
+        tag = "tasbih_settings",
+        tabs = listOf(
+            SettingsTab(stringResource(R.string.tasbih_settings), Icons.Outlined.TouchApp, "tasbih_tab_tasbih"),
+            SettingsTab(stringResource(R.string.settings_tab_sound), Icons.AutoMirrored.Outlined.VolumeUp, "tasbih_tab_sound"),
+            SettingsTab(stringResource(R.string.settings_tab_reset), Icons.Outlined.Update, "tasbih_tab_reset"),
+        ),
+        selected = tab.ordinal,
+        onSelect = { tab = TasbihTab.entries[it] },
+        actions = { AchievementsAction(onOpenAchievements) },
+    ) {
+        when (tab) {
+            TasbihTab.TASBIH -> {
+                item { TextScaleSetting(stringResource(R.string.tasbih_text_size), state.tasbihTextScale, dhikrFontFor(state.arabicFontStyle), TasbihTextScaleRange, 7, "tasbih_text_scale", onSetTasbihTextScale) }
+                item { SettingToggleRow(stringResource(R.string.haptics), stringResource(R.string.haptics_description), state.hapticsEnabled, onSetHaptics, "setting_haptics") }
+            }
+            TasbihTab.SOUND -> {
+                item {
+                    SettingToggleRow(
+                        stringResource(R.string.tasbih_completion_sound),
+                        stringResource(R.string.tasbih_completion_sound_description),
+                        state.tasbihCompletionSoundEnabled,
+                        onSetTasbihSoundEnabled,
+                        "tasbih_sound_enabled",
+                    )
+                }
+                item { CompletionToneRow(state, onOpenSoundSettings) }
+            }
+            TasbihTab.RESET -> dailyResetSettingsItems(state.dailyReset, onSetTasbihDailyReset, {}, onSetDailyResetTime, showAdhkar = false)
+        }
+    }
+}
+
+/** The tone and its loudness are one for the adhkar and the tasbih, so both open the same page. */
+@Composable
+private fun CompletionToneRow(state: SakinahUiState, onOpenSoundSettings: () -> Unit) {
+    SettingNavigationRow(
+        stringResource(R.string.completion_sound_tone),
+        completionSoundName(state.completionSound),
+        Icons.AutoMirrored.Outlined.VolumeUp,
+        "open_sound_settings",
+        onOpenSoundSettings,
+    )
+}
+
+@Composable
+private fun AchievementsAction(onOpenAchievements: () -> Unit) {
+    IconButton(onClick = onOpenAchievements, modifier = Modifier.testTag("open_achievements")) {
+        Icon(Icons.Outlined.BarChart, stringResource(R.string.achievements))
+    }
+}
+
+/**
+ * What belongs to the whole app and to no one tab: its look, and about the app. Opened by the
+ * gear on the day's page.
+ */
+@Composable
+fun GeneralSettingsScreen(
+    state: SakinahUiState,
+    onBack: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    onSetArabicFontStyle: (ArabicFontStyle) -> Unit,
+    onSetDynamicColor: (Boolean) -> Unit,
+) {
+    SettingsPage(stringResource(R.string.general_settings), onBack, "general_settings") {
+        item { SakinahSectionHeader(stringResource(R.string.appearance)) }
+        appearanceItems(state, onSetThemeMode, onSetArabicFontStyle, onSetDynamicColor)
+        item { HorizontalDivider() }
+        item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
+    }
+}
+
+/** The gear that opens a tab's own settings, in the same place on every page that has one. */
+@Composable
+internal fun SettingsGear(onClick: () -> Unit, tag: String, modifier: Modifier = Modifier) {
+    IconButton(onClick = onClick, modifier = modifier.testTag(tag)) {
+        Icon(Icons.Outlined.Settings, stringResource(R.string.open_settings))
     }
 }
