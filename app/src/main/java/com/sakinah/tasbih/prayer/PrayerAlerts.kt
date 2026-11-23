@@ -111,8 +111,9 @@ object AlertPlanner {
         val today = schedule.today(now)
         return (-1L..1L).asSequence()
             .map { schedule.day(today.plusDays(it)) }
-            // The iqamas and the ends of the counts after them change the widgets' clock too.
-            .flatMap { day -> Prayer.entries.map { day[it] } + schedule.iqamaChanges(day) }
+            // The iqamas and the ends of the counts after them change the widgets' clock too,
+            // and midnight their weekday and Gregorian date.
+            .flatMap { day -> Prayer.entries.map { day[it] } + schedule.iqamaChanges(day) + day.date.atStartOfDay(schedule.zone) }
             .filter { it.toInstant().isAfter(now) }
             .minBy { it.toInstant() }
     }

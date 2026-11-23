@@ -141,7 +141,7 @@ Anaa is a native Arabic-first Android app for daily adhkar, Hisn al-Muslim conte
 
 ### Current release
 
-Version 2.0.0, build 11, sent to Google Play's production track on November 23, 2026. See [the changelog](CHANGELOG.md).
+Version 2.0.1, build 12, sent to Google Play's production track on November 23, 2026, in place of 2.0.0 while that was still in review. See [the changelog](CHANGELOG.md).
 
 Install and update through [Google Play](https://play.google.com/store/apps/details?id=com.sakinah.tasbih). Locally built APKs use the upload key, while Play-distributed APKs use Google's app signing key; those APKs cannot replace each other as updates. See [update compatibility](docs/releases/update-compatibility.md) before using a direct APK.
 
