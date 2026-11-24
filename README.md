@@ -145,6 +145,8 @@ Version 2.0.1, build 12, sent to Google Play's production track on November 23, 
 
 Install and update through [Google Play](https://play.google.com/store/apps/details?id=com.sakinah.tasbih). Locally built APKs use the upload key, while Play-distributed APKs use Google's app signing key; those APKs cannot replace each other as updates. See [update compatibility](docs/releases/update-compatibility.md) before using a direct APK.
 
+The Arabic store page lives in `app/src/main/play/`: the short and full descriptions and the eight phone screenshots under `listings/ar/`, and the release notes under `release-notes/ar/`. The current page was published on November 24, 2026 with `.\gradlew.bat :app:publishReleaseListing`. Use the `Release` tasks only, because the aggregate tasks also run for the preview variant. The contact email file there is kept out of git.
+
 ### Build
 
 Requirements: JDK 17, Android SDK Platform 37, and Android 8.0 / API 26 or newer.

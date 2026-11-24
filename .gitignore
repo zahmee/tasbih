@@ -28,3 +28,6 @@ docs/**/store-*.png
 # Local Python caches for asset generation tools.
 __pycache__/
 *.py[cod]
+
+# The Play listing's contact email stays local.
+app/src/main/play/contact-email.txt
