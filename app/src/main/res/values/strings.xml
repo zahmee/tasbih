@@ -77,7 +77,7 @@
     <string name="hour_value_description">الساعة %1$s: %2$d إجمالًا، %3$d تسبيح، %4$d من الأذكار</string>
     <string name="weekly_day_description">%1$s: %2$d من الذكر</string>
     <string name="empty_activity_overview">يظهر نشاطك هنا بعد القراءة أو التسبيح.</string>
-    <string name="app_name">آناء</string>
+    <string name="app_name">اناء</string>
 
     <!-- Navigation -->
     <string name="home">اليوم</string>
@@ -258,7 +258,7 @@
     <string name="theme_dark">ليلي</string>
     <string name="arabic_font">الخط العربي</string>
     <string name="arabic_font_description">اختر الخط الأنسب للقراءة؛ يُطبّق فورًا على كل النصوص، بما فيها العناوين والأذكار.</string>
-    <string name="font_sakinah">آناء</string>
+    <string name="font_sakinah">اناء</string>
     <string name="font_amiri">أميري</string>
     <string name="font_ruqaa">الرُّقعة</string>
     <string name="font_baqiyat">كوفي الباقيات</string>
@@ -273,7 +273,7 @@
     <string name="tasbih_text_size_sample">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</string>
     <string name="appearance">المظهر</string>
     <string name="dynamic_colors">ألوان الجهاز</string>
-    <string name="dynamic_colors_description">استخدم ألوان خلفية جهازك بدل هوية آناء.</string>
+    <string name="dynamic_colors_description">استخدم ألوان خلفية جهازك بدل هوية اناء.</string>
     <string name="haptics">الاهتزاز اللمسي</string>
     <string name="haptics_description">نبضة خفيفة مع العد في الأذكار والمسبحة.</string>
     <string name="content_and_privacy">المحتوى والخصوصية</string>
@@ -285,9 +285,9 @@
     <string name="language_status_description">العربية هي لغة هذه النسخة. بنية المحتوى جاهزة لإضافة ملفات لغات أخرى لاحقًا.</string>
 
     <!-- About -->
-    <string name="about_section">عن آناء</string>
+    <string name="about_section">عن اناء</string>
     <string name="about_app">حول التطبيق</string>
-    <string name="about_app_entry_description">معلومات آناء ومن أعمالنا ووسائل التواصل</string>
+    <string name="about_app_entry_description">معلومات اناء ومن أعمالنا ووسائل التواصل</string>
     <string name="about_app_subtitle">أذكار ومسبحة</string>
     <string name="about_version">الإصدار %1$s</string>
     <string name="about_release_date">تاريخ الإصدار: %1$s</string>
@@ -298,26 +298,26 @@
     <string name="about_free_title">مجاني بلا إعلانات</string>
     <string name="about_free_body">لا رسوم ولا اشتراكات ولا إعلانات داخل التطبيق.</string>
     <string name="about_privacy_title">بياناتك محفوظة محليًا</string>
-    <string name="about_privacy_body">لا يحتاج تطبيق آناء إلى حساب أو اتصال بالإنترنت. يحفظ العداد والمفضلة وتقدم القراءة على جهازك، وقد يدير نظام جهازك نسخًا احتياطية لهذه البيانات بحسب إعداداتك.</string>
+    <string name="about_privacy_body">لا يحتاج تطبيق اناء إلى حساب أو اتصال بالإنترنت. يحفظ العداد والمفضلة وتقدم القراءة على جهازك، وقد يدير نظام جهازك نسخًا احتياطية لهذه البيانات بحسب إعداداتك.</string>
     <string name="about_purpose_title">مصمم للحظة الذكر</string>
     <string name="about_purpose_body">واجهة عربية هادئة تساعدك على قراءة الأذكار والتسبيح دون أقسام أو مشتتات غير لازمة.</string>
     <string name="about_content_title">المحتوى والمصادر</string>
     <string name="about_hisn_title">حصن المسلم</string>
-    <string name="about_hisn_body">يعرض تطبيق آناء النص العربي الكامل لكتاب «حصن المسلم من أذكار الكتاب والسنة» مع عدد التكرار والمراجع، ويضم ١٣٣ بابًا و٣٠٢ ذكرًا ودعاءً.</string>
+    <string name="about_hisn_body">يعرض تطبيق اناء النص العربي الكامل لكتاب «حصن المسلم من أذكار الكتاب والسنة» مع عدد التكرار والمراجع، ويضم ١٣٣ بابًا و٣٠٢ ذكرًا ودعاءً.</string>
     <string name="about_developer_title">الجهة المطوّرة</string>
-    <string name="about_developer_body">تطبيق آناء من تطوير مؤسسة إبداع التطوير والبرمجة لتقنية المعلومات (CDIT)، مؤسسة سعودية متخصصة في تطوير البرمجيات وحلول الأعمال الرقمية من خميس مشيط.</string>
+    <string name="about_developer_body">تطبيق اناء من تطوير مؤسسة إبداع التطوير والبرمجة لتقنية المعلومات (CDIT)، مؤسسة سعودية متخصصة في تطوير البرمجيات وحلول الأعمال الرقمية من خميس مشيط.</string>
     <string name="about_commercial_register">السجل التجاري: ٥٨٥٥٣٥٣٥٧١</string>
     <string name="about_developer_website">زيارة الموقع الرسمي</string>
     <string name="about_developer_website_detail">cdit.co</string>
     <string name="about_contact_title">تواصل معنا</string>
-    <string name="about_contact_body">نسعد باستقبال الملاحظات الفنية والاقتراحات التي تساعدنا على تحسين آناء.</string>
+    <string name="about_contact_body">نسعد باستقبال الملاحظات الفنية والاقتراحات التي تساعدنا على تحسين اناء.</string>
     <string name="about_whatsapp_title">تواصل عبر واتساب</string>
     <string name="about_whatsapp_number">٠٥٠ ٢٠١ ٠٩١١</string>
     <string name="about_email_title">إرسال بريد إلكتروني</string>
     <string name="about_email_address">info@cdit.co</string>
     <string name="about_contact_page_title">صفحة التواصل الرسمية</string>
     <string name="about_contact_page_detail">cdit.co/contact.html</string>
-    <string name="about_email_subject">ملاحظات حول تطبيق آناء</string>
+    <string name="about_email_subject">ملاحظات حول تطبيق اناء</string>
     <string name="about_contact_unavailable">تعذّر فتح الرابط على هذا الجهاز.</string>
 
     <!-- Achievements -->
@@ -499,11 +499,11 @@
     <string name="alert_tab_tone">النغمة</string>
     <string name="alert_tab_adhan">الأذان</string>
     <string name="alert_tab_test">التجربة</string>
-    <string name="cal_widgets_hint">تتبع ألوان آناء والوضع الليلي في الهاتف، وتتغير وحدها بعد منتصف الليل.</string>
+    <string name="cal_widgets_hint">تتبع ألوان اناء والوضع الليلي في الهاتف، وتتغير وحدها بعد منتصف الليل.</string>
     <string name="cal_add_date_widget">إضافة أداة التاريخ</string>
     <string name="cal_add_month_widget">إضافة أداة الشهر</string>
     <string name="cal_add_occasion_widget">إضافة أداة المناسبة القادمة</string>
-    <string name="cal_add_widget_manually">اضغط مطولًا على مكان فارغ في شاشتك الرئيسية، ثم اختر الأدوات وابحث عن آناء.</string>
+    <string name="cal_add_widget_manually">اضغط مطولًا على مكان فارغ في شاشتك الرئيسية، ثم اختر الأدوات وابحث عن اناء.</string>
     <string name="cal_date_widget_label">التاريخ الهجري والميلادي</string>
     <string name="cal_date_widget_description">تاريخ اليوم بالتقويمين.</string>
     <string name="cal_month_widget_label">تقويم الشهر</string>
@@ -557,13 +557,13 @@
     <string name="prayer_asr_hanafi">العصر على المذهب الحنفي</string>
     <string name="prayer_place_title">المكان</string>
     <string name="prayer_location_title">استخدام موقع الهاتف</string>
-    <string name="prayer_location_disclosure">يقرأ آناء موقع هاتفك ليحسب المواقيت واتجاه القبلة لمكانك، ثم يرسل إحداثياته وحدها إلى خدمة تسمية الأماكن في نظام الهاتف، وهي من قوقل في أغلب الهواتف، ليعرف اسم الحي والمدينة. سيطلب منك النظام الإذن بعد هذه الرسالة: الموقع الدقيق يُظهر اسم الحي، والتقريبي يكفي للمواقيت واسم المدينة.</string>
+    <string name="prayer_location_disclosure">يقرأ اناء موقع هاتفك ليحسب المواقيت واتجاه القبلة لمكانك، ثم يرسل إحداثياته وحدها إلى خدمة تسمية الأماكن في نظام الهاتف، وهي من قوقل في أغلب الهواتف، ليعرف اسم الحي والمدينة. سيطلب منك النظام الإذن بعد هذه الرسالة: الموقع الدقيق يُظهر اسم الحي، والتقريبي يكفي للمواقيت واسم المدينة.</string>
     <string name="prayer_location_continue">متابعة</string>
     <string name="prayer_not_now">ليس الآن</string>
     <string name="prayer_rename_place">تعديل الاسم</string>
     <string name="prayer_rename_title">اسم المكان</string>
     <string name="prayer_follow_device">تحديث المكان عند فتح التطبيق</string>
-    <string name="prayer_follow_device_hint">يُقرأ موقعك كلما فتحت آناء، فيتغير المكان واسمه إذا انتقلت. لا يُقرأ في الخلفية.</string>
+    <string name="prayer_follow_device_hint">يُقرأ موقعك كلما فتحت اناء، فيتغير المكان واسمه إذا انتقلت. لا يُقرأ في الخلفية.</string>
     <string name="prayer_search_label">ابحث عن مدينة أو قرية</string>
     <string name="prayer_use_location">استخدام موقعي الحالي</string>
     <string name="prayer_locating">جارٍ تحديد الموقع…</string>
@@ -666,11 +666,11 @@
     <string name="alert_tone_light">رنّة خفيفة</string>
     <string name="alert_tone_simple">رنّة بسيطة</string>
     <string name="alert_permission_title">السماح بالإشعارات</string>
-    <string name="alert_permission_disclosure">ليظهر لك تنبيه الصلاة، يحتاج آناء إذن الإشعارات. تُجدول التنبيهات على هاتفك، ولا يُرسل منها شيء إلى أي جهة. سيطلب منك النظام الإذن بعد هذه الرسالة.</string>
+    <string name="alert_permission_disclosure">ليظهر لك تنبيه الصلاة، يحتاج اناء إذن الإشعارات. تُجدول التنبيهات على هاتفك، ولا يُرسل منها شيء إلى أي جهة. سيطلب منك النظام الإذن بعد هذه الرسالة.</string>
     <string name="alert_needs_attention">قد لا تصل التنبيهات في وقتها. اضغط هنا لمراجعة إعدادات الهاتف.</string>
     <string name="alert_needs_exact">التنبيهات تتأخر عن وقت الصلاة لأن «المنبهات الدقيقة» غير مسموح بها. اضغط هنا للسماح بها.</string>
     <string name="alert_exact_title">السماح بالمنبهات الدقيقة</string>
-    <string name="alert_exact_disclosure">يمنع أندرويد المنبهات الدقيقة عن التطبيقات حتى تسمح بها أنت. بدونها يتأخر تنبيه الصلاة حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل. في الصفحة التالية فعّل «السماح بضبط المنبّهات والتذكيرات» لآناء.</string>
+    <string name="alert_exact_disclosure">يمنع أندرويد المنبهات الدقيقة عن التطبيقات حتى تسمح بها أنت. بدونها يتأخر تنبيه الصلاة حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل. في الصفحة التالية فعّل «السماح بضبط المنبّهات والتذكيرات» لاناء.</string>
     <string name="alert_section_prayers">تنبيه كل صلاة</string>
     <string name="alert_styles_hint">الإشعار يظهر بلا صوت، والصوت القصير أقل من نصف دقيقة، والأذان كامل ويُوقف من الإشعار.</string>
     <string name="alert_section_tone">الصوت القصير</string>
@@ -701,19 +701,19 @@
     <string name="alert_check_exact_ok">مسموح بها، فيصل التنبيه في دقيقته.</string>
     <string name="alert_check_exact_off">غير مسموح بها، فقد يتأخر التنبيه حتى عشر دقائق، وحتى ساعة إذا كان الهاتف خاملًا، ولا يُرفع الأذان الكامل.</string>
     <string name="alert_check_battery">تحسين البطارية</string>
-    <string name="alert_check_battery_ok">آناء مستثنى منه.</string>
-    <string name="alert_check_battery_off">قد يوقف الهاتف آناء لتوفير البطارية. اختر لآناء «غير محسّن» أو «بلا قيود».</string>
+    <string name="alert_check_battery_ok">اناء مستثنى منه.</string>
+    <string name="alert_check_battery_off">قد يوقف الهاتف اناء لتوفير البطارية. اختر لاناء «غير محسّن» أو «بلا قيود».</string>
     <string name="alert_check_channels">قنوات التنبيه</string>
     <string name="alert_check_channels_ok">كلها مفعّلة.</string>
     <string name="alert_check_channels_off">إحدى قنوات تنبيه الصلاة مكتومة في إعدادات الهاتف.</string>
     <string name="alert_allow">السماح</string>
     <string name="alert_open_settings">فتح الإعدادات</string>
     <string name="alert_maker_title">خطوات خاصة بهاتفك</string>
-    <string name="alert_maker_huawei">في هواتف هواوي وهونر: افتح الإعدادات، ثم البطارية، ثم «تشغيل التطبيقات»، واختر آناء، ثم «إدارة يدوية» وفعّل الخيارات الثلاثة. وثبّت آناء في قائمة التطبيقات الحديثة بسحبه إلى الأسفل حتى يظهر القفل.</string>
-    <string name="alert_maker_samsung">في هواتف سامسونج: افتح الإعدادات، ثم العناية بالجهاز، ثم البطارية، ثم «حدود الاستخدام في الخلفية»، وأضف آناء إلى «التطبيقات التي لا تنام أبدًا».</string>
-    <string name="alert_maker_xiaomi">في هواتف شاومي وريدمي وبوكو: فعّل «التشغيل التلقائي» لآناء من إعدادات التطبيقات، واختر «بلا قيود» في توفير البطارية.</string>
-    <string name="alert_maker_oppo">في هواتف أوبو وريلمي وون بلس وفيفو: اسمح لآناء بالتشغيل التلقائي والعمل في الخلفية من إعدادات البطارية للتطبيق.</string>
-    <string name="alert_maker_other">إذا تأخرت التنبيهات، فاستثنِ آناء من تحسين البطارية من إعدادات الهاتف.</string>
+    <string name="alert_maker_huawei">في هواتف هواوي وهونر: افتح الإعدادات، ثم البطارية، ثم «تشغيل التطبيقات»، واختر اناء، ثم «إدارة يدوية» وفعّل الخيارات الثلاثة. وثبّت اناء في قائمة التطبيقات الحديثة بسحبه إلى الأسفل حتى يظهر القفل.</string>
+    <string name="alert_maker_samsung">في هواتف سامسونج: افتح الإعدادات، ثم العناية بالجهاز، ثم البطارية، ثم «حدود الاستخدام في الخلفية»، وأضف اناء إلى «التطبيقات التي لا تنام أبدًا».</string>
+    <string name="alert_maker_xiaomi">في هواتف شاومي وريدمي وبوكو: فعّل «التشغيل التلقائي» لاناء من إعدادات التطبيقات، واختر «بلا قيود» في توفير البطارية.</string>
+    <string name="alert_maker_oppo">في هواتف أوبو وريلمي وون بلس وفيفو: اسمح لاناء بالتشغيل التلقائي والعمل في الخلفية من إعدادات البطارية للتطبيق.</string>
+    <string name="alert_maker_other">إذا تأخرت التنبيهات، فاستثنِ اناء من تحسين البطارية من إعدادات الهاتف.</string>
     <string name="prayer_next_widget_label">الصلاة القادمة</string>
     <string name="prayer_next_widget_description">الصلاة القادمة ووقتها لمكانك.</string>
     <string name="prayer_day_widget_label">مواقيت اليوم</string>

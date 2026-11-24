@@ -16,7 +16,7 @@ On November 10, 2026 the user widened the scope to the day's other anchors: the 
 
 ## Product Name
 
-The approved Arabic name inside the application is «آناء», with «أذكار ومسبحة» as its descriptor. Use the short name in the launcher and screen headings, and the full name «آناء — أذكار ومسبحة» in descriptive material. The Google Play listing title is «اناء», without the alif madda, as explicitly requested on October 3, 2026. The English transliteration is Anaa.
+The approved Arabic name is «اناء», without the alif madda, with «أذكار ومسبحة» as its descriptor. Use the short name in the launcher and screen headings, and the full name «اناء — أذكار ومسبحة» in descriptive material. The Google Play listing title has been «اناء» since October 3, 2026. From version 2.0.2 (November 24, 2026), the launcher, the app's text and the drawn wordmark match it: the madda shape was removed from the wordmark. Older documents and release notes keep «آناء» as history. The English transliteration is Anaa.
 
 Keep the existing Android application ID, storage names, and persisted preference values when applying the display-name change, so existing installations retain their data.
 
