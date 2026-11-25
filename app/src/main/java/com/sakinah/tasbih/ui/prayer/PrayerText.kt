@@ -94,6 +94,14 @@ class PrayerText(private val context: Context) {
     /** «٥ دقائق»، «١٥ دقيقة», as a number of minutes is written on its own. */
     fun minutes(value: Int): String = minutesCount(value)
 
+    /** «١٢ دقيقة»، «ساعتين و٥ دقائق»: a length of time on its own, in whole minutes. */
+    fun span(minutes: Int): String {
+        val hours = minutes / 60
+        val rest = minutes % 60
+        val parts = listOfNotNull(hours.takeIf { it > 0 }?.let(::hoursCount), rest.takeIf { it > 0 || hours == 0 }?.let(::minutesCount))
+        return parts.joinToString(" و")
+    }
+
     private fun minutesCount(value: Int): String = when {
         value == 1 -> "دقيقة"
         value == 2 -> "دقيقتين"

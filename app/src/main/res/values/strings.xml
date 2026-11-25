@@ -714,6 +714,12 @@
     <string name="alert_maker_xiaomi">في هواتف شاومي وريدمي وبوكو: فعّل «التشغيل التلقائي» لاناء من إعدادات التطبيقات، واختر «بلا قيود» في توفير البطارية.</string>
     <string name="alert_maker_oppo">في هواتف أوبو وريلمي وون بلس وفيفو: اسمح لاناء بالتشغيل التلقائي والعمل في الخلفية من إعدادات البطارية للتطبيق.</string>
     <string name="alert_maker_other">إذا تأخرت التنبيهات، فاستثنِ اناء من تحسين البطارية من إعدادات الهاتف.</string>
+    <string name="alert_log_title">سجل المنبهات</string>
+    <string name="alert_log_intro">آخر المواعيد التي طلب اناء من الهاتف أن يوقظه فيها، لتنبيه أو لتحديث الأدوات، وهل أيقظه. إذا تكرر «لم يصل» أو طال التأخر، فالهاتف يمنع اناء من العمل في الخلفية، والعلاج في الخطوات الخاصة بهاتفك أعلاه.</string>
+    <string name="alert_log_empty">لا شيء بعد. يُكتب هنا كل موعد بعد أن يحين.</string>
+    <string name="alert_log_on_time">وصل في وقته</string>
+    <string name="alert_log_late">تأخر %1$s</string>
+    <string name="alert_log_missed">لم يصل</string>
     <string name="prayer_next_widget_label">الصلاة القادمة</string>
     <string name="prayer_next_widget_description">الصلاة القادمة ووقتها لمكانك.</string>
     <string name="prayer_day_widget_label">مواقيت اليوم</string>

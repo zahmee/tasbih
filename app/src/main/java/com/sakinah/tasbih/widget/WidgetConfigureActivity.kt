@@ -8,10 +8,15 @@ import com.sakinah.tasbih.MainActivity
 
 /**
  * What Android opens for a widget's «customise»: from Android 12 a long press on the widget
- * offers it, and placing one from the launcher's list opens it too. It says yes at once, so the
- * widget is placed whatever happens next, and hands over to the app: a prayer widget to the
- * widgets' customisation, on the widget it came from, a calendar widget to the calendar's
- * settings. A screen of its own would repeat the app's theme and data.
+ * offers it. It says yes at once and hands over to the app: a prayer widget to the widgets'
+ * customisation, on the widget it came from, a calendar widget to the calendar's settings. A
+ * screen of its own would repeat the app's theme and data.
+ *
+ * Placing a widget no longer opens it from Android 12, where the widgets say their customising
+ * is optional. Until November 25, 2026 it did, and the launcher waited for this screen's
+ * answer behind the app: leaving the app with the home button then cancelled the answer, and
+ * the launcher took the new widget off the home screen again, as seen on Android 15's own
+ * launcher. Before Android 12 placing still opens it, since Android has no other way there.
  */
 class WidgetConfigureActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
