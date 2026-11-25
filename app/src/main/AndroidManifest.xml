@@ -69,8 +69,8 @@
         </activity>
 
         <!--
-            A widget's «customise»: Android opens it from a long press on the widget, and
-            when one is placed from the launcher's list. It hands over to the app at once.
+            A widget's «customise»: Android opens it from a long press on the widget, and before
+            Android 12 when one is placed from the launcher's list. It hands over to the app at once.
         -->
         <activity
             android:name=".widget.WidgetConfigureActivity"

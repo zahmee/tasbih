@@ -29,15 +29,20 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Keeps a single alarm, for the next prayer alert or the widgets' next change, whichever comes
- * first. One alarm rather than two spares Android's limit on alarms that ring in Doze. Each
- * alarm, when it rings, sets the one after it, so the chain survives a new day or time zone.
- * The time the pending alarm was set for is remembered, so an alarm that Android delivers late
- * still raises every alert that came due meanwhile, and opening the app mends a broken chain.
- * With the user's leave to set exact alarms they ring on the minute, even in Doze. Without it
- * they ring within ten minutes while the phone is awake, a second alarm of the kind Doze lets
- * through stands behind the first for a phone left idle, and the full adhan gives way to a
- * notification tone.
+ * Keeps an alarm for each of the coming wakes: every prayer alert, and every change of the
+ * widgets while one is placed. Until November 25, 2026 a single alarm was kept, for the next of
+ * them, and each alarm set the one after it. The user's phone then went without alerts, and its
+ * widget stood at a prayer long past, whenever one alarm was not delivered: nothing was left to
+ * ring until the app was opened. Now a day of wakes is handed to Android at once, each an alarm
+ * of its own, and every alarm that rings hands over the day after it. An alarm the phone drops
+ * costs that one moment, and the next mends the rest.
+ *
+ * The times the alarms were set for are remembered, so an alarm that Android delivers late
+ * still raises every alert that came due meanwhile, and [WakeLog] can tell an alarm that rang
+ * from one that never did. With the user's leave to set exact alarms they ring on the minute,
+ * even in Doze. Without it they ring within ten minutes while the phone is awake, a second
+ * alarm of the kind Doze lets through stands behind the first for a phone left idle, and the
+ * full adhan gives way to a notification tone.
  */
 object PrayerAlarms {
     private const val ACTION_WAKE = "com.sakinah.tasbih.action.PRAYER_WAKE"
@@ -45,13 +50,24 @@ object PrayerAlarms {
     private const val EXTRA_PRAYER = "prayer"
     private const val EXTRA_KIND = "kind"
     private const val EXTRA_TIME = "time"
+
+    /** The time a wake's alarm was set for, which tells how late it rang. */
+    private const val EXTRA_AT = "at"
     private const val ACTION_WAKE_IDLE = "com.sakinah.tasbih.action.PRAYER_WAKE_IDLE"
+
+    /** The single alarm of the versions before 2.0.3, cancelled wherever it is still set. */
     private const val REQUEST_WAKE = 1
     private const val REQUEST_WAKE_IDLE = 2
     private const val REQUEST_TEST = 3
+
+    /** The wakes' alarms are told apart by their request codes, counted from here. */
+    private const val REQUEST_WAKES = 100
     private val WINDOW = Duration.ofMinutes(10)
-    private const val STORE = "prayer_alarms"
+    internal const val STORE = "prayer_alarms"
+
+    /** The one time the versions before 2.0.3 remembered. */
     private const val KEY_PENDING = "pending_at"
+    private const val KEY_PLANNED = "planned_at"
 
     /** The whole adhan is not started this long after its time; the short tone stands in. */
     private val ADHAN_LATE = Duration.ofMinutes(5)
@@ -63,27 +79,40 @@ object PrayerAlarms {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     /**
-     * Sets the alarm for the next wake, then raises whatever alert came due since the last one
-     * was set. The alarm is set first, so that no failure in raising can break the chain.
+     * Sets an alarm for each of the coming wakes, then raises whatever alert came due since
+     * they were last set. The alarms are set first, so that no failure in raising can leave the
+     * phone without them. [rangFor] is the time the alarm that brought the app here was set
+     * for, or null when something else did: the app opening, a widget, a restart. [judgeMissed]
+     * is off where the alarms were cleared or moved by Android, so none was dropped. With
+     * [onlyIfOverdue] nothing is done unless an alarm is overdue: an alert on its way is left
+     * to its own alarm, which alone may start the full adhan.
      */
-    suspend fun schedule(context: Context) = lock.withLock {
+    suspend fun schedule(
+        context: Context,
+        rangFor: Long? = null,
+        judgeMissed: Boolean = true,
+        onlyIfOverdue: Boolean = false,
+    ) = lock.withLock {
         val app = context.applicationContext
         val store = app.getSharedPreferences(STORE, Context.MODE_PRIVATE)
-        val pending = store.getLong(KEY_PENDING, 0)
+        val planned = store.getString(KEY_PLANNED, null)?.split(',')?.mapNotNull { it.toLongOrNull() }
+            ?: listOfNotNull(store.getLong(KEY_PENDING, 0).takeIf { it > 0 })
+        val pending = planned.minOrNull() ?: 0
         val now = Instant.now()
+        if (onlyIfOverdue && (pending == 0L || pending > now.toEpochMilli() - WakeLog.GRACE_MS)) return@withLock
         val loaded = load(app)
-        val wake = loaded?.let { (schedule, alerts) ->
-            AlertPlanner.nextWake(schedule, alerts, now, PrayerWidgetKind.anyPlaced(app) || dateTurnsAtMaghrib(app))
-        }
-        if (wake == null) {
-            cancel(app, REQUEST_WAKE, ACTION_WAKE)
-            cancel(app, REQUEST_WAKE_IDLE, ACTION_WAKE_IDLE)
-            store.edit().remove(KEY_PENDING).apply()
-        } else {
-            set(app, wake.at, intent(app, ACTION_WAKE, REQUEST_WAKE, null, null, null), wake.urgent)
-            setIdleBackup(app, wake.at)
-            store.edit().putLong(KEY_PENDING, wake.at.toInstant().toEpochMilli()).apply()
-        }
+        val wakes = loaded?.let { (schedule, alerts) ->
+            AlertPlanner.upcomingWakes(schedule, alerts, now, PrayerWidgetKind.anyPlaced(app) || dateTurnsAtMaghrib(app))
+        }.orEmpty()
+        wakes.forEachIndexed { index, wake -> set(app, wake.at, wakeIntent(app, ACTION_WAKE, REQUEST_WAKES + index, wake.at), wake.urgent) }
+        (wakes.size until AlertPlanner.MAX_WAKES).forEach { cancel(app, REQUEST_WAKES + it, ACTION_WAKE) }
+        cancel(app, REQUEST_WAKE, ACTION_WAKE)
+        setIdleBackup(app, wakes.firstOrNull()?.at)
+        store.edit()
+            .putString(KEY_PLANNED, wakes.joinToString(",") { it.at.toInstant().toEpochMilli().toString() })
+            .remove(KEY_PENDING)
+            .apply()
+        WakeLog.record(app, planned, rangFor, now.toEpochMilli(), judgeMissed)
         if (loaded != null && pending in 1..now.toEpochMilli()) {
             val (schedule, alerts) = loaded
             AlertPlanner.due(schedule, alerts, Instant.ofEpochMilli(pending), now).forEach { event ->
@@ -91,6 +120,20 @@ object PrayerAlarms {
                 val style = alerts.alertFor(event.prayer).style.let { if (late && it == AlertStyle.ADHAN) AlertStyle.SOUND else it }
                 raise(app, event.prayer, event.kind, style, event.prayerTime.withZoneSameInstant(ZoneId.systemDefault()), alerts)
             }
+        }
+    }
+
+    /**
+     * [schedule] for a caller with other work to do after it, as a widget being drawn: a
+     * failure here is written down and does not take that work with it.
+     */
+    suspend fun mend(context: Context, onlyIfOverdue: Boolean = false) {
+        try {
+            schedule(context, onlyIfOverdue = onlyIfOverdue)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            Log.w("PrayerAlarms", "The alarms could not be set again", failure)
         }
     }
 
@@ -102,6 +145,9 @@ object PrayerAlarms {
 
     internal suspend fun handle(context: Context, intent: Intent) {
         val app = context.applicationContext
+        // The time this alarm was set for, or null for what is no alarm of a wake: the trial, a
+        // restart, an update of the app, a change of the clock.
+        val rang = intent.getLongExtra(EXTRA_AT, 0).takeIf { it > 0 && (intent.action == ACTION_WAKE || intent.action == ACTION_WAKE_IDLE) }
         if (intent.action == ACTION_TEST) {
             val prayer = Prayer.entries.getOrNull(intent.getIntExtra(EXTRA_PRAYER, -1))
             val kind = AlertKind.entries.getOrNull(intent.getIntExtra(EXTRA_KIND, -1))
@@ -111,8 +157,10 @@ object PrayerAlarms {
                 raise(app, prayer, kind, testStyle(alerts), Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()), alerts)
             }
         } else {
-            // Raises the alert this alarm rang for, and any other that came due, and sets the next.
-            schedule(app)
+            // Raises the alert this alarm rang for, and any other that came due, and sets the
+            // coming alarms again. A restart, an update of the app and a change of the clock
+            // come here too, with no alarm behind them: they clear or move the alarms themselves.
+            schedule(app, rangFor = rang, judgeMissed = rang != null)
         }
         // The widgets come last and may fail without taking the alerts down with them.
         try {
@@ -123,6 +171,10 @@ object PrayerAlarms {
         } catch (failure: Exception) {
             Log.w("PrayerAlarms", "The widgets could not be redrawn", failure)
         }
+        // The wird keeps a single alarm of its own. Each prayer alarm that rings sets it again,
+        // and raises a reminder the phone dropped, so the wird's chain is mended many times a
+        // day. The restart, the update and the clock reach the wird's own receiver themselves.
+        if (rang != null) com.sakinah.tasbih.wird.WirdSync.changed(app)
         if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
             val place = PrayerPreferencesRepository(app).current().place
             if (place != null && place.keepsOtherTimeThan(ZoneId.systemDefault(), Instant.now())) {
@@ -178,30 +230,44 @@ object PrayerAlarms {
     private fun set(context: Context, at: ZonedDateTime, operation: PendingIntent, urgent: Boolean = false) {
         val manager = context.getSystemService(AlarmManager::class.java)
         val millis = at.toInstant().toEpochMilli()
-        when {
-            !canScheduleExact(context) -> manager.setWindow(AlarmManager.RTC_WAKEUP, millis, WINDOW.toMillis(), operation)
-            urgent -> manager.setAlarmClock(AlarmManager.AlarmClockInfo(millis, AlertNotifier.openPrayerTimes(context)), operation)
-            else -> manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, operation)
+        try {
+            when {
+                !canScheduleExact(context) -> manager.setWindow(AlarmManager.RTC_WAKEUP, millis, WINDOW.toMillis(), operation)
+                urgent -> manager.setAlarmClock(AlarmManager.AlarmClockInfo(millis, AlertNotifier.openPrayerTimes(context)), operation)
+                else -> manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, operation)
+            }
+        } catch (refused: SecurityException) {
+            // The leave to set exact alarms was withdrawn between the check and the call.
+            Log.w("PrayerAlarms", "An exact alarm was refused", refused)
+            manager.setWindow(AlarmManager.RTC_WAKEUP, millis, WINDOW.toMillis(), operation)
         }
     }
 
     /**
-     * Without exact alarms, the windowed alarm above is held back for as long as the phone lies
-     * idle, which at Fajr can be hours. This second one is of the kind Doze lets through, though
-     * less punctual while the phone is awake. Whichever rings first raises the alert and sets
-     * both again, and the other then finds nothing due.
+     * Without exact alarms, the windowed alarms above are held back for as long as the phone
+     * lies idle, which at Fajr can be hours. This second one, for the next wake at [at], is of
+     * the kind Doze lets through, though less punctual while the phone is awake. Whichever
+     * rings first raises the alert and sets them all again, and the other then finds nothing due.
      */
-    private fun setIdleBackup(context: Context, at: ZonedDateTime) {
-        if (canScheduleExact(context)) {
+    private fun setIdleBackup(context: Context, at: ZonedDateTime?) {
+        if (at == null || canScheduleExact(context)) {
             cancel(context, REQUEST_WAKE_IDLE, ACTION_WAKE_IDLE)
             return
         }
         context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             at.toInstant().toEpochMilli(),
-            intent(context, ACTION_WAKE_IDLE, REQUEST_WAKE_IDLE, null, null, null),
+            wakeIntent(context, ACTION_WAKE_IDLE, REQUEST_WAKE_IDLE, at),
         )
     }
+
+    /** A wake's alarm. It carries the time it was set for, to tell how late Android delivers it. */
+    private fun wakeIntent(context: Context, action: String, request: Int, at: ZonedDateTime): PendingIntent = PendingIntent.getBroadcast(
+        context,
+        request,
+        Intent(context, PrayerAlarmReceiver::class.java).setAction(action).putExtra(EXTRA_AT, at.toInstant().toEpochMilli()),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     /** The action must match the one the alarm was set with, or Android finds no alarm to cancel. */
     private fun cancel(context: Context, request: Int, action: String) {

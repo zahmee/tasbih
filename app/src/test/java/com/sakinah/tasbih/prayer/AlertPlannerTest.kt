@@ -104,6 +104,51 @@ class AlertPlannerTest {
     }
 
     @Test
+    fun `a day of wakes is planned at once, soonest first, each moment once`() {
+        val settings = AlertSettings(
+            alerts = mapOf(
+                Prayer.DHUHR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 10),
+                Prayer.MAGHRIB to PrayerAlert(AlertStyle.SOUND),
+            ),
+        )
+        val wakes = AlertPlanner.upcomingWakes(riyadh, settings, at("10:00"), widgetsPlaced = true)
+        assertEquals(AlertPlanner.MAX_WAKES, wakes.size)
+        val times = wakes.map { it.at.toInstant() }
+        assertEquals(times.sorted().distinct(), times)
+        assertEquals(true, times.all { it.isAfter(at("10:00")) })
+        // The reminder first, then Dhuhr itself, which is also where the widgets change.
+        assertEquals(LocalTime.parse("11:27"), wakes[0].at.toLocalTime())
+        assertEquals(AlertKind.REMINDER, wakes[0].event?.kind)
+        assertEquals(LocalTime.parse("11:37"), wakes[1].at.toLocalTime())
+        assertEquals(AlertKind.PRAYER, wakes[1].event?.kind)
+        // Dhuhr's iqama moves the widgets only.
+        assertEquals(LocalTime.parse("11:57"), wakes[2].at.toLocalTime())
+        assertNull(wakes[2].event)
+        // The plan reaches into the next day, so the day after's alerts are set before it comes.
+        assertEquals(true, wakes.any { it.at.toLocalDate() == date.plusDays(1) && it.event?.prayer == Prayer.DHUHR })
+    }
+
+    @Test
+    fun `without widgets only the alerts wake, for days ahead`() {
+        val settings = AlertSettings(alerts = mapOf(Prayer.FAJR to PrayerAlert(AlertStyle.ADHAN)))
+        val wakes = AlertPlanner.upcomingWakes(riyadh, settings, at("10:00"), widgetsPlaced = false)
+        assertEquals(listOf(date.plusDays(1), date.plusDays(2)), wakes.map { it.at.toLocalDate() })
+        assertEquals(true, wakes.all { it.event?.prayer == Prayer.FAJR })
+        assertEquals(emptyList<Wake>(), AlertPlanner.upcomingWakes(riyadh, AlertSettings(), at("10:00"), widgetsPlaced = false))
+    }
+
+    @Test
+    fun `only the wake at hand may ring as an alarm clock`() {
+        val close = AlertSettings(alerts = mapOf(Prayer.ASR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 5)))
+        // Hours ahead, an alarm clock would show in the status bar all that while.
+        assertEquals(emptyList<Wake>(), AlertPlanner.upcomingWakes(riyadh, close, at("12:00"), widgetsPlaced = false).filter { it.urgent })
+        val afterReminder = AlertPlanner.upcomingWakes(riyadh, close, at("14:41"), widgetsPlaced = false)
+        assertEquals(AlertKind.PRAYER, afterReminder.first().event?.kind)
+        assertEquals(true, afterReminder.first().urgent)
+        assertEquals(1, afterReminder.count { it.urgent })
+    }
+
+    @Test
     fun `an alarm delivered late still raises the alert that came due meanwhile`() {
         // Dhuhr is at 11:37. Its reminder's alarm, set for 11:27, arrives at 11:38.
         val settings = AlertSettings(alerts = mapOf(Prayer.DHUHR to PrayerAlert(AlertStyle.ADHAN, reminderMinutes = 10)))

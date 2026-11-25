@@ -58,17 +58,25 @@ enum class PrayerWidgetKind(val receiver: Class<out AppWidgetProvider>, val foll
 abstract class BasePrayerWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == WidgetTicker.ACTION_TICK) {
-            runAsync { PrayerWidgetUpdater(context).updateAll() }
+            // The tick comes while the phone is in use. Where the phone has dropped an alarm, it
+            // raises the alert that alarm was for, a few minutes late rather than never.
+            runAsync {
+                PrayerAlarms.mend(context, onlyIfOverdue = true)
+                PrayerWidgetUpdater(context).updateAll()
+            }
             return
         }
         super.onReceive(context, intent)
     }
 
-    /** Also after a restart, when Android updates every widget: this sets the alarms again. */
+    /**
+     * Also after a restart, when Android updates every widget, and every six hours: this sets
+     * the alarms again. They come first, so that a widget that cannot be drawn costs no alert.
+     */
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         runAsync {
+            PrayerAlarms.mend(context)
             PrayerWidgetUpdater(context).updateAll()
-            PrayerAlarms.schedule(context)
         }
     }
 
@@ -94,7 +102,7 @@ class PrayerQiblaWidget : BasePrayerWidget()
 
 /**
  * Draws the prayer widgets: text on Anaa's paper, nothing that moves. The next prayer changes at
- * each prayer's time, when the alarm chain redraws them, so no countdown has to tick here.
+ * each prayer's time, when that time's alarm redraws them, so no countdown has to tick here.
  */
 class PrayerWidgetUpdater(context: Context) {
     private val app = context.applicationContext

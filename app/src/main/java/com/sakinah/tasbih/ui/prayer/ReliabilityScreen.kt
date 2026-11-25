@@ -36,10 +36,16 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.alerts.AlertHealth
 import com.sakinah.tasbih.alerts.PhoneMaker
+import com.sakinah.tasbih.alerts.WakeLog
+import com.sakinah.tasbih.alerts.WakeRecord
 import com.sakinah.tasbih.ui.SakinahSectionHeader
 import com.sakinah.tasbih.ui.SettingsPage
 import com.sakinah.tasbih.ui.calendar.CalendarHint
 import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * Everything a prayer alert needs from the phone, each with its state and a way to fix it. It
@@ -49,8 +55,10 @@ import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
 fun ReliabilityScreen(toneId: String, viewModel: PrayerViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var health by remember { mutableStateOf(AlertHealth.read(context, toneId)) }
+    var wakes by remember { mutableStateOf(WakeLog.read(context).take(LOG_ROWS)) }
     LifecycleResumeEffect(toneId) {
         health = AlertHealth.read(context, toneId)
+        wakes = WakeLog.read(context).take(LOG_ROWS)
         viewModel.refresh()
         onPauseOrDispose { }
     }
@@ -118,6 +126,10 @@ fun ReliabilityScreen(toneId: String, viewModel: PrayerViewModel, onBack: () -> 
             )
         }
 
+        item { SakinahSectionHeader(stringResource(R.string.alert_log_title)) }
+        item { CalendarHint(stringResource(if (wakes.isEmpty()) R.string.alert_log_empty else R.string.alert_log_intro)) }
+        if (wakes.isNotEmpty()) item { WakeRows(wakes) }
+
         item { SakinahSectionHeader(stringResource(R.string.alert_section_test)) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -153,6 +165,38 @@ private fun Check(ok: Boolean, title: String, detail: String, action: String, on
                 Text(detail, style = MaterialTheme.typography.bodySmall)
             }
             if (!ok) TextButton(onClick = onFix) { Text(action) }
+        }
+    }
+}
+
+/** How many of the last wakes the screen lists: about half a day of them. */
+private const val LOG_ROWS = 12
+
+/** The last wakes, each with its day and time, and whether its alarm rang on time, late or never. */
+@Composable
+private fun WakeRows(wakes: List<WakeRecord>) {
+    val context = LocalContext.current
+    val text = remember(context) { PrayerText(context) }
+    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            wakes.forEach { wake ->
+                val planned = Instant.ofEpochMilli(wake.plannedAt).atZone(ZoneId.systemDefault())
+                val weekday = planned.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("ar"))
+                val state = when {
+                    !wake.rang -> stringResource(R.string.alert_log_missed)
+                    wake.lateMinutes < 1 -> stringResource(R.string.alert_log_on_time)
+                    else -> stringResource(R.string.alert_log_late, text.span(wake.lateMinutes))
+                }
+                val troubled = !wake.rang || wake.lateMinutes >= 1
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("$weekday ${text.time(planned)}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(
+                        state,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (troubled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

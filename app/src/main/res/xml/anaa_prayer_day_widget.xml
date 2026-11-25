@@ -14,4 +14,4 @@
     android:targetCellHeight="1"
     android:updatePeriodMillis="21600000"
     android:widgetCategory="home_screen"
-    android:widgetFeatures="reconfigurable" />
+    android:widgetFeatures="reconfigurable|configuration_optional" />
