@@ -28,6 +28,8 @@ import com.sakinah.tasbih.ui.TabbedSettingsPage
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -90,6 +92,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.prayer.ObligatoryPrayers
+import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerPhase
 import com.sakinah.tasbih.prayer.PrayerSchedule
 import com.sakinah.tasbih.ui.KhatamDivider
@@ -989,10 +992,34 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     .padding(horizontal = 10.dp, vertical = 8.dp)
                     .testTag("widget_preview"),
             ) {
+              BoxWithConstraints {
+                val marked = if (style.markCurrent) schedule?.current(now)?.prayer ?: next?.prayer else next?.prayer
+                // As in the widget: the lines' ends meet the outer edges of Fajr's words and Isha's.
+                val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                fun words(prayer: Prayer): Float {
+                    fun width(words: String, size: Float, bold: WidgetWeight) = measurer.measure(
+                        words,
+                        androidx.compose.ui.text.TextStyle(fontSize = size.sp, fontFamily = WidgetFont, fontWeight = bold.font()),
+                    ).size.width / density.density
+                    val name = width(text.name(prayer, day?.get(prayer)), 13 * scale, if (prayer == marked) WidgetWeight.BOLD else style.weight)
+                    val clock = width(
+                        day?.let { text.clock(it[prayer]) } ?: "–",
+                        (if (com.sakinah.tasbih.data.DigitStyle.western) 13.5f else 15f) * scale,
+                        style.timeWeight,
+                    )
+                    return maxOf(name, clock)
+                }
+                val insets = com.sakinah.tasbih.widget.LineInsets.of(
+                    row = maxWidth.value,
+                    box = if (style.prayersBox) 3f else 0f,
+                    right = words(ObligatoryPrayers.first()),
+                    left = words(ObligatoryPrayers.last()),
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     style.lines.filterNot { it.isEmpty }.forEachIndexed { index, line ->
                         val color = Color(palette.line(line.color) ?: if (index == 0) palette.accent else palette.textSoft)
-                        Row(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().absolutePadding(left = insets.left.dp, right = insets.right.dp)) {
                             val single = line.right == LineItem.NONE || line.left == LineItem.NONE
                             listOf(line.right, line.left).filter { it != LineItem.NONE }.forEachIndexed { side, item ->
                                 Text(
@@ -1014,7 +1041,6 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     }
                     val inner = WidgetPalette.inner(style, night)
                     val boxShape = RoundedCornerShape(10.dp)
-                    val marked = if (style.markCurrent) schedule?.current(now)?.prayer ?: next?.prayer else next?.prayer
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -1078,6 +1104,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     }
                     if (style.progress && schedule != null) ProgressPreview(schedule, now, palette, style)
                 }
+              }
             }
         }
     }

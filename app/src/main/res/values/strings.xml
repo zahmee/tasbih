@@ -103,6 +103,7 @@
     <string name="home_morning_subtitle">ابدأ يومك بذكرٍ وسكينة</string>
     <string name="home_evening_subtitle">اختم يومك بقلبٍ مطمئن</string>
     <string name="today">ورد اليوم</string>
+    <string name="home_friday_kahf">يوم الجمعة: سورة الكهف</string>
     <string name="home_no_place_body">اختر مدينتك أو قريتك، فتظهر هنا الصلاة القادمة ومواقيت يومك واتجاه القبلة.</string>
     <string name="home_next_prayer_spoken">%1$s: %2$s %3$s، %4$s</string>
     <string name="home_start_wird">ابدأ القراءة</string>
@@ -554,6 +555,9 @@
     <string name="prayer_current">وقتها الآن</string>
     <string name="prayer_method_auto_line">طريقة الحساب: %1$s، تلقائيًا حسب الدولة</string>
     <string name="prayer_method_line">طريقة الحساب: %1$s</string>
+    <string name="prayer_now_label">الوقت الآن</string>
+    <string name="prayer_between_sunrise_dhuhr">بين الشروق والظهر</string>
+    <string name="prayer_window_until">حتى %1$s %2$s، %3$s</string>
     <string name="prayer_asr_hanafi">العصر على المذهب الحنفي</string>
     <string name="prayer_place_title">المكان</string>
     <string name="prayer_location_title">استخدام موقع الهاتف</string>

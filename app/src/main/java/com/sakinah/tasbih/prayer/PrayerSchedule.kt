@@ -30,6 +30,16 @@ data class PrayerDay(val date: LocalDate, val times: Map<Prayer, ZonedDateTime>,
 /** A prayer and when it falls. [tomorrow] is set for Fajr after the day's Isha. */
 data class PrayerMoment(val prayer: Prayer, val time: ZonedDateTime, val tomorrow: Boolean = false)
 
+/** The stretch of time the clock is in: [prayer]'s, or none's, from [start] until [end] comes. */
+data class PrayerWindow(val prayer: PrayerMoment?, val start: ZonedDateTime, val end: PrayerMoment) {
+    /** How much of the stretch has passed at [now], from 0 to 1. */
+    fun passed(now: Instant): Float {
+        val whole = java.time.Duration.between(start.toInstant(), end.time.toInstant()).toMillis()
+        if (whole <= 0) return 1f
+        return (java.time.Duration.between(start.toInstant(), now).toMillis().toFloat() / whole).coerceIn(0f, 1f)
+    }
+}
+
 /**
  * What the prayer clock counts toward. Since November 23, 2026, at the user's wish, the clock
  * no longer runs past the adhan into a negative count: from the adhan it counts down to the
@@ -128,6 +138,23 @@ class PrayerSchedule(
         }
         if (!now.isBefore(day[Prayer.SUNRISE].toInstant()) && now.isBefore(day[Prayer.DHUHR].toInstant())) return null
         return ObligatoryPrayers.lastOrNull { !now.isBefore(day[it].toInstant()) }?.let { PrayerMoment(it, day[it]) }
+    }
+
+    /**
+     * The stretch of time the clock is in: the prayer whose time it is, from its adhan to what
+     * comes next — sunrise after Fajr, the next adhan after the others. Between sunrise and
+     * Dhuhr, when no prayer is due, [prayer] is null and the stretch runs from sunrise to Dhuhr.
+     */
+    fun window(now: Instant = Instant.now()): PrayerWindow {
+        val current = current(now)
+        if (current == null) {
+            val day = day(today(now))
+            return PrayerWindow(null, day[Prayer.SUNRISE], PrayerMoment(Prayer.DHUHR, day[Prayer.DHUHR]))
+        }
+        if (current.prayer == Prayer.FAJR) {
+            return PrayerWindow(current, current.time, PrayerMoment(Prayer.SUNRISE, day(current.time.toLocalDate())[Prayer.SUNRISE]))
+        }
+        return PrayerWindow(current, current.time, next(now))
     }
 
     /**

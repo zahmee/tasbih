@@ -27,7 +27,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -65,7 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.sakinah.tasbih.ui.theme.LocalSakinahBrandColors
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.calendar.Occasions
@@ -137,17 +136,25 @@ fun HomeScreen(
     val formatter = remember { DateTimeFormatter.ofPattern("d MMMM yyyy", arabic).withDecimalStyle(DecimalStyle.of(arabic)) }
     val weekday = calendarText?.weekday(today.dayOfWeek)
         ?: remember(today) { DateTimeFormatter.ofPattern("EEEE", arabic).format(today) }
-    val hijri = calendarText?.let { text ->
-        val maghrib = day?.get(Prayer.MAGHRIB)?.toInstant()
-        text.hijriDate(hijriDayFor(today, now, maghrib, text.settings.hijriDayFromMaghrib), numbered = true)
-    }?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(HijrahDate.from(today)) }
+    val hijriDay = calendarText?.let { text ->
+        hijriDayFor(today, now, day?.get(Prayer.MAGHRIB)?.toInstant(), text.settings.hijriDayFromMaghrib)
+    }
+    val hijri = calendarText?.let { text -> hijriDay?.let { text.hijriDate(it, numbered = true) } }
+        ?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(HijrahDate.from(today)) }
+    // What makes today itself a day apart: its occasions, and Friday's sura.
+    val todayNotes = buildList {
+        if (calendarText != null && hijriDay != null) {
+            calendarText.calendar.fromGregorian(hijriDay)?.let { date -> Occasions.on(date).forEach { add(calendarText.occasionName(it)) } }
+        }
+        if (today.dayOfWeek == java.time.DayOfWeek.FRIDAY) add(stringResource(R.string.home_friday_kahf))
+    }
     val gregorian = calendarText?.gregorianDate(today, numbered = true)?.takeIf { it.isNotEmpty() } ?: remember(today) { formatter.format(today) }
 
     val featuredOrder = if (LocalTime.now().hour in 4..15) 27 else 28
     val featured = state.catalog.collections.firstOrNull { it.order == featuredOrder }
 
     val header: @Composable () -> Unit = {
-        HomeDates(hijri, gregorian, schedule?.place?.name, onOpenCalendar, onChoosePlace)
+        HomeDates(hijri, gregorian, todayNotes, onOpenCalendar)
     }
     val prayer: @Composable () -> Unit = {
         val words = phase?.let { com.sakinah.tasbih.ui.prayer.prayerClockWords(it, now, prayerText) }
@@ -215,36 +222,31 @@ fun HomeScreen(
     }
 }
 
-/** The day by both calendars, which opens the calendar, and the place the times are for. */
+/**
+ * The day, the head of the home: the Hijri date large, the Gregorian under it, and what makes
+ * today a day apart. It opens the calendar. The place the times are for left it on November 27,
+ * 2026, at the user's wish, for the prayer tab alone, so the two no longer open alike.
+ */
 @Composable
 private fun HomeDates(
     hijri: String,
     gregorian: String,
-    place: String?,
+    notes: List<String>,
     onOpenCalendar: () -> Unit,
-    onChoosePlace: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .testTag("home_open_calendar")
-                .clip(MaterialTheme.shapes.small)
-                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        ) {
-            Text(hijri, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(gregorian, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (place != null) {
-            TextButton(
-                onClick = onChoosePlace,
-                modifier = Modifier.widthIn(max = 168.dp).testTag("home_place"),
-            ) {
-                Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(place, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
-            }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("home_open_calendar")
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cal_open), onClick = onOpenCalendar)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(hijri, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(gregorian, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        notes.forEach { note ->
+            Text(note, style = MaterialTheme.typography.bodyMedium, color = LocalSakinahBrandColors.current.antiqueGold)
         }
     }
 }
@@ -317,23 +319,23 @@ private fun PrayerHero(
             .testTag("home_next_prayer")
             .semantics { contentDescription = spoken },
     ) {
+        // A slim strip since November 27, 2026: the prayer tab holds the full card, for the prayer whose time it is.
         OrnamentedFeature(MaterialTheme.colorScheme.onPrimary) {
-            Column(
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 22.dp, vertical = 16.dp)
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
                     .clearAndSetSemantics { },
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, style = MaterialTheme.typography.titleSmall)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Column(Modifier.weight(1f)) {
+                    Text(label, style = MaterialTheme.typography.labelMedium)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(10.dp))
+                        Text(time, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
-                Text(remaining, style = MaterialTheme.typography.bodyLarge)
+                Text(remaining, style = MaterialTheme.typography.titleSmall)
             }
         }
     }
