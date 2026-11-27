@@ -172,24 +172,39 @@ class PrayerWidgetUpdater(context: Context) {
         val divider = style.ornament != WidgetOrnament.NONE
     }
 
-    /** The paper, the mihrab over it, and the ruled star's colour, as the user chose them. */
-    private fun drawChrome(views: RemoteViews, ids: Chrome, look: Look, appWidgetId: Int) {
+    /**
+     * The paper, the mihrab or frame over it, and the divider and its colour, as the user chose
+     * them. [widthDp] and [heightDp] are the size the widget is drawn for, where it is known.
+     */
+    private fun drawChrome(views: RemoteViews, ids: Chrome, look: Look, appWidgetId: Int, widthDp: Int? = null, heightDp: Int? = null) {
         val palette = look.palette
+        val ornament = look.style.ornament
         tintImage(views, ids.bg, palette.surface, if (look.style.surface == WidgetSurface.AUTO) R.color.anaa_widget_surface else null)
         views.setInt(ids.bg, "setImageAlpha", look.style.opacity * 255 / 100)
         val density = app.resources.displayMetrics.density
-        views.setViewPadding(ids.root, (10 * density).toInt(), (6 * density).toInt(), (10 * density).toInt(), (6 * density).toInt())
-        if (look.pattern) {
-            // Drawn at the widget's own size, so the arch keeps its shape whatever the size.
+        val (across, down) = IslamicFrames.padding(ornament)
+        views.setViewPadding(ids.root, (across * density).toInt(), (down * density).toInt(), (across * density).toInt(), (down * density).toInt())
+        if (look.pattern || IslamicFrames.framesWidget(ornament)) {
+            // Drawn at the widget's own size, so the arch and the corners keep their shape whatever the size.
             val options = manager.getAppWidgetOptions(appWidgetId)
-            val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 } ?: 250
-            val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: 110
+            val width = widthDp?.takeIf { it > 0 } ?: options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 } ?: 250
+            val height = heightDp?.takeIf { it > 0 } ?: options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: 110
             val radius = app.resources.getDimension(R.dimen.anaa_widget_radius) / density
-            val color = (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24)
-            views.setImageViewBitmap(ids.pattern, MihrabOrnament.bitmap(width, height, density, radius, color))
+            val picture = if (look.pattern) {
+                MihrabOrnament.bitmap(width, height, density, radius, (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24))
+            } else {
+                // The frames are the ornament itself, not a watermark, so they are drawn stronger.
+                IslamicFrames.bitmap(ornament, width, height, density, radius, (palette.accent and 0x00FFFFFF) or (palette.frameAlpha shl 24))
+            }
+            views.setImageViewBitmap(ids.pattern, picture)
             views.setViewVisibility(ids.pattern, View.VISIBLE)
         } else {
             views.setViewVisibility(ids.pattern, View.GONE)
+        }
+        if (ornament == WidgetOrnament.FLOURISH) {
+            views.setImageViewBitmap(ids.divider, IslamicFrames.dividerBitmap(180, 16, density))
+        } else {
+            views.setImageViewResource(ids.divider, R.drawable.anaa_widget_divider)
         }
         tintImage(views, ids.divider, palette.accent, null)
         views.setInt(ids.divider, "setImageAlpha", 170)
@@ -355,7 +370,7 @@ class PrayerWidgetUpdater(context: Context) {
         // The name and time come first, then the bar, then the lines; the ruled star last.
         val height = widgetHeight(appWidgetId, 110)
         val lineHeight = 17 * look.scale
-        val room = height - 12 - 52 - (if (style.progress) 8 else 0)
+        val room = height - 2 * IslamicFrames.padding(style.ornament).second - 52 - (if (style.progress) 8 else 0)
         val lines = style.nextLines.filterNot { it.isEmpty }
         val shown = lines.take((room / lineHeight).toInt().coerceIn(0, lines.size))
         val dividerFits = room - shown.size * lineHeight >= DIVIDER_DP
@@ -408,7 +423,7 @@ class PrayerWidgetUpdater(context: Context) {
         views.setOnClickPendingIntent(R.id.pd_root, openPrayer(appWidgetId))
         val look = Look(style)
         val palette = look.palette
-        drawChrome(views, DAY_CHROME, look, appWidgetId)
+        drawChrome(views, DAY_CHROME, look, appWidgetId, width.toInt(), height.toInt())
 
         if (schedule == null) {
             LINES.forEachIndexed { index, line -> views.setViewVisibility(line.row, if (index == 0) View.VISIBLE else View.GONE) }
@@ -435,7 +450,7 @@ class PrayerWidgetUpdater(context: Context) {
         // The prayers come first; then the lines, the first ones first; the ruled star only
         // where room is left over.
         val lineHeight = 18 * look.scale
-        val room = height - 12 - 54 * look.scale - (if (style.progress) 8 else 0)
+        val room = height - 2 * IslamicFrames.padding(style.ornament).second - 54 * look.scale - (if (style.progress) 8 else 0)
         val lines = style.lines.filterNot { it.isEmpty }
         val shown = lines.take((room / lineHeight).toInt().coerceIn(0, lines.size))
         val dividerFits = room - shown.size * lineHeight >= DIVIDER_DP
@@ -526,7 +541,7 @@ class PrayerWidgetUpdater(context: Context) {
         val density = metrics.density
         val box = if (style.prayersBox) 3 * density else 0f
         val insets = LineInsets.of(
-            row = if (width > 0) (width - 20) * density else 0f,
+            row = if (width > 0) (width - 2 * IslamicFrames.padding(style.ornament).first) * density else 0f,
             box = box,
             right = words(ObligatoryPrayers.first()),
             left = words(ObligatoryPrayers.last()),

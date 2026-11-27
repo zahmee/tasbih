@@ -27,6 +27,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -198,5 +201,37 @@ internal fun OrnamentedFeature(color: Color, content: @Composable () -> Unit) {
     Box(Modifier.fillMaxWidth().ornamentFrame(FeatureFrameShape, color.copy(alpha = 0.22f))) {
         KhatamLattice(color.copy(alpha = 0.11f), Modifier.matchParentSize())
         content()
+    }
+}
+
+/**
+ * The flourished divider the widgets may wear: two curling stems round a leaf, with a fine line
+ * to each side. Under the home's date since November 28, 2026.
+ */
+@Composable
+internal fun FlourishDivider(modifier: Modifier = Modifier, color: Color? = null) {
+    val tint = (color ?: LocalSakinahBrandColors.current.antiqueGold).copy(alpha = 0.8f)
+    Canvas(modifier.fillMaxWidth().height(18.dp)) {
+        drawIntoCanvas {
+            com.sakinah.tasbih.widget.IslamicFrames.flourish(
+                it.nativeCanvas, center.x, center.y, minOf(size.width / 2, 120.dp.toPx()), 0.9.dp.toPx(), tint.toArgb(),
+            )
+        }
+    }
+}
+
+/** Four small Kufic corners inside a card, faint, as on the widget that wears them. */
+internal fun Modifier.kuficCorners(color: Color): Modifier = drawBehind {
+    val scale = 0.8.dp.toPx()
+    val inset = 7.dp.toPx()
+    drawIntoCanvas { canvas ->
+        val native = canvas.nativeCanvas
+        for (right in listOf(false, true)) for (bottom in listOf(false, true)) {
+            com.sakinah.tasbih.widget.IslamicFrames.corner(
+                com.sakinah.tasbih.widget.WidgetOrnament.KUFIC_CORNERS, native,
+                if (right) size.width - inset else inset, if (bottom) size.height - inset else inset,
+                flipX = right, flipY = bottom, scale = scale, color = color.toArgb(),
+            )
+        }
     }
 }

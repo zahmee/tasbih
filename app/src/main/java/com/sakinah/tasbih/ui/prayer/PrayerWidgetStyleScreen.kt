@@ -71,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
@@ -119,6 +120,7 @@ import com.sakinah.tasbih.widget.WidgetPalette
 import com.sakinah.tasbih.widget.WidgetScale
 import com.sakinah.tasbih.widget.WidgetSurface
 import com.sakinah.tasbih.widget.WidgetWeight
+import com.sakinah.tasbih.widget.IslamicFrames
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -519,7 +521,7 @@ private fun LazyListScope.fontOptions(current: PrayerWidgetStyle, viewModel: Pra
 private fun LazyListScope.ornamentOptions(current: PrayerWidgetStyle, viewModel: PrayerWidgetStyleViewModel) {
     item(key = "ornament") {
         Labelled(stringResource(R.string.widget_ornament)) {
-            CalendarChoices(
+            OrnamentChips(
                 // The frame is kept only to read old choices, which now show as the pattern.
                 options = WidgetOrnament.entries - WidgetOrnament.FRAME,
                 selected = current.ornament,
@@ -529,6 +531,12 @@ private fun LazyListScope.ornamentOptions(current: PrayerWidgetStyle, viewModel:
                             WidgetOrnament.NONE -> R.string.widget_ornament_none
                             WidgetOrnament.DIVIDER -> R.string.widget_ornament_divider
                             WidgetOrnament.PATTERN, WidgetOrnament.FRAME -> R.string.widget_ornament_pattern
+                            WidgetOrnament.KUFIC_CORNERS -> R.string.widget_ornament_kufic
+                            WidgetOrnament.ARABESQUE_CORNERS -> R.string.widget_ornament_arabesque
+                            WidgetOrnament.CROWNED_FRAME -> R.string.widget_ornament_crowned
+                            WidgetOrnament.WINGS -> R.string.widget_ornament_wings
+                            WidgetOrnament.FLOURISH -> R.string.widget_ornament_flourish
+                            WidgetOrnament.STEPPED_CORNERS -> R.string.widget_ornament_stepped
                         },
                     )
                 },
@@ -537,7 +545,7 @@ private fun LazyListScope.ornamentOptions(current: PrayerWidgetStyle, viewModel:
             CalendarHint(stringResource(R.string.widget_ornament_hint))
         }
     }
-    if (current.ornament == WidgetOrnament.PATTERN) {
+    if (current.ornament == WidgetOrnament.PATTERN || IslamicFrames.framesWidget(current.ornament)) {
         item(key = "pattern_intensity") {
             Labelled(stringResource(R.string.widget_pattern_intensity)) {
                 CalendarChoices(
@@ -777,16 +785,61 @@ private fun WidgetWeight.font(): FontWeight = if (this == WidgetWeight.BOLD) Fon
 
 /** The mihrab of the widget, drawn by the widget's own code under the preview's words. */
 private fun Modifier.pattern(style: PrayerWidgetStyle, palette: WidgetPalette): Modifier =
-    if (style.ornament != WidgetOrnament.PATTERN && style.ornament != WidgetOrnament.FRAME) {
-        this
-    } else {
-        drawBehind {
+    when {
+        style.ornament == WidgetOrnament.PATTERN || style.ornament == WidgetOrnament.FRAME -> drawBehind {
             val color = (palette.accent and 0x00FFFFFF) or (palette.patternAlpha shl 24)
             drawIntoCanvas {
                 MihrabOrnament.draw(it.nativeCanvas, size.width, size.height, 1.dp.toPx(), color)
             }
         }
+        IslamicFrames.framesWidget(style.ornament) -> drawBehind {
+            val color = (palette.accent and 0x00FFFFFF) or (palette.frameAlpha shl 24)
+            drawIntoCanvas {
+                IslamicFrames.draw(style.ornament, it.nativeCanvas, size.width, size.height, 1.dp.toPx(), color)
+            }
+        }
+        else -> this
     }
+
+/** The ornaments as chips that wrap, as nine are too many for one row of buttons. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OrnamentChips(
+    options: List<WidgetOrnament>,
+    selected: WidgetOrnament,
+    label: @Composable (WidgetOrnament) -> String,
+    onSelect: (WidgetOrnament) -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        options.forEach { option ->
+            androidx.compose.material3.FilterChip(
+                selected = option == selected,
+                onClick = { onSelect(option) },
+                label = { Text(label(option)) },
+            )
+        }
+    }
+}
+
+/** The widget's padding for its ornament, as the widget itself keeps it. */
+private fun Modifier.ornamentPadding(style: PrayerWidgetStyle): Modifier {
+    val (across, down) = IslamicFrames.padding(style.ornament)
+    return padding(horizontal = across.dp, vertical = (down + 2).dp)
+}
+
+/** The divider between the lines and the prayers: the ruled star, or the flourish. */
+@Composable
+private fun WidgetDivider(style: PrayerWidgetStyle, color: Color, modifier: Modifier) {
+    if (style.ornament == WidgetOrnament.FLOURISH) {
+        androidx.compose.foundation.Canvas(modifier.fillMaxWidth().height(16.dp)) {
+            drawIntoCanvas {
+                IslamicFrames.flourish(it.nativeCanvas, size.width / 2, size.height / 2, size.width / 2, size.height / 20f, color.toArgb())
+            }
+        }
+    } else {
+        KhatamDivider(modifier, color = color)
+    }
+}
 
 @Composable
 private fun accentLabel(accent: WidgetAccent): String = stringResource(
@@ -857,7 +910,7 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
                 .clip(RoundedCornerShape(22.dp))
                 .background(Color(palette.surface).copy(alpha = style.opacity / 100f))
                 .pattern(style, palette)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .ornamentPadding(style)
                 .testTag("widget_next_preview"),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -877,7 +930,7 @@ private fun NextPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, cal
                 )
                 val lines = style.nextLines.filterNot { it.isEmpty }
                 if (style.ornament != WidgetOrnament.NONE && lines.isNotEmpty()) {
-                    KhatamDivider(Modifier.padding(horizontal = 30.dp, vertical = 2.dp), color = accent.copy(alpha = 0.7f))
+                    WidgetDivider(style, accent.copy(alpha = 0.7f), Modifier.padding(horizontal = 30.dp, vertical = 2.dp))
                 }
                 lines.forEach { line ->
                     Row(Modifier.fillMaxWidth()) {
@@ -989,7 +1042,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                     .clip(shape)
                     .background(Color(palette.surface).copy(alpha = style.opacity / 100f))
                     .pattern(style, palette)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .ornamentPadding(style)
                     .testTag("widget_preview"),
             ) {
               BoxWithConstraints {
@@ -1037,7 +1090,7 @@ private fun WidgetPreview(style: PrayerWidgetStyle, schedule: PrayerSchedule?, c
                         }
                     }
                     if (style.ornament != WidgetOrnament.NONE && style.lines.any { !it.isEmpty }) {
-                        KhatamDivider(Modifier.padding(horizontal = 60.dp, vertical = 2.dp), color = accent.copy(alpha = 0.7f))
+                        WidgetDivider(style, accent.copy(alpha = 0.7f), Modifier.padding(horizontal = 60.dp, vertical = 2.dp))
                     }
                     val inner = WidgetPalette.inner(style, night)
                     val boxShape = RoundedCornerShape(10.dp)

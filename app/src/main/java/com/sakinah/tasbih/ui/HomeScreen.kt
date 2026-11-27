@@ -248,6 +248,7 @@ private fun HomeDates(
         notes.forEach { note ->
             Text(note, style = MaterialTheme.typography.bodyMedium, color = LocalSakinahBrandColors.current.antiqueGold)
         }
+        FlourishDivider(Modifier.padding(top = 6.dp))
     }
 }
 

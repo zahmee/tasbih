@@ -52,9 +52,8 @@
         <ImageView
             android:id="@+id/nx_divider"
             android:layout_width="120dp"
-            android:layout_height="12dp"
+            android:layout_height="16dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginVertical="2dp"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter"
             android:src="@drawable/anaa_widget_divider"

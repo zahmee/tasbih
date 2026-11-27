@@ -815,7 +815,13 @@
     <string name="widget_ornament_none">بدون</string>
     <string name="widget_ornament_divider">فاصل بنجمة</string>
     <string name="widget_ornament_pattern">محراب</string>
-    <string name="widget_ornament_hint">الفاصل خط تتوسطه نجمة ثمانية. والمحراب خط رفيع حول الأداة يعلو في وسطها قوسًا مدببًا تعلوه نجمة صغيرة، كالعلامة المائية، ومعه الفاصل، بلون الصلاة القادمة.</string>
+    <string name="widget_ornament_kufic">زوايا كوفية</string>
+    <string name="widget_ornament_arabesque">زوايا أرابيسك</string>
+    <string name="widget_ornament_crowned">إطار بتاجين</string>
+    <string name="widget_ornament_wings">جناحان</string>
+    <string name="widget_ornament_flourish">فاصل مزخرف</string>
+    <string name="widget_ornament_stepped">زوايا مدرّجة</string>
+    <string name="widget_ornament_hint">الفاصل خط تتوسطه نجمة ثمانية، والفاصل المزخرف خط يتوسطه غصنان ملتفّان. والمحراب خط رفيع حول الأداة يعلو قوسًا مدببًا كالعلامة المائية. والزوايا والإطار والجناحان زخارف حول الأداة، ومعها الفاصل. كلها بلون الصلاة القادمة.</string>
     <string name="widget_pattern_intensity">وضوح المحراب</string>
     <string name="widget_reset">إعادة الأداة إلى شكلها الأصلي</string>
     <string name="widget_next_said">الصلاة القادمة %1$s</string>
