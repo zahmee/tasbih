@@ -2,6 +2,7 @@ package com.sakinah.tasbih.ui.prayer
 
 import com.sakinah.tasbih.ui.KhatamMark
 import com.sakinah.tasbih.ui.FeatureShape
+import com.sakinah.tasbih.ui.kuficCorners
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -259,7 +260,7 @@ private fun CurrentPrayerCard(window: PrayerWindow, phase: PrayerPhase, now: Ins
         contentColor = colors.onSecondaryContainer,
         modifier = Modifier.fillMaxWidth().testTag("prayer_current"),
     ) {
-        Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.kuficCorners(colors.onSecondaryContainer.copy(alpha = 0.22f)).padding(horizontal = 26.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.prayer_now_label), style = MaterialTheme.typography.titleSmall)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(

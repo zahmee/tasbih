@@ -139,7 +139,7 @@
         <ImageView
             android:id="@+id/pd_divider"
             android:layout_width="180dp"
-            android:layout_height="12dp"
+            android:layout_height="16dp"
             android:layout_gravity="center_horizontal"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter"

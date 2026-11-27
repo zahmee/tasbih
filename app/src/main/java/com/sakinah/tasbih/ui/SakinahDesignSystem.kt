@@ -38,6 +38,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,6 +124,23 @@ internal fun SakinahScreenBackground(
                 ),
             )
             .drawBehind {
+                // Two stepped Kufic corners, very faint, at the foot's two ends, since November 28,
+                // 2026 on every screen that has this background; the head is the title's.
+                val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+                val scale = 2.dp.toPx()
+                val inset = 6.dp.toPx()
+                val faint = brand.ornament.copy(alpha = 0.10f).toArgb()
+                drawIntoCanvas { canvas ->
+                    val native = canvas.nativeCanvas
+                    com.sakinah.tasbih.widget.IslamicFrames.corner(
+                        com.sakinah.tasbih.widget.WidgetOrnament.STEPPED_CORNERS, native,
+                        if (rtl) size.width - inset else inset, size.height - inset, flipX = rtl, flipY = true, scale = scale, color = faint,
+                    )
+                    com.sakinah.tasbih.widget.IslamicFrames.corner(
+                        com.sakinah.tasbih.widget.WidgetOrnament.STEPPED_CORNERS, native,
+                        if (rtl) inset else size.width - inset, size.height - inset, flipX = !rtl, flipY = true, scale = scale, color = faint,
+                    )
+                }
                 if (!showOrnament) return@drawBehind
 
                 val ornament = brand.ornament

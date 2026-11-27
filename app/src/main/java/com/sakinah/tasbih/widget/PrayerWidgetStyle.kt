@@ -56,7 +56,14 @@ enum class WidgetScale { SMALL, MEDIUM, LARGE }
  * interlaced stars, which the user found too busy on November 23, 2026. [FRAME] was a ruled frame
  * with stars at its corners, found too slight; a saved choice of it reads as [PATTERN].
  */
-enum class WidgetOrnament { NONE, DIVIDER, PATTERN, FRAME }
+/**
+ * The widget's ornament. FRAME is kept only to read old choices, which now show as the mihrab.
+ * The six after it came on November 28, 2026: see [IslamicFrames].
+ */
+enum class WidgetOrnament {
+    NONE, DIVIDER, PATTERN, FRAME,
+    KUFIC_CORNERS, ARABESQUE_CORNERS, CROWNED_FRAME, WINGS, FLOURISH, STEPPED_CORNERS,
+}
 
 data class PrayerWidgetStyle(
     val lines: List<WidgetLine> = listOf(WidgetLine(LineItem.PLACE, LineItem.HIJRI_DATE)),
@@ -261,6 +268,8 @@ data class WidgetPalette(
     val darkPaper: Boolean,
     /** The pattern's alpha over the paper, from its own intensity. */
     val patternAlpha: Int,
+    /** The strength of the frames and corners, which stand out more than the mihrab. */
+    val frameAlpha: Int = 150,
 ) {
     /** A line's colour, or null for [LineColor.AUTO], where the widget keeps its own. */
     fun line(color: LineColor): Int? = when (color) {
@@ -348,7 +357,13 @@ data class WidgetPalette(
                 WidgetIntensity.NORMAL -> 64
                 WidgetIntensity.STRONG -> 100
             }
-            return WidgetPalette(surface, text, textSoft, accent, onAccent, markAlpha, darkPaper, patternAlpha)
+            // The frames and corners are the ornament itself, not a watermark, so they show more.
+            val frameAlpha = when (style.patternIntensity) {
+                WidgetIntensity.SOFT -> 90
+                WidgetIntensity.NORMAL -> 150
+                WidgetIntensity.STRONG -> 225
+            }
+            return WidgetPalette(surface, text, textSoft, accent, onAccent, markAlpha, darkPaper, patternAlpha, frameAlpha)
         }
 
         /** On dark paper a colour is lifted so it keeps its contrast. */
