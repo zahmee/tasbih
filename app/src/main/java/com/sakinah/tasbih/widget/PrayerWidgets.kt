@@ -122,7 +122,7 @@ class PrayerWidgetUpdater(context: Context) {
         val nextIds = PrayerWidgetKind.NEXT.placedIds(app)
         val dayIds = PrayerWidgetKind.DAY.placedIds(app)
         nextIds.forEach { manager.updateAppWidget(it, nextViews(it, schedule, text, calendarText, style)) }
-        dayIds.forEach { manager.updateAppWidget(it, dayViews(it, schedule, text, calendarText, style)) }
+        dayIds.forEach { manager.updateAppWidget(it, daySized(it, schedule, text, calendarText, style)) }
         // Only a bar has to move between prayers; the countdown ticks by itself.
         WidgetTicker.set(app, on = style.progress && schedule != null && (nextIds.isNotEmpty() || dayIds.isNotEmpty()))
         PrayerWidgetKind.QIBLA.placedIds(app).forEach { manager.updateAppWidget(it, qiblaViews(it, schedule, text)) }
@@ -369,12 +369,40 @@ class PrayerWidgetUpdater(context: Context) {
         return views
     }
 
+    /**
+     * The day widget for each size the launcher may give it, from Android 12, so the lines meet
+     * the prayers at the width it really has; before that, for its width as the phone is held.
+     */
+    private fun daySized(
+        appWidgetId: Int,
+        schedule: PrayerSchedule?,
+        text: PrayerText,
+        calendarText: CalendarText,
+        style: PrayerWidgetStyle,
+    ): RemoteViews {
+        val options = manager.getAppWidgetOptions(appWidgetId)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val sizes = options.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, android.util.SizeF::class.java)
+                .orEmpty().distinct().take(MAX_SIZES)
+            if (sizes.isNotEmpty()) {
+                return RemoteViews(sizes.associateWith { dayViews(appWidgetId, schedule, text, calendarText, style, it.width, it.height) })
+            }
+        }
+        // A widget is its narrowest and tallest in portrait, its widest and shortest on its side.
+        val landscape = app.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val width = options.getInt(if (landscape) AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+        val height = options.getInt(if (landscape) AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
+        return dayViews(appWidgetId, schedule, text, calendarText, style, width.toFloat(), height.takeIf { it > 0 }?.toFloat() ?: 110f)
+    }
+
     private fun dayViews(
         appWidgetId: Int,
         schedule: PrayerSchedule?,
         text: PrayerText,
         calendarText: CalendarText,
         style: PrayerWidgetStyle,
+        width: Float,
+        height: Float,
     ): RemoteViews {
         val views = RemoteViews(app.packageName, R.layout.anaa_widget_prayer_day)
         views.setOnClickPendingIntent(R.id.pd_root, openPrayer(appWidgetId))
@@ -389,6 +417,7 @@ class PrayerWidgetUpdater(context: Context) {
             hide(views, first.left, first.leftClock)
             textColor(views, first.right, palette.accent, null)
             views.setViewVisibility(R.id.pd_divider, View.GONE)
+            views.setViewVisibility(R.id.pd_gap_below, View.GONE)
             views.setViewVisibility(R.id.pd_progress, View.GONE)
             CELLS.forEachIndexed { index, (_, name, time) ->
                 views.setTextViewText(name, "")
@@ -406,11 +435,15 @@ class PrayerWidgetUpdater(context: Context) {
         // The prayers come first; then the lines, the first ones first; the ruled star only
         // where room is left over.
         val lineHeight = 18 * look.scale
-        val room = widgetHeight(appWidgetId, 110) - 12 - 54 * look.scale - (if (style.progress) 8 else 0)
+        val room = height - 12 - 54 * look.scale - (if (style.progress) 8 else 0)
         val lines = style.lines.filterNot { it.isEmpty }
         val shown = lines.take((room / lineHeight).toInt().coerceIn(0, lines.size))
         val dividerFits = room - shown.size * lineHeight >= DIVIDER_DP
-        views.setViewVisibility(R.id.pd_divider, if (look.divider && shown.isNotEmpty() && dividerFits) View.VISIBLE else View.GONE)
+        val divider = look.divider && shown.isNotEmpty() && dividerFits
+        views.setViewVisibility(R.id.pd_divider, if (divider) View.VISIBLE else View.GONE)
+        // The spare room is shared evenly: above the lines, round the star, below the prayers.
+        views.setViewVisibility(R.id.pd_gap_above, if (shown.isEmpty()) View.GONE else View.VISIBLE)
+        views.setViewVisibility(R.id.pd_gap_below, if (divider) View.VISIBLE else View.GONE)
         val said = drawLines(views, LINES, shown, look, schedule, text, calendarText, now, firstIsHeading = true)
 
         // The prayers' own colours: those of their box once it is what they stand on.
@@ -449,6 +482,7 @@ class PrayerWidgetUpdater(context: Context) {
                 textColor(views, time, timeColor ?: inner.text, if (timeColor == null && themed) R.color.anaa_widget_text else null)
             }
         }
+        alignLines(views, width, look, text, day, marked)
         drawProgress(views, R.id.pd_progress, look, schedule, now)
         val prayers = ObligatoryPrayers.joinToString("، ") { "${text.name(it, day[it])} ${text.time(day[it])}" }
         views.setContentDescription(
@@ -456,6 +490,48 @@ class PrayerWidgetUpdater(context: Context) {
             (said + app.getString(R.string.widget_next_said, text.name(next.prayer, next.time)) + prayers).filter { it.isNotBlank() }.joinToString("، "),
         )
         return views
+    }
+
+    /**
+     * Sets the lines in from the widget's sides so their ends meet the outer edges of Fajr's words
+     * on the right and Isha's on the left.
+     */
+    private fun alignLines(
+        views: RemoteViews,
+        width: Float,
+        look: Look,
+        text: PrayerText,
+        day: com.sakinah.tasbih.prayer.PrayerDay,
+        marked: com.sakinah.tasbih.prayer.Prayer,
+    ) {
+        val metrics = app.resources.displayMetrics
+        val style = look.style
+        fun words(prayer: com.sakinah.tasbih.prayer.Prayer): Float {
+            val paint = android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            fun px(sp: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, metrics)
+            paint.typeface = if (prayer == marked || style.weight == WidgetWeight.BOLD) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            paint.textSize = px(13 * look.scale)
+            val name = paint.measureText(text.name(prayer, day[prayer]))
+            val time = text.time(day[prayer])
+            val space = time.lastIndexOf(' ')
+            paint.typeface = if (style.timeWeight == WidgetWeight.BOLD) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            paint.textSize = px((if (com.sakinah.tasbih.data.DigitStyle.western) 13.5f else 15f) * look.scale)
+            var clock = paint.measureText(if (space > 0) time.substring(0, space) else time)
+            if (space > 0) {
+                paint.textSize *= 0.58f
+                clock += paint.measureText(" " + time.substring(space + 1))
+            }
+            return maxOf(name, clock)
+        }
+        val density = metrics.density
+        val box = if (style.prayersBox) 3 * density else 0f
+        val insets = LineInsets.of(
+            row = if (width > 0) (width - 20) * density else 0f,
+            box = box,
+            right = words(ObligatoryPrayers.first()),
+            left = words(ObligatoryPrayers.last()),
+        )
+        LINES.forEach { views.setViewPadding(it.row, insets.left.toInt(), 0, insets.right.toInt(), 0) }
     }
 
     /**
@@ -564,6 +640,8 @@ class PrayerWidgetUpdater(context: Context) {
 
     private companion object {
         const val DIVIDER_DP = 16
+        /** The most layouts by size a widget may be given. */
+        const val MAX_SIZES = 16
         const val PROGRESS_MAX = 1000
         val LINES = listOf(
             LineIds(R.id.pd_line_0, R.id.pd_l0_r, R.id.pd_l0_rc, R.id.pd_l0_l, R.id.pd_l0_lc),

@@ -1,7 +1,6 @@
 package com.sakinah.tasbih.ui.prayer
 
 import com.sakinah.tasbih.ui.KhatamMark
-import com.sakinah.tasbih.ui.OrnamentedFeature
 import com.sakinah.tasbih.ui.FeatureShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +28,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -53,7 +53,9 @@ import androidx.compose.ui.unit.sp
 import com.sakinah.tasbih.R
 import com.sakinah.tasbih.prayer.AsrChoice
 import com.sakinah.tasbih.prayer.Prayer
+import com.sakinah.tasbih.prayer.PrayerPhase
 import com.sakinah.tasbih.prayer.PrayerSchedule
+import com.sakinah.tasbih.prayer.PrayerWindow
 import com.sakinah.tasbih.ui.calendar.CalendarHint
 import com.sakinah.tasbih.ui.calendar.CalendarPage
 import com.sakinah.tasbih.ui.calendar.CalendarText
@@ -169,21 +171,20 @@ private fun Times(
                 text.placeDetail(schedule.place).takeIf { it.isNotEmpty() }?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                calendarText?.let {
-                    val hijriDay = com.sakinah.tasbih.calendar.hijriDayFor(date, now, day[Prayer.MAGHRIB].toInstant(), it.settings.hijriDayFromMaghrib)
-                    Text(
-                        listOf(it.hijriDate(hijriDay), it.gregorianDate(date)).filter(String::isNotEmpty).joinToString(" – "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // The date left this head on November 27, 2026 for the home's alone; the method came up in its place.
+                Text(
+                    methodLine(schedule, state),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             TextButton(onClick = onChoosePlace) { Text(stringResource(R.string.prayer_change_place)) }
         }
 
         val phase = remember(schedule, now.epochSecond / 60) { schedule.phase(now) }
-        val words = prayerClockWords(phase, now, text)
-        NextPrayerCard(label = words.label, name = words.name, time = words.time, remaining = words.span)
+        val window = remember(schedule, now.epochSecond / 60) { schedule.window(now) }
+        // The home leads with the next prayer; this tab with the one whose time it is.
+        CurrentPrayerCard(window, phase, now, text)
 
         Surface(
             shape = MaterialTheme.shapes.large,
@@ -217,45 +218,66 @@ private fun Times(
             }
         }
 
-        val methodLine = if (state.settings.method == null) {
-            stringResource(R.string.prayer_method_auto_line, text.methodName(schedule.method))
-        } else {
-            stringResource(R.string.prayer_method_line, text.methodName(schedule.method))
-        }
-        Text(
-            listOfNotNull(
-                methodLine,
-                stringResource(R.string.prayer_asr_hanafi).takeIf { schedule.hanafi && state.settings.asr != AsrChoice.SHAFI },
-            ).joinToString("، "),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         Spacer(Modifier.size(8.dp))
     }
 }
 
-/** The next prayer, dressed as the home screen's lead card. */
+/** How the times are worked out: the method, and the Hanafi Asr where it is used. */
 @Composable
-private fun NextPrayerCard(label: String, name: String, time: String, remaining: String) {
+private fun methodLine(schedule: PrayerSchedule, state: PrayerState): String = listOfNotNull(
+    if (state.settings.method == null) {
+        stringResource(R.string.prayer_method_auto_line, methodName(schedule))
+    } else {
+        stringResource(R.string.prayer_method_line, methodName(schedule))
+    },
+    stringResource(R.string.prayer_asr_hanafi).takeIf { schedule.hanafi && state.settings.asr != AsrChoice.SHAFI },
+).joinToString("، ")
+
+@Composable
+private fun methodName(schedule: PrayerSchedule): String = PrayerText(LocalContext.current).methodName(schedule.method)
+
+/**
+ * The prayer whose time it is: its name and adhan, how much of its time has passed, what comes
+ * after it and when, and its iqama while that is still near. Between sunrise and Dhuhr, the
+ * stretch with no prayer due.
+ */
+@Composable
+private fun CurrentPrayerCard(window: PrayerWindow, phase: PrayerPhase, now: Instant, text: PrayerText) {
+    val colors = MaterialTheme.colorScheme
+    val name = window.prayer?.let { text.name(it.prayer, it.time) } ?: stringResource(R.string.prayer_between_sunrise_dhuhr)
+    val until = stringResource(
+        R.string.prayer_window_until,
+        text.name(window.end.prayer, window.end.time),
+        text.time(window.end.time),
+        text.remaining(java.time.Duration.between(now, window.end.time.toInstant())),
+    )
+    // The iqama, from its adhan until a quarter hour after it, as the clock counts it.
+    val iqama = if (phase is PrayerPhase.ToAdhan) null else prayerClockWords(phase, now, text).let { "${it.label} ${it.time}، ${it.span}" }
     Surface(
         shape = FeatureShape,
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        modifier = Modifier.fillMaxWidth().testTag("prayer_next"),
+        color = colors.secondaryContainer,
+        contentColor = colors.onSecondaryContainer,
+        modifier = Modifier.fillMaxWidth().testTag("prayer_current"),
     ) {
-        OrnamentedFeature(MaterialTheme.colorScheme.onPrimary) {
-            Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(label, style = MaterialTheme.typography.titleSmall)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
-                        modifier = Modifier.weight(1f).semantics { heading() },
-                    )
-                    Text(time, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                }
-                Text(remaining, style = MaterialTheme.typography.bodyLarge)
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.prayer_now_label), style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (window.prayer == null) 24.sp else 30.sp),
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                window.prayer?.let { Text(text.time(it.time), style = MaterialTheme.typography.titleMedium) }
             }
+            LinearProgressIndicator(
+                progress = { window.passed(now) },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                color = colors.primary,
+                trackColor = colors.onSecondaryContainer.copy(alpha = 0.15f),
+                drawStopIndicator = {},
+            )
+            Text(until, style = MaterialTheme.typography.bodyLarge)
+            iqama?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
         }
     }
 }
