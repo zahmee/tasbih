@@ -79,6 +79,8 @@ data class SakinahUiState(
     val tasbihTarget: Int = 33,
     val selectedPhrase: TasbihPhrase = DhikrCatalog.builtInTasbihPhrases.first(),
     val tasbihPhrases: List<TasbihPhrase> = DhikrCatalog.builtInTasbihPhrases,
+    /** How many built-in phrases taken off the list can be brought back. */
+    val restorableBuiltInCount: Int = 0,
     val dynamicColorEnabled: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.System,
     val arabicFontStyle: ArabicFontStyle = ArabicFontStyle.Sakinah,
@@ -144,6 +146,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
             tasbihTarget = preferences.tasbihTarget,
             selectedPhrase = selectedPhrase,
             tasbihPhrases = phrases,
+            restorableBuiltInCount = preferences.restorableBuiltInPhrases.size,
             dynamicColorEnabled = preferences.dynamicColorEnabled,
             themeMode = preferences.themeMode,
             arabicFontStyle = preferences.arabicFontStyle,
@@ -253,8 +256,12 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateTasbihPhrase(id: String, text: String, defaultGoal: Int) = viewModelScope.launch {
-        val phrase = uiState.value.tasbihPhrases.firstOrNull { it.id == id } ?: return@launch
-        if (text.isNotBlank()) preferencesRepository.updatePhrase(phrase, text, defaultGoal)
+        // The repository reads the phrase in the same write, not from a screen that may lag behind.
+        if (text.isNotBlank()) preferencesRepository.editPhrase(id, text, defaultGoal)
+    }
+
+    fun restoreBuiltInPhrases() = viewModelScope.launch {
+        preferencesRepository.restoreBuiltInPhrases()
     }
 
     fun moveTasbihPhrase(id: String, destinationIndex: Int) = viewModelScope.launch {
@@ -270,12 +277,7 @@ class SakinahViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteTasbihPhrase(id: String) = viewModelScope.launch {
-        val phrase = uiState.value.tasbihPhrases.firstOrNull { it.id == id } ?: return@launch
-        if (phrase.isCustom) {
-            preferencesRepository.deleteCustomPhrase(id)
-        } else {
-            preferencesRepository.hideBuiltInPhrase(id)
-        }
+        preferencesRepository.deletePhrase(id)
     }
 
     fun incrementDhikr(collectionId: String) = viewModelScope.launch {

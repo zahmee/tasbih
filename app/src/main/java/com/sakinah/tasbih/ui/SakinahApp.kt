@@ -548,6 +548,7 @@ private fun SakinahNavigation(
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
                                 onMovePhrase = viewModel::moveTasbihPhrase,
                                 onDeletePhrase = viewModel::deleteTasbihPhrase,
+                                onRestoreBuiltIns = viewModel::restoreBuiltInPhrases,
                             )
                         }
 
