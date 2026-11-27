@@ -37,8 +37,8 @@ android {
         applicationId = "com.sakinah.tasbih"
         minSdk = 26
         targetSdk = 37
-        versionCode = 14
-        versionName = "2.0.3"
+        versionCode = 15
+        versionName = "2.0.4"
         buildConfigField("String", "RELEASE_DATE", "\"2026-11-25\"")
         buildConfigField("boolean", "MAPS_ENABLED", mapsApiKey.isNotEmpty().toString())
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
