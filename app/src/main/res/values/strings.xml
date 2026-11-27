@@ -61,7 +61,7 @@
     <string name="phrase_too_long">النص أطول من %1$d حرف. اختصره ليتم الحفظ.</string>
     <string name="phrase_empty_error">اكتب نص الذكر أولًا.</string>
     <string name="goal_invalid_error">اكتب عددًا من 0 إلى 9999، والصفر للعد المفتوح.</string>
-    <string name="phrase_manager_hint">اختر ذكرًا لاستخدامه. الترتيب والتعديل والحذف من قائمة كل ذكر.</string>
+    <string name="phrase_manager_hint">اضغط على الذكر ليصير ذكر المسبحة، فتظهر بجانبه النقاط الثلاث: التعديل، ورفعه أو إنزاله في الترتيب، والحذف. والإضافة من زر + في الأعلى.</string>
     <string name="manage_phrase_actions">إدارة هذا الذكر</string>
     <string name="activity_overview">نشاطك في لمحة</string>
     <string name="activity_today">اليوم</string>
@@ -200,7 +200,7 @@
     <string name="add_dhikr">أضف ذكرًا</string>
     <string name="new_dhikr">ذكر جديد في مسبحتي</string>
     <string name="edit_dhikr">تعديل الذكر</string>
-    <string name="edit_built_in_dhikr_note">هذا ذكر جاهز؛ سيُحفظ تعديلك كذكر خاص مع بقاء النص الأصلي.</string>
+    <string name="edit_built_in_dhikr_note">هذا ذكر جاهز؛ سيحلّ تعديلك محلّه في مكانه نفسه، ويبقى عدّ اليوم. ويمكنك إرجاع النص الأصلي من زر «إرجاع الأذكار الجاهزة» أسفل القائمة.</string>
     <string name="previous_dhikr">الذكر السابق</string>
     <string name="next_tasbih_dhikr">الذكر التالي</string>
     <string name="tasbih_phrase_position">%1$d من %2$d</string>
@@ -225,10 +225,12 @@
     <string name="dhikr_text_hint">مثال: سبحان الله وبحمده</string>
     <string name="default_goal">الهدف الافتراضي</string>
     <string name="goal_optional_hint">اكتب 0 للتسبيح دون هدف</string>
-    <string name="delete_custom_dhikr">حذف الذكر الخاص</string>
     <string name="delete_dhikr">حذف الذكر</string>
     <string name="delete_dhikr_title">حذف الذكر؟</string>
     <string name="delete_dhikr_message">سيُحذف هذا الذكر من قائمة المسبحة.</string>
+    <string name="hide_built_in_dhikr_message">سيُرفع هذا الذكر الجاهز من قائمة المسبحة، ويمكنك إرجاعه متى شئت من زر «إرجاع الأذكار الجاهزة» أسفل القائمة.</string>
+    <string name="restore_built_in_phrases">إرجاع الأذكار الجاهزة (%1$s)</string>
+    <string name="phrase_duplicate_error">هذا الذكر موجود في القائمة.</string>
     <string name="goal">الهدف</string>
     <string name="unlimited">دون هدف</string>
     <string name="completed">أتممت الهدف، تقبّل الله منك</string>

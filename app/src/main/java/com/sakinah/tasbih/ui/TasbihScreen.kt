@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
@@ -344,6 +345,7 @@ fun TasbihScreen(
     if (showEditor) {
         PhraseEditorDialog(
             phrase = editingPhrase,
+            takenWords = takenWords(state.tasbihPhrases, editingPhrase?.id),
             onDismiss = { showEditor = false },
             onSave = { text, goal ->
                 val phrase = editingPhrase
@@ -378,6 +380,7 @@ fun TasbihPhraseManagerScreen(
     onUpdatePhrase: (String, String, Int) -> Unit,
     onMovePhrase: (String, Int) -> Unit,
     onDeletePhrase: (String) -> Unit,
+    onRestoreBuiltIns: () -> Unit = {},
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
     // The id is saved, not the phrase, so turning the phone still edits the same dhikr.
@@ -472,6 +475,14 @@ fun TasbihPhraseManagerScreen(
                                 showEditor = true
                             },
                             onDelete = { phrasePendingDeletion = phrase },
+                            onMoveBy = { step ->
+                                val target = (index + step).coerceIn(0, state.tasbihPhrases.lastIndex)
+                                if (target != index) {
+                                    revealPhraseId = phrase.id
+                                    revealIndex = target
+                                    onMovePhrase(phrase.id, target)
+                                }
+                            },
                             onBeginReorder = { reorderingPhraseId = phrase.id },
                             onCancelReorder = { reorderingPhraseId = null },
                             onSaveOrder = { position ->
@@ -482,6 +493,17 @@ fun TasbihPhraseManagerScreen(
                             },
                         )
                     }
+                    if (state.restorableBuiltInCount > 0) {
+                        item(key = "restore_built_ins") {
+                            // The built-in phrases taken off the list come back from here.
+                            OutlinedButton(
+                                onClick = onRestoreBuiltIns,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("tasbih_restore_built_ins"),
+                            ) {
+                                Text(stringResource(R.string.restore_built_in_phrases, arabicNumber(state.restorableBuiltInCount)))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -491,6 +513,7 @@ fun TasbihPhraseManagerScreen(
         key(editingPhrase?.id ?: "new_phrase") {
             PhraseEditorDialog(
                 phrase = editingPhrase,
+                takenWords = takenWords(state.tasbihPhrases, editingPhrase?.id),
                 onDismiss = { showEditor = false },
                 onSave = { text, goal ->
                     val phrase = editingPhrase
@@ -502,7 +525,7 @@ fun TasbihPhraseManagerScreen(
                     showEditor = false
                 },
                 onDelete = editingPhrase
-                    ?.takeIf(TasbihPhrase::isCustom)
+                    ?.takeIf { canDeletePhrase }
                     ?.let { phrase ->
                         {
                             showEditor = false
@@ -519,7 +542,7 @@ fun TasbihPhraseManagerScreen(
             title = { Text(stringResource(R.string.delete_dhikr_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Small)) {
-                    Text(stringResource(R.string.delete_dhikr_message))
+                    Text(stringResource(if (phrase.isCustom) R.string.delete_dhikr_message else R.string.hide_built_in_dhikr_message))
                     Text(
                         text = displayArabic(phrase.text, state.showDiacritics),
                         style = TextStyle(
@@ -563,7 +586,7 @@ private fun TasbihPhraseManagerIntro() {
 private fun TasbihPhraseTableRow(
     phrase: TasbihPhrase, showDiacritics: Boolean, selected: Boolean, canDelete: Boolean,
     position: Int, total: Int, isReordering: Boolean,
-    onSelect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
+    onSelect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit, onMoveBy: (Int) -> Unit,
     onBeginReorder: () -> Unit, onCancelReorder: () -> Unit, onSaveOrder: (Int) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -588,21 +611,32 @@ private fun TasbihPhraseTableRow(
                     else "${stringResource(R.string.goal)}: ${phrase.defaultGoal}",
                     modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                 )
-                Box {
-                    IconButton(onClick = { expanded = true }, modifier = Modifier.testTag(
-                        if (selected) "tasbih_phrase_actions_selected" else "tasbih_phrase_actions_${phrase.id}")) {
+                // Since November 28, 2026 only the selected phrase has the menu, and its order is
+                // changed from there, so every action acts on the phrase in use.
+                if (selected) Box {
+                    IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("tasbih_phrase_actions_selected")) {
                         Icon(Icons.Outlined.MoreVert, stringResource(R.string.manage_phrase_actions))
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.change_phrase_order)) }, enabled = total > 1,
-                            leadingIcon = { Icon(Icons.Outlined.SwapVert, null) },
-                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_reorder_selected" else "tasbih_phrase_reorder_${phrase.id}"),
-                            onClick = { expanded = false; onBeginReorder() })
                         DropdownMenuItem(text = { Text(stringResource(R.string.edit_dhikr)) },
-                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_edit_selected" else "tasbih_phrase_edit_${phrase.id}"),
+                            leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                            modifier = Modifier.testTag("tasbih_phrase_edit_selected"),
                             onClick = { expanded = false; onEdit() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.phrase_order_up)) }, enabled = position > 1,
+                            leadingIcon = { Icon(Icons.Outlined.ArrowUpward, null) },
+                            modifier = Modifier.testTag("tasbih_phrase_up_selected"),
+                            onClick = { expanded = false; onMoveBy(-1) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.phrase_order_down)) }, enabled = position < total,
+                            leadingIcon = { Icon(Icons.Outlined.ArrowDownward, null) },
+                            modifier = Modifier.testTag("tasbih_phrase_down_selected"),
+                            onClick = { expanded = false; onMoveBy(1) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.change_phrase_order)) }, enabled = total > 2,
+                            leadingIcon = { Icon(Icons.Outlined.SwapVert, null) },
+                            modifier = Modifier.testTag("tasbih_phrase_reorder_selected"),
+                            onClick = { expanded = false; onBeginReorder() })
                         DropdownMenuItem(text = { Text(stringResource(R.string.delete_dhikr)) }, enabled = canDelete,
-                            modifier = Modifier.testTag(if (selected) "tasbih_phrase_delete_selected" else "tasbih_phrase_delete_${phrase.id}"),
+                            leadingIcon = { Icon(Icons.Outlined.Delete, null) },
+                            modifier = Modifier.testTag("tasbih_phrase_delete_selected"),
                             onClick = { expanded = false; onDelete() })
                     }
                 }
@@ -1490,16 +1524,18 @@ private fun CounterDial(
 
 @Composable
 private fun PhraseEditorDialog(
-    phrase: TasbihPhrase?, onDismiss: () -> Unit, onSave: (String, Int) -> Unit, onDelete: (() -> Unit)?,
+    phrase: TasbihPhrase?, takenWords: Set<String>, onDismiss: () -> Unit, onSave: (String, Int) -> Unit, onDelete: (() -> Unit)?,
 ) {
     var text by rememberSaveable(phrase?.id) { mutableStateOf(phrase?.text.orEmpty()) }
     var goalText by rememberSaveable(phrase?.id) { mutableStateOf((phrase?.defaultGoal ?: 33).toString()) }
-    var textTouched by rememberSaveable { mutableStateOf(false) }
+    var textTouched by rememberSaveable(phrase?.id) { mutableStateOf(false) }
+    // Words another phrase on the list already has: saving them would show the phrase twice.
+    val duplicate = text.isNotBlank() && com.sakinah.tasbih.data.normalizeArabicForSearch(text.trim()) in takenWords
     val goal = goalText.toIntOrNull()
     val invalidGoal = goal == null || goal !in 0..9_999
     // Imported book entries can exceed the custom-entry limit. Preserve their full text when editing the goal.
     val textLimit = maxOf(500, phrase?.text?.length ?: 0)
-    val invalidText = text.isBlank() || text.length > textLimit
+    val invalidText = text.isBlank() || text.length > textLimit || duplicate
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize().imePadding().testTag("tasbih_phrase_editor"), color = MaterialTheme.colorScheme.surface) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -1523,7 +1559,8 @@ private fun PhraseEditorDialog(
                             supportingText = {
                                 Column {
                                     Text(stringResource(R.string.phrase_character_count, text.length, textLimit), modifier = Modifier.testTag("phrase_character_count"))
-                                    if (text.length > textLimit) Text(stringResource(R.string.phrase_too_long, textLimit))
+                                    if (duplicate) Text(stringResource(R.string.phrase_duplicate_error))
+                                    else if (text.length > textLimit) Text(stringResource(R.string.phrase_too_long, textLimit))
                                     else if (textTouched && text.isBlank()) Text(stringResource(R.string.phrase_empty_error))
                                 }
                             },
@@ -1539,7 +1576,7 @@ private fun PhraseEditorDialog(
                         )
                         if (onDelete != null) TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                            Text(stringResource(R.string.delete_custom_dhikr))
+                            Text(stringResource(R.string.delete_dhikr))
                         }
                     }
                     }
@@ -1568,3 +1605,7 @@ private fun PhraseEditorDialog(
         }
     }
 }
+
+/** The words of every phrase on the list but [exceptId], as the duplicate check compares them. */
+private fun takenWords(phrases: List<TasbihPhrase>, exceptId: String?): Set<String> =
+    phrases.filter { it.id != exceptId }.mapTo(mutableSetOf()) { com.sakinah.tasbih.data.normalizeArabicForSearch(it.text) }

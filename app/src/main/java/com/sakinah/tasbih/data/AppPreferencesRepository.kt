@@ -63,7 +63,20 @@ data class AppPreferences(
             val byId = available.associateBy(TasbihPhrase::id)
             return (tasbihPhraseOrder.mapNotNull(byId::get) + available).distinctBy(TasbihPhrase::id)
         }
+
+    /**
+     * The built-in phrases taken off the list that can come back: those whose words no phrase
+     * on the list has, so that bringing them back never makes a phrase appear twice.
+     */
+    val restorableBuiltInPhrases: List<TasbihPhrase>
+        get() {
+            val taken = tasbihPhrases.mapTo(mutableSetOf()) { normalizeArabicForSearch(it.text) }
+            return DhikrCatalog.builtInTasbihPhrases.filter { it.id in hiddenBuiltInPhraseIds && normalizeArabicForSearch(it.text) !in taken }
+        }
 }
+
+/** What came of editing a phrase: saved, or refused as another phrase on the list has the same words. */
+enum class PhraseEditResult { Saved, Duplicate, Missing }
 
 class AppPreferencesRepository internal constructor(
     private val dataStore: DataStore<Preferences>,
@@ -128,30 +141,46 @@ class AppPreferencesRepository internal constructor(
         }
     }
 
+    /**
+     * Adds a phrase of the user's and selects it. Words already on the list, built-in or the
+     * user's, are not added a second time: that phrase is selected instead. Words of a built-in
+     * phrase the user took off the list bring that phrase back, at the end. Until November 28,
+     * 2026 only the user's own phrases were checked, so the built-in ones could appear twice.
+     */
     suspend fun addCustomPhrase(text: String, defaultGoal: Int): String {
         val cleanText = text.trim()
         require(cleanText.isNotEmpty())
+        val words = normalizeArabicForSearch(cleanText)
         var resolvedId = ""
 
         editDailyState { preferences ->
-            val phrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
-            val existing = phrases.firstOrNull {
-                normalizeArabicForSearch(it.text) == normalizeArabicForSearch(cleanText)
+            val current = preferences.toAppPreferences()
+            val order = current.tasbihPhrases.map(TasbihPhrase::id)
+            val onList = current.tasbihPhrases.firstOrNull { normalizeArabicForSearch(it.text) == words }
+            val hidden = DhikrCatalog.builtInTasbihPhrases.firstOrNull {
+                it.id in current.hiddenBuiltInPhraseIds && normalizeArabicForSearch(it.text) == words
             }
-            val phrase = existing ?: TasbihPhrase(
-                id = "custom_${UUID.randomUUID()}",
-                text = cleanText,
-                defaultGoal = defaultGoal.coerceIn(NoTarget, MaximumTarget),
-                isCustom = true,
-            )
+            val phrase = when {
+                onList != null -> onList
+                hidden != null -> {
+                    preferences[Keys.hiddenBuiltInPhraseIds] = current.hiddenBuiltInPhraseIds - hidden.id
+                    preferences[Keys.phraseOrder] = (order + hidden.id).joinToString("|")
+                    hidden
+                }
+                else -> {
+                    val added = TasbihPhrase(
+                        id = "custom_${UUID.randomUUID()}",
+                        text = cleanText,
+                        defaultGoal = defaultGoal.coerceIn(NoTarget, MaximumTarget),
+                        isCustom = true,
+                    )
+                    preferences[Keys.customPhrases] = (current.customPhrases + added)
+                        .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
+                    preferences[Keys.phraseOrder] = (order + added.id).joinToString("|")
+                    added
+                }
+            }
             resolvedId = phrase.id
-
-            if (existing == null) {
-                val existingOrder = preferences.toAppPreferences().tasbihPhrases.map(TasbihPhrase::id)
-                preferences[Keys.customPhrases] = (phrases + phrase)
-                    .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
-                preferences[Keys.phraseOrder] = (existingOrder + phrase.id).joinToString("|")
-            }
             preferences[Keys.selectedPhraseId] = phrase.id
             preferences[Keys.target] = phrase.defaultGoal
         }
@@ -160,34 +189,67 @@ class AppPreferencesRepository internal constructor(
     }
 
     suspend fun updatePhrase(phrase: TasbihPhrase, text: String, defaultGoal: Int) {
+        editPhrase(phrase.id, text, defaultGoal)
+    }
+
+    /**
+     * Changes the words and goal of the phrase [id], keeping its place on the list and its count.
+     * A built-in phrase is replaced in its place by one of the user's with the new words; until
+     * November 28, 2026 the edit was added at the end and the original kept, so editing a built-in
+     * phrase, even its goal alone, showed it twice. Refused when another phrase has those words.
+     * Everything is read inside the one write, so quick edits one after another cannot clash.
+     */
+    suspend fun editPhrase(id: String, text: String, defaultGoal: Int): PhraseEditResult {
         val cleanText = text.trim()
         require(cleanText.isNotEmpty())
         val cleanGoal = defaultGoal.coerceIn(NoTarget, MaximumTarget)
+        val words = normalizeArabicForSearch(cleanText)
+        var result = PhraseEditResult.Missing
 
-        // Built-in phrases remain immutable. Editing one creates a personal version,
-        // which keeps the original wording available in the carousel.
-        if (!phrase.isCustom) {
-            addCustomPhrase(cleanText, cleanGoal)
-            return
-        }
-
-        editDailyState { preferences ->
-            val phrases = decodeCustomPhrases(preferences[Keys.customPhrases].orEmpty())
-            val updated = TasbihPhrase(
-                id = phrase.id,
-                text = cleanText,
-                defaultGoal = cleanGoal,
-                isCustom = true,
-            )
-            val updatedPhrases = if (phrases.any { it.id == phrase.id }) {
-                phrases.map { stored -> if (stored.id == phrase.id) updated else stored }
-            } else {
-                phrases + updated
+        editDailyState edit@{ preferences ->
+            val current = preferences.toAppPreferences()
+            val phrases = current.tasbihPhrases
+            val old = phrases.firstOrNull { it.id == id } ?: run { result = PhraseEditResult.Missing; return@edit }
+            if (phrases.any { it.id != id && normalizeArabicForSearch(it.text) == words }) {
+                result = PhraseEditResult.Duplicate
+                return@edit
             }
-            preferences[Keys.customPhrases] = updatedPhrases
-                .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
-            preferences[Keys.selectedPhraseId] = updated.id
-            preferences[Keys.target] = updated.defaultGoal
+            result = PhraseEditResult.Saved
+            val selected = preferences.selectedPhraseId() == id
+            if (old.isCustom) {
+                val updated = old.copy(text = cleanText, defaultGoal = cleanGoal)
+                preferences[Keys.customPhrases] = current.customPhrases
+                    .map { if (it.id == id) updated else it }
+                    .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
+            } else {
+                val replacement = TasbihPhrase(id = "custom_${UUID.randomUUID()}", text = cleanText, defaultGoal = cleanGoal, isCustom = true)
+                preferences[Keys.customPhrases] = (current.customPhrases + replacement)
+                    .mapTo(mutableSetOf(), TasbihPhrase::encodeForPreferences)
+                preferences[Keys.hiddenBuiltInPhraseIds] = current.hiddenBuiltInPhraseIds + id
+                preferences[Keys.phraseOrder] = phrases.joinToString("|") { if (it.id == id) replacement.id else it.id }
+                // Today's count goes with the words to their new phrase.
+                preferences[Keys.phraseCounter(id)]?.let { preferences[Keys.phraseCounter(replacement.id)] = it }
+                preferences.remove(Keys.phraseCounter(id))
+                if (selected) preferences[Keys.selectedPhraseId] = replacement.id
+            }
+            if (selected) preferences[Keys.target] = cleanGoal
+        }
+        return result
+    }
+
+    /** Takes [id] off the list: a phrase of the user's is deleted, a built-in one hidden. */
+    suspend fun deletePhrase(id: String) {
+        if (DhikrCatalog.builtInTasbihPhrases.any { it.id == id }) hideBuiltInPhrase(id) else deleteCustomPhrase(id)
+    }
+
+    /** Brings back the built-in phrases taken off the list, at its end, except words already on it. */
+    suspend fun restoreBuiltInPhrases() {
+        dataStore.edit { preferences ->
+            val current = preferences.toAppPreferences()
+            val back = current.restorableBuiltInPhrases.map(TasbihPhrase::id)
+            if (back.isEmpty()) return@edit
+            preferences[Keys.hiddenBuiltInPhraseIds] = current.hiddenBuiltInPhraseIds - back.toSet()
+            preferences[Keys.phraseOrder] = (current.tasbihPhrases.map(TasbihPhrase::id) + back).joinToString("|")
         }
     }
 
