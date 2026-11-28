@@ -68,6 +68,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -106,6 +107,7 @@ import com.sakinah.tasbih.widget.MihrabOrnament
 import com.sakinah.tasbih.widget.LineColor
 import com.sakinah.tasbih.widget.LineItem
 import com.sakinah.tasbih.widget.NextMark
+import com.sakinah.tasbih.widget.PlacedPrayerWidget
 import com.sakinah.tasbih.widget.PrayerWidgetKind
 import com.sakinah.tasbih.widget.PrayerWidgetStyle
 import com.sakinah.tasbih.widget.PrayerWidgetStyleRepository
@@ -124,7 +126,11 @@ import com.sakinah.tasbih.widget.IslamicFrames
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -132,18 +138,47 @@ import kotlinx.coroutines.launch
 class PrayerWidgetStyleViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PrayerWidgetStyleRepository(application)
 
-    val style: StateFlow<PrayerWidgetStyle?> = repository.style.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** The widget whose look is shown; null is the default, for widgets placed later. */
+    private val target = MutableStateFlow<Int?>(null)
 
-    /** Saved, then every prayer widget on the home screen is drawn again with it. */
+    /** The look shown, with the widget it belongs to, so one shown before is never taken for it. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val style: StateFlow<Pair<Int?, PrayerWidgetStyle>?> = target
+        .flatMapLatest { id -> repository.style(id).map { id to it } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun open(appWidgetId: Int?) {
+        target.value = appWidgetId
+    }
+
+    /** Saved, then every prayer widget on the home screen is drawn again. */
     fun update(change: (PrayerWidgetStyle) -> PrayerWidgetStyle) {
-        val current = style.value ?: return
+        val (id, current) = style.value ?: return
         viewModelScope.launch {
-            repository.save(change(current))
+            repository.save(id, change(current))
             PrayerWidgetUpdater(getApplication()).updateAll()
         }
     }
 
     fun reset() = update { PrayerWidgetStyle() }
+
+    /** «نسخ الشكل من أداة أخرى»: the look of [sourceId] for the widget shown. */
+    fun copyFrom(sourceId: Int) {
+        val (id, _) = style.value ?: return
+        viewModelScope.launch {
+            repository.save(id, repository.current(sourceId))
+            PrayerWidgetUpdater(getApplication()).updateAll()
+        }
+    }
+
+    /** «تطبيق على كل الأدوات»: the look shown for every day and next-prayer widget on the home screen. */
+    fun applyToAll() {
+        val (_, current) = style.value ?: return
+        viewModelScope.launch {
+            repository.saveAll(PrayerWidgetKind.placedStyled(getApplication()).map { it.appWidgetId }, current)
+            PrayerWidgetUpdater(getApplication()).updateAll()
+        }
+    }
 }
 
 /** The four tabs the options are gathered under. */
@@ -160,14 +195,60 @@ fun PrayerWidgetStyleScreen(
     calendarText: CalendarText?,
     onBack: () -> Unit,
     startOnNext: Boolean = false,
+    appWidgetId: Int? = null,
     viewModel: PrayerWidgetStyleViewModel = viewModel(),
 ) {
-    val style by viewModel.style.collectAsStateWithLifecycle()
-    val current = style ?: return
-    var next by rememberSaveable(startOnNext) { mutableStateOf(startOnNext) }
+    LaunchedEffect(appWidgetId) { viewModel.open(appWidgetId) }
+    val shown by viewModel.style.collectAsStateWithLifecycle()
+    val placed = rememberPlacedWidgets()
+    val current = shown?.takeIf { it.first == appWidgetId }?.second ?: return
+    // A widget's own look is of its kind; the default serves both, so both can be previewed.
+    val widget = placed.firstOrNull { it.appWidgetId == appWidgetId }
+    var chosenNext by rememberSaveable(startOnNext) { mutableStateOf(startOnNext) }
+    val next = widget?.let { it.kind == PrayerWidgetKind.NEXT } ?: chosenNext
     var tab by rememberSaveable { mutableStateOf(StyleTab.CONTENT) }
+    var copying by rememberSaveable { mutableStateOf(false) }
+    var applying by rememberSaveable { mutableStateOf(false) }
+    val others = placed.filter { it.appWidgetId != appWidgetId }
+    if (copying) {
+        AlertDialog(
+            onDismissRequest = { copying = false },
+            title = { Text(stringResource(R.string.widget_copy_from_title)) },
+            text = {
+                Column {
+                    others.forEach { other ->
+                        TextButton(
+                            onClick = {
+                                copying = false
+                                viewModel.copyFrom(other.appWidgetId)
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("widget_copy_${other.appWidgetId}"),
+                        ) { Text(widgetLabel(other), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { copying = false }) { Text(stringResource(R.string.widget_cancel)) } },
+        )
+    }
+    if (applying) {
+        AlertDialog(
+            onDismissRequest = { applying = false },
+            title = { Text(stringResource(R.string.widget_apply_all)) },
+            text = { Text(stringResource(R.string.widget_apply_all_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        applying = false
+                        viewModel.applyToAll()
+                    },
+                    modifier = Modifier.testTag("widget_apply_all_confirm"),
+                ) { Text(stringResource(R.string.widget_apply)) }
+            },
+            dismissButton = { TextButton(onClick = { applying = false }) { Text(stringResource(R.string.widget_cancel)) } },
+        )
+    }
     TabbedSettingsPage(
-        title = stringResource(R.string.widget_style_title),
+        title = widget?.let { widgetLabel(it) } ?: stringResource(R.string.widget_style_title),
         onBack = onBack,
         tag = "prayer_widget_style",
         tabs = StyleTab.entries.map { SettingsTab(tabLabel(it), tabIcon(it), "widget_tab_${it.name.lowercase()}") },
@@ -181,8 +262,23 @@ fun PrayerWidgetStyleScreen(
         header = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ExactAlarmRow()
-                WidgetSwitch(next) { next = it }
+                if (widget == null) {
+                    if (placed.isNotEmpty()) CalendarHint(stringResource(R.string.widget_default_hint))
+                    WidgetSwitch(next) { chosenNext = it }
+                }
                 if (next) NextPreview(current, schedule, calendarText) else WidgetPreview(current, schedule, calendarText)
+                if (widget != null && others.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { copying = true },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("widget_copy_from"),
+                        ) { Text(stringResource(R.string.widget_copy_from), textAlign = TextAlign.Center) }
+                        OutlinedButton(
+                            onClick = { applying = true },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("widget_apply_all"),
+                        ) { Text(stringResource(R.string.widget_apply_all), textAlign = TextAlign.Center) }
+                    }
+                }
             }
         },
     ) {
@@ -191,6 +287,80 @@ fun PrayerWidgetStyleScreen(
             StyleTab.COLORS -> colorOptions(current, viewModel)
             StyleTab.FONT -> fontOptions(current, viewModel)
             StyleTab.ORNAMENT -> ornamentOptions(current, viewModel)
+        }
+    }
+}
+
+/** The day's and next prayer's widgets on the home screen, read again each time the page comes back. */
+@Composable
+private fun rememberPlacedWidgets(): List<PlacedPrayerWidget> {
+    val context = LocalContext.current
+    var placed by remember { mutableStateOf(PrayerWidgetKind.placedStyled(context)) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        placed = PrayerWidgetKind.placedStyled(context)
+        onPauseOrDispose { }
+    }
+    return placed
+}
+
+/** «مواقيت اليوم ٢»: a widget's kind and its number among those of its kind. */
+@Composable
+internal fun widgetLabel(widget: PlacedPrayerWidget): String = stringResource(
+    R.string.widget_placed_label,
+    stringResource(if (widget.kind == PrayerWidgetKind.NEXT) R.string.widget_section_next else R.string.widget_section_day),
+    com.sakinah.tasbih.data.arabicNumber(widget.number),
+)
+
+/**
+ * The prayer widgets on the home screen, each with a small live preview of its own look, its
+ * kind and its number; a tap opens that widget's look.
+ */
+@Composable
+internal fun PlacedPrayerWidgets(schedule: PrayerSchedule?, calendarText: CalendarText?, onOpen: (Int) -> Unit) {
+    val context = LocalContext.current
+    val placed = rememberPlacedWidgets()
+    val repository = remember(context) { PrayerWidgetStyleRepository(context) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.testTag("placed_widgets")) {
+        CalendarHint(stringResource(if (placed.isEmpty()) R.string.widget_placed_none else R.string.widget_placed_hint))
+        placed.forEach { widget ->
+            val style by remember(repository, widget.appWidgetId) { repository.style(widget.appWidgetId) }
+                .collectAsStateWithLifecycle(null)
+            Surface(
+                onClick = { onOpen(widget.appWidgetId) },
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth().testTag("placed_widget_${widget.appWidgetId}"),
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(widgetLabel(widget), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        Icon(Icons.Outlined.Palette, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    style?.let { look ->
+                        Box(Modifier.fillMaxWidth().shrunk(0.7f)) {
+                            if (widget.kind == PrayerWidgetKind.NEXT) {
+                                NextPreview(look, schedule, calendarText)
+                            } else {
+                                WidgetPreview(look, schedule, calendarText)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Laid out at the full width it is given, then drawn at [scale] of it, and as small on the page. */
+private fun Modifier.shrunk(scale: Float): Modifier = layout { measurable, constraints ->
+    val width = (constraints.maxWidth / scale).toInt()
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints(minWidth = width, maxWidth = width))
+    val shownWidth = (placeable.width * scale).toInt()
+    val shownHeight = (placeable.height * scale).toInt()
+    layout(shownWidth, shownHeight) {
+        placeable.placeWithLayer((shownWidth - placeable.width) / 2, (shownHeight - placeable.height) / 2) {
+            scaleX = scale
+            scaleY = scale
         }
     }
 }

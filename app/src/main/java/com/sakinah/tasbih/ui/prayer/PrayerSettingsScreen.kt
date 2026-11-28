@@ -70,7 +70,9 @@ fun PrayerSettingsScreen(
     state: PrayerState,
     viewModel: PrayerViewModel,
     onBack: () -> Unit,
-    onOpenWidgetStyle: () -> Unit = {},
+    calendarText: com.sakinah.tasbih.ui.calendar.CalendarText? = null,
+    /** Opens the look of a widget on the home screen, or with null the default look. */
+    onOpenWidgetStyle: (Int?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -203,13 +205,16 @@ fun PrayerSettingsScreen(
                 }
             }
             PrayerTab.WIDGETS -> {
+                // Each widget on the home screen in its own look, as the user asked on November 28, 2026.
+                item(key = "placed-header") { SakinahSectionHeader(stringResource(R.string.widget_placed_header)) }
+                item(key = "placed") { PlacedPrayerWidgets(state.schedule, calendarText) { onOpenWidgetStyle(it) } }
                 item {
                     SettingNavigationRow(
                         stringResource(R.string.widget_style_entry),
                         stringResource(R.string.widget_style_entry_hint),
                         Icons.Outlined.Widgets,
                         "prayer_open_widget_style",
-                        onOpenWidgetStyle,
+                        { onOpenWidgetStyle(null) },
                     )
                 }
                 item {

@@ -30,7 +30,11 @@ class WidgetConfigureActivity : Activity() {
             if (calendar) {
                 MainActivity.calendarSettingsIntent(this)
             } else {
-                MainActivity.widgetStyleIntent(this, next = provider == PrayerNextWidget::class.java.name)
+                MainActivity.widgetStyleIntent(
+                    this,
+                    next = provider == PrayerNextWidget::class.java.name,
+                    appWidgetId = id.takeIf { it != AppWidgetManager.INVALID_APPWIDGET_ID },
+                )
             },
         )
         finish()
