@@ -22,9 +22,9 @@
     <string name="tasbih_current_total_label">المجموع الحالي</string>
     <string name="tasbih_current_count">المجموع الحالي %1$d</string>
     <string name="about_our_apps">من أعمالنا</string>
-    <string name="about_quran_app_name">قرآن القارئ</string>
-    <string name="about_quran_app_description">مصحف كامل للقراءة دون إنترنت، مع التفسير والبحث ومتابعة الختمة.</string>
-    <string name="about_quran_open_store">عرض المصحف في المتجر</string>
+    <string name="about_quran_app_name">نتلو</string>
+    <string name="about_quran_app_description">مصحف المدينة وتفسير السعدي والبحث بالجذر دون إنترنت، وختمتك على كل أجهزتك.</string>
+    <string name="about_quran_open_store">عرض نتلو في المتجر</string>
     <string name="about_quran_store_detail">تطبيق آخر من تطويرنا</string>
     <string name="change_phrase_order">تغيير الترتيب</string>
     <string name="save_phrase_order">حفظ الترتيب</string>
@@ -278,6 +278,8 @@
     <string name="wall_clock_title">ساعة الحائط</string>
     <string name="wall_clock_dream_label">ساعة اناء</string>
     <string name="wall_clock_open">افتح ساعة الحائط</string>
+    <string name="wall_morning">صباحًا</string>
+    <string name="wall_evening">مساءً</string>
     <string name="wall_adhan">الأذان</string>
     <string name="wall_iqama">الإقامة</string>
     <string name="wall_next_in">%1$s بعد</string>
@@ -288,8 +290,6 @@
     <string name="wall_keep_on_hint">لا تنطفئ الشاشة ما دامت ساعة الحائط مفتوحة. يحسن أن يبقى الجهاز على الشاحن.</string>
     <string name="wall_dim">تخفيف الإضاءة ليلًا</string>
     <string name="wall_dim_hint">من بعد العشاء بقليل إلى قبيل الفجر.</string>
-    <string name="wall_seconds">إظهار الثواني</string>
-    <string name="wall_seconds_hint">بجانب الساعة.</string>
     <string name="wall_screen_saver">تشغيلها وحدها أثناء الشحن</string>
     <string name="wall_screen_saver_hint">من إعدادات الجهاز: حافظة الشاشة، ثم اختر «ساعة اناء» واجعلها تبدأ أثناء الشحن. تعود وحدها بعد إعادة تشغيل الجهاز.</string>
     <string name="wall_screen_saver_missing">لا يُظهر هذا الجهاز إعداد حافظة الشاشة، فأبقِ ساعة الحائط مفتوحة من التطبيق.</string>
@@ -358,7 +358,9 @@
     <string name="about_contact_title">تواصل معنا</string>
     <string name="about_contact_body">نسعد باستقبال الملاحظات الفنية والاقتراحات التي تساعدنا على تحسين اناء.</string>
     <string name="about_whatsapp_title">تواصل عبر واتساب</string>
-    <string name="about_whatsapp_number">٠٥٠ ٢٠١ ٠٩١١</string>
+    <!-- Left to right, with a left-to-right mark after each group: between Arabic-Indic digits a
+         space counts as right to left even inside the isolate, and turned the groups around. -->
+    <string name="about_whatsapp_number">⁦٠٥٠‎ ٢٠١‎ ٠٩١١⁩</string>
     <string name="about_email_title">إرسال بريد إلكتروني</string>
     <string name="about_email_address">info@cdit.co</string>
     <string name="about_contact_page_title">صفحة التواصل الرسمية</string>

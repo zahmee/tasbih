@@ -64,7 +64,11 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -81,8 +85,6 @@ import com.sakinah.tasbih.data.ArabicFontStyle
 import com.sakinah.tasbih.data.CalendarPreferencesRepository
 import com.sakinah.tasbih.data.PrayerPreferencesRepository
 import com.sakinah.tasbih.data.ThemeMode
-import com.sakinah.tasbih.data.arabicNumber
-import com.sakinah.tasbih.data.twoDigits
 import com.sakinah.tasbih.prayer.ObligatoryPrayers
 import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerPhase
@@ -100,11 +102,13 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
-/** What the wall clock may be told: whether it keeps the screen on, dims at night, and shows seconds. */
+/**
+ * What the wall clock may be told: whether it keeps the screen on, and dims at night. It shows no
+ * seconds, as the user asked on November 28, 2026, so it is drawn once a minute and spares the battery.
+ */
 data class WallClockOptions(
     val keepScreenOn: Boolean = true,
     val dimAtNight: Boolean = true,
-    val showSeconds: Boolean = true,
 )
 
 /**
@@ -118,7 +122,6 @@ internal object WallClockStore {
         WallClockOptions(
             keepScreenOn = it.getBoolean("keep_screen_on", true),
             dimAtNight = it.getBoolean("dim_at_night", true),
-            showSeconds = it.getBoolean("show_seconds", true),
         )
     }
 
@@ -126,7 +129,6 @@ internal object WallClockStore {
         context.getSharedPreferences(STORE, Context.MODE_PRIVATE).edit()
             .putBoolean("keep_screen_on", options.keepScreenOn)
             .putBoolean("dim_at_night", options.dimAtNight)
-            .putBoolean("show_seconds", options.showSeconds)
             .apply()
     }
 }
@@ -153,7 +155,7 @@ fun WallClock(window: Window?, arabicFontStyle: ArabicFontStyle, onExit: (() -> 
             WallClockData(prayer.place?.let { PrayerSchedule(it, prayer, HijriCalendar.from(calendar)) }, CalendarText(app, calendar))
         }.collect { value = it }
     }
-    val now = rememberSecondTick()
+    val now = rememberMinuteTick()
     val night = options.dimAtNight && isNight(data?.schedule, now)
 
     // The screen stays on only while this clock is shown, never for the rest of the app.
@@ -206,7 +208,6 @@ fun WallClock(window: Window?, arabicFontStyle: ArabicFontStyle, onExit: (() -> 
                 WallClockFace(
                     data = data,
                     now = now,
-                    options = options,
                     arabicFontStyle = arabicFontStyle,
                     modifier = Modifier.alpha(if (night) NIGHT_ALPHA else 1f),
                 )
@@ -237,7 +238,6 @@ fun WallClock(window: Window?, arabicFontStyle: ArabicFontStyle, onExit: (() -> 
 private fun WallClockFace(
     data: WallClockData?,
     now: ZonedDateTime,
-    options: WallClockOptions,
     arabicFontStyle: ArabicFontStyle,
     modifier: Modifier = Modifier,
 ) {
@@ -247,7 +247,7 @@ private fun WallClockFace(
     val calendarText = data?.calendarText
     val instant = now.toInstant()
     val today = schedule?.today(instant) ?: now.toLocalDate()
-    // Each second, so the count turns from the adhan to the iqama on the very second.
+    // At each minute's turn, when the count turns from the adhan to the iqama.
     val phase = schedule?.phase(instant)
     // After the night's last prayer the table turns to the next day, whose dawn comes next.
     val tableDate = if (phase is PrayerPhase.ToAdhan && phase.next.tomorrow) today.plusDays(1) else today
@@ -288,19 +288,26 @@ private fun WallClockFace(
                 }
                 Column {
                     val clock = text.clock(now)
-                    val half = text.time(now).removePrefix(clock).trim()
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
+                    // None on a phone set to a 24-hour clock, whose time says it already.
+                    val twelveHour = text.time(now) != clock
+                    // After the time, as it is said: «٤:٣٠ مساءً».
+                    Row(Modifier.fillMaxWidth()) {
+                        BasicText(
                             clock,
-                            color = ink,
-                            fontSize = size(16f),
-                            fontWeight = FontWeight.Medium,
-                            lineHeight = size(17f),
-                            modifier = Modifier.testTag("wall_time"),
+                            style = TextStyle(color = ink, fontWeight = FontWeight.Medium, lineHeight = 1.05.em),
+                            maxLines = 1,
+                            // As large as its side allows, up to a fifth of the screen's height.
+                            autoSize = TextAutoSize.StepBased(minFontSize = size(8f), maxFontSize = size(21f)),
+                            modifier = Modifier.weight(1f, fill = false).alignByBaseline().testTag("wall_time"),
                         )
-                        Column(Modifier.padding(start = unit * 1.2f, bottom = unit * 2f)) {
-                            if (options.showSeconds) Text(twoDigits(now.second), color = muted, fontSize = size(4.5f), modifier = Modifier.testTag("wall_seconds"))
-                            if (half.isNotEmpty()) Text(half, color = muted, fontSize = size(3f))
+                        if (twelveHour) {
+                            Text(
+                                stringResource(if (now.hour < 12) R.string.wall_morning else R.string.wall_evening),
+                                color = muted,
+                                fontSize = size(4.2f),
+                                maxLines = 1,
+                                modifier = Modifier.padding(start = unit * 2f).alignByBaseline().testTag("wall_period"),
+                            )
                         }
                     }
                     Spacer(Modifier.height(unit * 1.5f))
@@ -358,7 +365,7 @@ private fun WallClockFace(
 
         if (landscape) {
             Row(Modifier.fillMaxSize().padding(horizontal = pad * 1.4f, vertical = pad)) {
-                clockSide(Modifier.weight(1.1f).fillMaxSize())
+                clockSide(Modifier.weight(1.35f).fillMaxSize())
                 Spacer(Modifier.width(pad * 1.4f))
                 prayerSide(Modifier.weight(1f).fillMaxSize())
             }
@@ -398,7 +405,7 @@ private fun PrayerRow(
 }
 
 /**
- * How long to the next adhan, then to its iqama, then since it, in hours, minutes and seconds.
+ * How long to the next adhan, then to its iqama, then since it, in hours and minutes.
  * Between the adhan and the iqama it fills with gold, the moment a wall clock is looked at most.
  */
 @Composable
@@ -412,7 +419,7 @@ private fun Countdown(
     ink: Color,
 ) {
     val instant = now.toInstant()
-    val (label, span) = when (phase) {
+    val (label, left) = when (phase) {
         is PrayerPhase.ToAdhan -> stringResource(R.string.wall_next_in, text.name(phase.next.prayer, phase.next.time)) to
             Duration.between(instant, phase.next.time.toInstant())
         is PrayerPhase.ToIqama -> stringResource(R.string.wall_iqama_in, text.name(phase.prayer.prayer, phase.prayer.time)) to
@@ -422,8 +429,10 @@ private fun Countdown(
     }
     val filled = phase is PrayerPhase.ToIqama
     val onFill = MaterialTheme.colorScheme.background
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // Rounded up, so it never says nothing is left before the time has come.
+    val minutes = ((left.seconds + 59) / 60).toInt().coerceAtLeast(1)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(unit * 0.3f),
         modifier = Modifier
             .padding(top = unit * 2f)
             .fillMaxWidth()
@@ -437,18 +446,9 @@ private fun Countdown(
             .padding(horizontal = unit * 2f, vertical = unit * 1.2f)
             .testTag("wall_countdown"),
     ) {
-        Text(label, color = if (filled) onFill else ink, fontSize = size(2.4f), modifier = Modifier.weight(1f))
-        Text(clockSpan(span), color = if (filled) onFill else gold, fontSize = size(4.4f), fontWeight = FontWeight.Medium)
+        Text(label, color = if (filled) onFill else ink, fontSize = size(2.4f))
+        Text(text.span(minutes), color = if (filled) onFill else gold, fontSize = size(3.8f), fontWeight = FontWeight.Medium, maxLines = 1)
     }
-}
-
-/** «١:٥٤:٢٨», or «٥٤:٢٨» within the hour, in the digits the user chose. */
-private fun clockSpan(duration: Duration): String {
-    val seconds = duration.seconds.coerceAtLeast(0)
-    val hours = (seconds / 3600).toInt()
-    val minutes = ((seconds % 3600) / 60).toInt()
-    val rest = (seconds % 60).toInt()
-    return if (hours > 0) "${arabicNumber(hours)}:${twoDigits(minutes)}:${twoDigits(rest)}" else "${arabicNumber(minutes)}:${twoDigits(rest)}"
 }
 
 /** The choices, over the foot of the clock after a tap: they are few, and on the clock itself. */
@@ -480,7 +480,6 @@ private fun WallClockControls(options: WallClockOptions, onChange: (WallClockOpt
             }
             SettingToggleRow(stringResource(R.string.wall_keep_on), stringResource(R.string.wall_keep_on_hint), options.keepScreenOn, { onChange(options.copy(keepScreenOn = it)) }, "wall_keep_on")
             SettingToggleRow(stringResource(R.string.wall_dim), stringResource(R.string.wall_dim_hint), options.dimAtNight, { onChange(options.copy(dimAtNight = it)) }, "wall_dim")
-            SettingToggleRow(stringResource(R.string.wall_seconds), stringResource(R.string.wall_seconds_hint), options.showSeconds, { onChange(options.copy(showSeconds = it)) }, "wall_seconds_switch")
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Text(stringResource(R.string.wall_screen_saver_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(
@@ -502,14 +501,14 @@ private fun openScreenSaverSettings(context: Context) {
     }
 }
 
-/** Now, a fresh value on each second's turn, so the seconds and the count move together. */
+/** Now, a fresh value on each minute's turn and never between, so the clock wakes once a minute. */
 @Composable
-private fun rememberSecondTick(): ZonedDateTime {
+private fun rememberMinuteTick(): ZonedDateTime {
     var now by remember { mutableStateOf(ZonedDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = ZonedDateTime.now()
-            delay(1_000L - System.currentTimeMillis() % 1_000L)
+            delay(60_000L - System.currentTimeMillis() % 60_000L)
         }
     }
     return now
