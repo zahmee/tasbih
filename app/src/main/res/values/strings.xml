@@ -22,9 +22,9 @@
     <string name="tasbih_current_total_label">المجموع الحالي</string>
     <string name="tasbih_current_count">المجموع الحالي %1$d</string>
     <string name="about_our_apps">من أعمالنا</string>
-    <string name="about_quran_app_name">قرآن القارئ</string>
-    <string name="about_quran_app_description">مصحف كامل للقراءة دون إنترنت، مع التفسير والبحث ومتابعة الختمة.</string>
-    <string name="about_quran_open_store">عرض المصحف في المتجر</string>
+    <string name="about_quran_app_name">نتلو</string>
+    <string name="about_quran_app_description">مصحف المدينة وتفسير السعدي والبحث بالجذر دون إنترنت، وختمتك على كل أجهزتك.</string>
+    <string name="about_quran_open_store">عرض نتلو في المتجر</string>
     <string name="about_quran_store_detail">تطبيق آخر من تطويرنا</string>
     <string name="change_phrase_order">تغيير الترتيب</string>
     <string name="save_phrase_order">حفظ الترتيب</string>
@@ -160,7 +160,6 @@
     <string name="increase_reader_font">تكبير خط الذكر</string>
     <string name="dhikr_completion_sound">تنبيه صوتي عند اكتمال الذكر</string>
     <string name="dhikr_completion_sound_description">يصدر النغمة المختارة بعد آخر تكرار. تخصيصها من المزيد ثم الصوت والتنبيهات.</string>
-    <string name="sound_settings">الصوت والتنبيهات</string>
     <string name="sound_settings_description">اختر صوت الاكتمال واضبط شدته بما يناسبك.</string>
     <string name="sound_settings_entry_description">نغمة الاكتمال وشدة الصوت في المسبحة والأذكار</string>
     <string name="tasbih_completion_sound">تنبيه المسبحة</string>
@@ -244,12 +243,57 @@
     <string name="confirm_reset">تصفير</string>
 
     <!-- Settings -->
-    <string name="adhkar_settings">إعدادات الأذكار</string>
-    <string name="tasbih_settings_title">إعدادات المسبحة</string>
-    <string name="general_settings">الإعدادات العامة</string>
     <string name="settings_tab_sound">الصوت</string>
     <string name="settings_tab_reset">التصفير</string>
     <string name="open_settings">الإعدادات</string>
+    <!-- The one settings tree: its page, its sections, and the way to it from a section. -->
+    <string name="settings_hub_title">الإعدادات</string>
+    <string name="settings_all">كل الإعدادات</string>
+    <string name="settings_pick_section">اختر قسمًا من القائمة لتظهر إعداداته هنا.</string>
+    <string name="settings_appearance">المظهر والعرض</string>
+    <string name="settings_location">الموقع</string>
+    <string name="settings_location_none">لم يُختر مكان بعد</string>
+    <string name="settings_location_follow">%1$s، يتبع موقع الهاتف</string>
+    <string name="settings_prayer">المواقيت</string>
+    <string name="settings_alerts_on">مفعّلة: %1$s</string>
+    <string name="settings_appearance_summary">%1$s، وخط %2$s</string>
+    <string name="settings_theme_follow_phone">يتبع الهاتف</string>
+    <string name="settings_alerts_off">متوقفة</string>
+    <string name="settings_alerts_attention">تحتاج إلى انتباه حتى تصل في وقتها</string>
+    <string name="settings_calendar">التقويم</string>
+    <string name="settings_calendar_summary">%1$s أولًا، والأسبوع يبدأ %2$s</string>
+    <string name="settings_dhikr">الأذكار والمسبحة</string>
+    <string name="settings_dhikr_summary">القراءة، والمسبحة، وصوت الاكتمال، والتصفير اليومي</string>
+    <string name="settings_widgets">أدوات الشاشة الرئيسية</string>
+    <string name="settings_widgets_summary">أدوات المواقيت والقبلة والتقويم وأشكالها</string>
+    <string name="settings_widgets_prayer">المواقيت والقبلة</string>
+    <string name="settings_widgets_calendar">التقويم</string>
+    <string name="settings_widgets_calendar_look">ألوان أدوات التقويم</string>
+    <string name="settings_widgets_calendar_look_hint">تأخذ أدوات التقويم ألوانها وعرضها من إعدادات التقويم.</string>
+    <string name="settings_tab_tasbih">المسبحة</string>
+    <string name="settings_tab_display_colors">العرض والألوان</string>
+    <string name="alert_tab_reliability">الموثوقية</string>
+    <string name="alert_sound_tone">النغمة</string>
+    <!-- The wall clock: a screen for a tablet left on, in the app and as the system's screen saver. -->
+    <string name="wall_clock_title">ساعة الحائط</string>
+    <string name="wall_clock_dream_label">ساعة اناء</string>
+    <string name="wall_clock_open">افتح ساعة الحائط</string>
+    <string name="wall_morning">صباحًا</string>
+    <string name="wall_evening">مساءً</string>
+    <string name="wall_adhan">الأذان</string>
+    <string name="wall_iqama">الإقامة</string>
+    <string name="wall_next_in">%1$s بعد</string>
+    <string name="wall_iqama_in">إقامة %1$s بعد</string>
+    <string name="wall_iqama_since">أقيمت %1$s منذ</string>
+    <string name="wall_no_place">اختر مكانك من الإعدادات لتظهر مواقيت الصلاة هنا.</string>
+    <string name="wall_keep_on">إبقاء الشاشة مضاءة</string>
+    <string name="wall_keep_on_hint">لا تنطفئ الشاشة ما دامت ساعة الحائط مفتوحة. يحسن أن يبقى الجهاز على الشاحن.</string>
+    <string name="wall_dim">تخفيف الإضاءة ليلًا</string>
+    <string name="wall_dim_hint">من بعد العشاء بقليل إلى قبيل الفجر.</string>
+    <string name="wall_screen_saver">تشغيلها وحدها أثناء الشحن</string>
+    <string name="wall_screen_saver_hint">من إعدادات الجهاز: حافظة الشاشة، ثم اختر «ساعة اناء» واجعلها تبدأ أثناء الشحن. تعود وحدها بعد إعادة تشغيل الجهاز.</string>
+    <string name="wall_screen_saver_missing">لا يُظهر هذا الجهاز إعداد حافظة الشاشة، فأبقِ ساعة الحائط مفتوحة من التطبيق.</string>
+    <string name="wall_exit">الخروج من ساعة الحائط</string>
     <string name="achievements">سجل الإنجاز</string>
     <string name="achievements_teaser">أثر ذكرك محفوظ يومًا بعد يوم</string>
     <string name="achievements_teaser_count">%1$d ذكرًا مسجلًا • %2$d يومًا نشطًا</string>
@@ -270,7 +314,6 @@
     <string name="show_diacritics_description">عرض نصوص الأذكار بالتشكيل الكامل.</string>
     <string name="text_size">حجم نص الذكر في القارئ</string>
     <string name="text_size_sample">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</string>
-    <string name="tasbih_settings">المسبحة</string>
     <string name="tasbih_text_size">حجم خط الذكر في المسبحة</string>
     <string name="tasbih_text_size_description">اضبط حجم الذكر الظاهر في البطاقة أعلى العداد.</string>
     <string name="tasbih_text_size_sample">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</string>
@@ -315,7 +358,9 @@
     <string name="about_contact_title">تواصل معنا</string>
     <string name="about_contact_body">نسعد باستقبال الملاحظات الفنية والاقتراحات التي تساعدنا على تحسين اناء.</string>
     <string name="about_whatsapp_title">تواصل عبر واتساب</string>
-    <string name="about_whatsapp_number">٠٥٠ ٢٠١ ٠٩١١</string>
+    <!-- Left to right, with a left-to-right mark after each group: between Arabic-Indic digits a
+         space counts as right to left even inside the isolate, and turned the groups around. -->
+    <string name="about_whatsapp_number">⁦٠٥٠‎ ٢٠١‎ ٠٩١١⁩</string>
     <string name="about_email_title">إرسال بريد إلكتروني</string>
     <string name="about_email_address">info@cdit.co</string>
     <string name="about_contact_page_title">صفحة التواصل الرسمية</string>
@@ -492,16 +537,12 @@
     <string name="cal_show_white_days">تمييز الأيام البيض</string>
     <string name="cal_show_white_days_hint">علامة تحت الثالث عشر والرابع عشر والخامس عشر من كل شهر، عدا رمضان وأيام التشريق.</string>
     <string name="cal_section_widgets">أدوات الشاشة الرئيسية</string>
-    <string name="cal_tab_display">العرض</string>
     <string name="cal_tab_hijri">الهجري</string>
     <string name="cal_tab_agenda">المواعيد</string>
-    <string name="cal_tab_widgets">الأدوات</string>
     <string name="prayer_tab_method">الحساب</string>
     <string name="prayer_tab_minutes">الدقائق</string>
     <string name="alert_tab_prayers">الصلوات</string>
-    <string name="alert_tab_tone">النغمة</string>
     <string name="alert_tab_adhan">الأذان</string>
-    <string name="alert_tab_test">التجربة</string>
     <string name="cal_widgets_hint">تتبع ألوان اناء والوضع الليلي في الهاتف، وتتغير وحدها بعد منتصف الليل.</string>
     <string name="cal_add_date_widget">إضافة أداة التاريخ</string>
     <string name="cal_add_month_widget">إضافة أداة الشهر</string>
@@ -690,7 +731,6 @@
     <string name="alert_test">جرّب التنبيه بعد دقيقة</string>
     <string name="alert_test_hint">أقفل الشاشة بعد الضغط وانتظر دقيقة، لتتأكد أن التنبيه يصل والهاتف مقفل.</string>
     <string name="alert_test_scheduled">سيصل التنبيه بعد دقيقة. أقفل الشاشة الآن.</string>
-    <string name="alert_reliability_title">اجعل التنبيهات موثوقة</string>
     <string name="alert_no_reminder">بلا تذكير</string>
     <string name="alert_reminder_before">قبلها بـ%1$s</string>
     <string name="alert_preview_play">تشغيل %1$s</string>
@@ -739,7 +779,6 @@
     <string name="widget_style_entry">الشكل الافتراضي للأدوات</string>
     <string name="widget_style_entry_hint">شكل كل أداة تضعها بعد الآن: السطور، وشريط الوقت، والألوان والشفافية والخط والزخرفة. ويأخذ آخر شكل عدّلته.</string>
     <string name="widget_default_hint">هذا شكل ما تضعه من أدوات بعد الآن. ولكل أداة على الشاشة الرئيسية شكلها الخاص، تجدها في «إعدادات المواقيت والأدوات».</string>
-    <string name="widget_placed_header">الأدوات على الشاشة الرئيسية</string>
     <string name="widget_placed_hint">لكل أداة شكلها الخاص. اضغط على أداة لتعديل شكلها.</string>
     <string name="widget_placed_none">لم تضع أي أداة للمواقيت على الشاشة الرئيسية بعد.</string>
     <string name="widget_placed_label">%1$s %2$s</string>

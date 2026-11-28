@@ -59,8 +59,8 @@ import com.sakinah.tasbih.ui.SettingsTab
 import com.sakinah.tasbih.ui.TabbedSettingsPage
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Mosque
-import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.VerifiedUser
+import com.sakinah.tasbih.alerts.WakeLog
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -72,17 +72,20 @@ import com.sakinah.tasbih.ui.calendar.CalendarHint
 fun AlertSettingsScreen(
     alerts: AlertSettings,
     viewModel: PrayerViewModel,
-    onOpenReliability: () -> Unit,
     onBack: () -> Unit,
+    onOpenAllSettings: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
     var health by remember { mutableStateOf(AlertHealth.read(context, alerts.tone)) }
+    var wakes by remember { mutableStateOf(WakeLog.read(context).take(LOG_ROWS)) }
     LifecycleResumeEffect(alerts.tone) {
         health = AlertHealth.read(context, alerts.tone)
+        wakes = WakeLog.read(context).take(LOG_ROWS)
         viewModel.refresh()
         onPauseOrDispose { }
     }
+    val allowNotifications = rememberAllowNotifications { health = AlertHealth.read(context, alerts.tone) }
     var askNotifications by rememberSaveable { mutableStateOf(false) }
     // Android 14 and later install the app without exact alarms, and then every alert comes up
     // to ten minutes late, or an hour while the phone lies idle. Asked once per visit, after the
@@ -160,8 +163,9 @@ fun AlertSettingsScreen(
     }
 
     var tab by rememberSaveable { mutableStateOf(AlertTab.PRAYERS) }
-    // Which adhan the adhan tab lists: the one for every prayer, or Fajr's own.
-    var fajr by rememberSaveable { mutableStateOf(false) }
+    // Which sounds the sound tab lists: the short tones, the adhan for every prayer, or Fajr's own.
+    var sounds by rememberSaveable { mutableStateOf(SoundList.TONE) }
+    val fajr = sounds == SoundList.FAJR
     // Lateness is the commonest complaint, so its cause is named and mended in one tap.
     val exactScreen = if (!health.exactAlarms) AlertHealth.exactAlarmSettings(context) else null
     TabbedSettingsPage(
@@ -171,13 +175,14 @@ fun AlertSettingsScreen(
         tabs = AlertTab.entries.map { SettingsTab(alertTabLabel(it), alertTabIcon(it), "alert_tab_${it.name.lowercase()}") },
         selected = tab.ordinal,
         onSelect = { tab = AlertTab.entries[it] },
+        actions = { com.sakinah.tasbih.ui.AllSettingsAction(onOpenAllSettings) },
         // What keeps alerts from coming on time stays in sight, whichever tab is open.
         header = if (alerts.anyOn && !health.allGood) {
             {
                 Surface(
                     onClick = {
-                        if (exactScreen != null) runCatching { context.startActivity(exactScreen) }.onFailure { onOpenReliability() }
-                        else onOpenReliability()
+                        if (exactScreen != null) runCatching { context.startActivity(exactScreen) }.onFailure { tab = AlertTab.RELIABILITY }
+                        else tab = AlertTab.RELIABILITY
                     },
                     shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -221,98 +226,103 @@ fun AlertSettingsScreen(
                 }
                 item { CalendarHint(stringResource(R.string.alert_styles_hint)) }
             }
-            AlertTab.TONE -> {
-                PrayerSounds.tones.forEach { tone ->
-                    item(key = "tone-${tone.id}") {
-                        SoundRow(
-                            title = stringResource(tone.label),
-                            selected = alerts.tone == tone.id,
-                            playing = preview.playing == "tone-${tone.id}",
-                            onSelect = { viewModel.setTone(tone.id) },
-                            onPreview = { preview.toggle("tone-${tone.id}", PrayerSounds.uri(context, tone.raw)) },
-                        )
-                    }
-                }
-            }
-            AlertTab.ADHAN -> {
+            AlertTab.SOUND -> {
                 item {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("alert_adhan_switch")) {
-                        listOf(false to R.string.alert_section_adhan, true to R.string.alert_section_fajr_adhan).forEachIndexed { index, (isFajr, label) ->
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("alert_sound_switch")) {
+                        SoundList.entries.forEachIndexed { index, list ->
                             SegmentedButton(
-                                selected = fajr == isFajr,
-                                onClick = { fajr = isFajr },
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
-                            ) { Text(stringResource(label), maxLines = 1) }
+                                selected = sounds == list,
+                                onClick = { sounds = list },
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = SoundList.entries.size),
+                                modifier = Modifier.testTag("alert_sound_${list.name.lowercase()}"),
+                            ) { Text(stringResource(list.labelRes), maxLines = 1) }
                         }
                     }
                 }
-                val chosen = if (fajr) alerts.fajrAdhan else alerts.adhan
-                PrayerSounds.adhans.forEach { adhan ->
-                    item(key = "adhan-$fajr-${adhan.id}") {
+                if (sounds == SoundList.TONE) {
+                    PrayerSounds.tones.forEach { tone ->
+                        item(key = "tone-${tone.id}") {
+                            SoundRow(
+                                title = stringResource(tone.label),
+                                selected = alerts.tone == tone.id,
+                                playing = preview.playing == "tone-${tone.id}",
+                                onSelect = { viewModel.setTone(tone.id) },
+                                onPreview = { preview.toggle("tone-${tone.id}", PrayerSounds.uri(context, tone.raw)) },
+                            )
+                        }
+                    }
+                } else {
+                    val chosen = if (fajr) alerts.fajrAdhan else alerts.adhan
+                    PrayerSounds.adhans.forEach { adhan ->
+                        item(key = "adhan-$fajr-${adhan.id}") {
+                            SoundRow(
+                                title = stringResource(adhan.label),
+                                detail = adhan.credit,
+                                selected = chosen == adhan.id,
+                                playing = preview.playing == "adhan-${adhan.id}",
+                                onSelect = { viewModel.setAdhan(adhan.id, fajr) },
+                                onPreview = { preview.toggle("adhan-${adhan.id}", PrayerSounds.uri(context, adhan.raw)) },
+                            )
+                        }
+                    }
+                    item(key = "adhan-$fajr-custom") {
+                        val custom = alerts.customAdhanUri?.let(Uri::parse)
                         SoundRow(
-                            title = stringResource(adhan.label),
-                            detail = adhan.credit,
-                            selected = chosen == adhan.id,
-                            playing = preview.playing == "adhan-${adhan.id}",
-                            onSelect = { viewModel.setAdhan(adhan.id, fajr) },
-                            onPreview = { preview.toggle("adhan-${adhan.id}", PrayerSounds.uri(context, adhan.raw)) },
+                            title = stringResource(R.string.alert_adhan_custom),
+                            detail = stringResource(if (custom == null) R.string.alert_adhan_custom_none else R.string.alert_adhan_custom_chosen),
+                            selected = chosen == AlertSettings.CUSTOM_ADHAN,
+                            playing = preview.playing == "custom",
+                            onSelect = {
+                                pickingForFajr = fajr
+                                pickFile.launch(arrayOf("audio/*"))
+                            },
+                            onPreview = custom?.let { { preview.toggle("custom", it) } },
+                            icon = Icons.Outlined.AudioFile,
                         )
                     }
-                }
-                item(key = "adhan-$fajr-custom") {
-                    val custom = alerts.customAdhanUri?.let(Uri::parse)
-                    SoundRow(
-                        title = stringResource(R.string.alert_adhan_custom),
-                        detail = stringResource(if (custom == null) R.string.alert_adhan_custom_none else R.string.alert_adhan_custom_chosen),
-                        selected = chosen == AlertSettings.CUSTOM_ADHAN,
-                        playing = preview.playing == "custom",
-                        onSelect = {
-                            pickingForFajr = fajr
-                            pickFile.launch(arrayOf("audio/*"))
-                        },
-                        onPreview = custom?.let { { preview.toggle("custom", it) } },
-                        icon = Icons.Outlined.AudioFile,
-                    )
-                }
-                item { CalendarHint(stringResource(R.string.alert_adhan_hint)) }
-            }
-            AlertTab.TEST -> {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.testAlert()
-                                testScheduled = true
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) { Text(stringResource(R.string.alert_test)) }
-                        CalendarHint(stringResource(if (testScheduled) R.string.alert_test_scheduled else R.string.alert_test_hint))
-                        TextButton(onClick = onOpenReliability) { Text(stringResource(R.string.alert_reliability_title)) }
-                    }
+                    item { CalendarHint(stringResource(R.string.alert_adhan_hint)) }
                 }
             }
+            AlertTab.RELIABILITY -> reliabilityItems(
+                health = health,
+                wakes = wakes,
+                testScheduled = testScheduled,
+                onAllowNotifications = allowNotifications,
+                onTest = {
+                    viewModel.testAlert()
+                    testScheduled = true
+                },
+            )
         }
     }
 }
 
-/** The four tabs the alert settings are gathered under. */
-private enum class AlertTab { PRAYERS, TONE, ADHAN, TEST }
+/**
+ * The three tabs the alert settings are gathered under. The tone and the adhan were two tabs, and
+ * the test a tab with a page of its own behind it, until November 28, 2026.
+ */
+private enum class AlertTab { PRAYERS, SOUND, RELIABILITY }
+
+/** The sounds the sound tab lists, one list at a time. */
+private enum class SoundList(@androidx.annotation.StringRes val labelRes: Int) {
+    TONE(R.string.alert_sound_tone),
+    ADHAN(R.string.alert_tab_adhan),
+    FAJR(R.string.alert_section_fajr_adhan),
+}
 
 @Composable
 private fun alertTabLabel(tab: AlertTab): String = stringResource(
     when (tab) {
         AlertTab.PRAYERS -> R.string.alert_tab_prayers
-        AlertTab.TONE -> R.string.alert_tab_tone
-        AlertTab.ADHAN -> R.string.alert_tab_adhan
-        AlertTab.TEST -> R.string.alert_tab_test
+        AlertTab.SOUND -> R.string.settings_tab_sound
+        AlertTab.RELIABILITY -> R.string.alert_tab_reliability
     },
 )
 
 private fun alertTabIcon(tab: AlertTab): androidx.compose.ui.graphics.vector.ImageVector = when (tab) {
     AlertTab.PRAYERS -> Icons.Outlined.NotificationsActive
-    AlertTab.TONE -> Icons.Outlined.MusicNote
-    AlertTab.ADHAN -> Icons.Outlined.Mosque
-    AlertTab.TEST -> Icons.Outlined.PlayCircle
+    AlertTab.SOUND -> Icons.Outlined.MusicNote
+    AlertTab.RELIABILITY -> Icons.Outlined.VerifiedUser
 }
 
 @Composable

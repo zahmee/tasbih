@@ -1,12 +1,7 @@
 package com.sakinah.tasbih.ui.prayer
 
 import androidx.annotation.StringRes
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.OutlinedButton
-import com.sakinah.tasbih.widget.PrayerWidgetKind
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.AlertDialog
@@ -29,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.sakinah.tasbih.ui.SettingNavigationRow
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -51,7 +44,9 @@ import com.sakinah.tasbih.prayer.ObligatoryPrayers
 import com.sakinah.tasbih.prayer.Prayer
 import com.sakinah.tasbih.prayer.PrayerMethod
 import com.sakinah.tasbih.prayer.PrayerSettings
+import com.sakinah.tasbih.ui.AllSettingsAction
 import com.sakinah.tasbih.ui.SakinahSectionHeader
+import com.sakinah.tasbih.ui.SettingNavigationRow
 import com.sakinah.tasbih.ui.SettingsTab
 import com.sakinah.tasbih.ui.TabbedSettingsPage
 import androidx.compose.material.icons.outlined.Timer
@@ -70,9 +65,7 @@ fun PrayerSettingsScreen(
     state: PrayerState,
     viewModel: PrayerViewModel,
     onBack: () -> Unit,
-    calendarText: com.sakinah.tasbih.ui.calendar.CalendarText? = null,
-    /** Opens the look of a widget on the home screen, or with null the default look. */
-    onOpenWidgetStyle: (Int?) -> Unit = {},
+    onOpenAllSettings: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val text = remember(context) { PrayerText(context) }
@@ -123,6 +116,7 @@ fun PrayerSettingsScreen(
         selected = tab.ordinal,
         onSelect = { tab = PrayerTab.entries[it] },
         header = state.schedule?.let { schedule -> { TodayTimes(schedule, text) } },
+        actions = { AllSettingsAction(onOpenAllSettings) },
     ) {
         when (tab) {
             PrayerTab.METHOD -> {
@@ -204,62 +198,27 @@ fun PrayerSettingsScreen(
                     }
                 }
             }
-            PrayerTab.WIDGETS -> {
-                // Each widget on the home screen in its own look, as the user asked on November 28, 2026.
-                item(key = "placed-header") { SakinahSectionHeader(stringResource(R.string.widget_placed_header)) }
-                item(key = "placed") { PlacedPrayerWidgets(state.schedule, calendarText) { onOpenWidgetStyle(it) } }
-                item {
-                    SettingNavigationRow(
-                        stringResource(R.string.widget_style_entry),
-                        stringResource(R.string.widget_style_entry_hint),
-                        Icons.Outlined.Widgets,
-                        "prayer_open_widget_style",
-                        { onOpenWidgetStyle(null) },
-                    )
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            PrayerWidgetKind.NEXT to R.string.prayer_add_next_widget,
-                            PrayerWidgetKind.DAY to R.string.prayer_add_day_widget,
-                            PrayerWidgetKind.QIBLA to R.string.prayer_add_qibla_widget,
-                        ).forEach { (kind, label) ->
-                            OutlinedButton(
-                                onClick = {
-                                    val manager = AppWidgetManager.getInstance(context)
-                                    val asked = manager.isRequestPinAppWidgetSupported &&
-                                        manager.requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
-                                    if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
-                                },
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            ) {
-                                Icon(Icons.Outlined.Add, null)
-                                Text(stringResource(label), Modifier.padding(start = 8.dp))
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
 
-/** The three tabs the prayer settings are gathered under. */
-private enum class PrayerTab { METHOD, MINUTES, WIDGETS }
+/**
+ * The two tabs the prayer settings are gathered under. The widgets went to their own section of
+ * the settings on November 28, 2026, beside the calendar's.
+ */
+private enum class PrayerTab { METHOD, MINUTES }
 
 @Composable
 private fun prayerTabLabel(tab: PrayerTab): String = stringResource(
     when (tab) {
         PrayerTab.METHOD -> R.string.prayer_tab_method
         PrayerTab.MINUTES -> R.string.prayer_tab_minutes
-        PrayerTab.WIDGETS -> R.string.cal_tab_widgets
     },
 )
 
 private fun prayerTabIcon(tab: PrayerTab): ImageVector = when (tab) {
     PrayerTab.METHOD -> Icons.Outlined.Calculate
     PrayerTab.MINUTES -> Icons.Outlined.Timer
-    PrayerTab.WIDGETS -> Icons.Outlined.Widgets
 }
 
 /** Today's six times as they now stand, so a change of method or minutes shows at once. */

@@ -43,23 +43,21 @@ internal fun dailyResetSummary(settings: DailyResetSettings): String = when {
 }
 
 /**
- * The daily reset. Each tab's settings show only its own switch, [showTasbih] or [showAdhkar];
- * the time is one for both, so it shows in each.
+ * The daily reset: a switch for the tasbih and one for the adhkar, and the one time both reset
+ * at, shown together so a change of time is seen to move both.
  */
 internal fun LazyListScope.dailyResetSettingsItems(
     settings: DailyResetSettings,
     onSetTasbih: (Boolean) -> Unit,
     onSetAdhkar: (Boolean) -> Unit,
     onSetTime: (Int) -> Unit,
-    showTasbih: Boolean = true,
-    showAdhkar: Boolean = true,
 ) {
     item {
         Text(stringResource(R.string.daily_reset_intro), style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    if (showTasbih) item { SettingToggleRow(stringResource(R.string.daily_reset_tasbih), stringResource(R.string.daily_reset_tasbih_description), settings.tasbihEnabled, onSetTasbih, "setting_daily_reset_tasbih") }
-    if (showAdhkar) item { SettingToggleRow(stringResource(R.string.daily_reset_adhkar), stringResource(R.string.daily_reset_adhkar_description), settings.adhkarEnabled, onSetAdhkar, "setting_daily_reset_adhkar") }
+    item { SettingToggleRow(stringResource(R.string.daily_reset_tasbih), stringResource(R.string.daily_reset_tasbih_description), settings.tasbihEnabled, onSetTasbih, "setting_daily_reset_tasbih") }
+    item { SettingToggleRow(stringResource(R.string.daily_reset_adhkar), stringResource(R.string.daily_reset_adhkar_description), settings.adhkarEnabled, onSetAdhkar, "setting_daily_reset_adhkar") }
     item { HorizontalDivider(); DailyResetTimeSetting(settings, onSetTime) }
     item {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

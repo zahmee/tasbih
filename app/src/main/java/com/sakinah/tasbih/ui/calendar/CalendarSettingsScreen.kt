@@ -1,7 +1,5 @@
 package com.sakinah.tasbih.ui.calendar
 
-import android.appwidget.AppWidgetManager
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -24,14 +22,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,24 +45,24 @@ import com.sakinah.tasbih.ui.TabbedSettingsPage
 import androidx.compose.material.icons.outlined.CalendarViewWeek
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.NightsStay
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.LocalDate
-import com.sakinah.tasbih.widget.CalendarWidgetKind
 import java.time.DayOfWeek
 import kotlin.math.abs
 
-/** The five tabs the calendar's settings are gathered under. */
-private enum class CalendarTab { DISPLAY, COLORS, HIJRI, AGENDA, WIDGETS }
+/**
+ * The three tabs the calendar's settings are gathered under. The colours were a tab of their own
+ * and the widgets another until November 28, 2026, when the widgets went to their own section.
+ */
+private enum class CalendarTab { DISPLAY, HIJRI, AGENDA }
 
 /**
  * The calendar's settings, in the same order as the prayer widgets' customisation: the week
- * that holds today stays on top as a preview, and the options sit in five tabs under it. Opened
- * from the calendar, or from a calendar widget's own «customise».
+ * that holds today stays on top as a preview, and the options sit in three tabs under it. Opened
+ * from the calendar, from the settings, or from a calendar widget's own «customise».
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -76,6 +70,7 @@ fun CalendarSettingsScreen(
     text: CalendarText,
     viewModel: CalendarViewModel,
     onBack: () -> Unit,
+    onOpenAllSettings: (() -> Unit)? = null,
 ) {
     val settings = text.settings
     val context = LocalContext.current
@@ -94,6 +89,7 @@ fun CalendarSettingsScreen(
         selected = tab.ordinal,
         onSelect = { tab = CalendarTab.entries[it] },
         header = { CalendarWeekPreview(text, LocalDate.now()) },
+        actions = { com.sakinah.tasbih.ui.AllSettingsAction(onOpenAllSettings) },
     ) {
         when (tab) {
             CalendarTab.DISPLAY -> {
@@ -170,8 +166,6 @@ fun CalendarSettingsScreen(
                         "calendar_white_days",
                     )
                 }
-            }
-            CalendarTab.COLORS -> {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.cal_hijri_color), style = MaterialTheme.typography.titleMedium)
@@ -294,31 +288,6 @@ fun CalendarSettingsScreen(
                     item { CalendarHint(stringResource(R.string.cal_agenda_denied)) }
                 }
             }
-            CalendarTab.WIDGETS -> {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CalendarHint(stringResource(R.string.cal_widgets_hint))
-                        listOf(
-                            CalendarWidgetKind.DATE to R.string.cal_add_date_widget,
-                            CalendarWidgetKind.MONTH to R.string.cal_add_month_widget,
-                            CalendarWidgetKind.OCCASION to R.string.cal_add_occasion_widget,
-                        ).forEach { (kind, label) ->
-                            OutlinedButton(
-                                onClick = {
-                                    val manager = AppWidgetManager.getInstance(context)
-                                    val asked = manager.isRequestPinAppWidgetSupported &&
-                                        manager.requestPinAppWidget(kind.provider(context), null, null)
-                                    if (!asked) Toast.makeText(context, R.string.cal_add_widget_manually, Toast.LENGTH_LONG).show()
-                                },
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            ) {
-                                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                                Text(stringResource(label), Modifier.padding(start = 8.dp))
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -326,18 +295,14 @@ fun CalendarSettingsScreen(
 @Composable
 private fun calendarTabLabel(tab: CalendarTab): String = stringResource(
     when (tab) {
-        CalendarTab.DISPLAY -> R.string.cal_tab_display
-        CalendarTab.COLORS -> R.string.widget_tab_colors
+        CalendarTab.DISPLAY -> R.string.settings_tab_display_colors
         CalendarTab.HIJRI -> R.string.cal_tab_hijri
         CalendarTab.AGENDA -> R.string.cal_tab_agenda
-        CalendarTab.WIDGETS -> R.string.cal_tab_widgets
     },
 )
 
 private fun calendarTabIcon(tab: CalendarTab): ImageVector = when (tab) {
     CalendarTab.DISPLAY -> Icons.Outlined.CalendarViewWeek
-    CalendarTab.COLORS -> Icons.Outlined.Palette
     CalendarTab.HIJRI -> Icons.Outlined.NightsStay
     CalendarTab.AGENDA -> Icons.Outlined.Event
-    CalendarTab.WIDGETS -> Icons.Outlined.Widgets
 }

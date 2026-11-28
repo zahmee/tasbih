@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Favorite
@@ -84,6 +85,7 @@ fun LibraryScreen(
     onRetry: () -> Unit,
     onOpenTasbih: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf<DhikrGroup?>(null) }
@@ -124,7 +126,13 @@ fun LibraryScreen(
                 null
             },
             backLabel = stringResource(R.string.back_to_sections),
-            actions = { SettingsGear(onOpenSettings, "library_open_settings") },
+            actions = {
+                // The record of what was read and counted is no setting, so it sits beside the gear.
+                IconButton(onClick = onOpenAchievements, modifier = Modifier.testTag("open_achievements")) {
+                    Icon(Icons.Outlined.BarChart, stringResource(R.string.achievements))
+                }
+                SettingsGear(onOpenSettings, "library_open_settings")
+            },
         )
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth().testTag("library_list"),

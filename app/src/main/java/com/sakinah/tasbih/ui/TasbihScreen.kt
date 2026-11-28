@@ -47,6 +47,7 @@ import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Delete
@@ -157,6 +158,7 @@ fun TasbihScreen(
     onSetTextScale: (Float) -> Unit,
     onBack: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
 ) {
     // Saved, so turning the phone keeps a dialog or the editor open with what was typed in it.
     var showResetConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -283,6 +285,7 @@ fun TasbihScreen(
                         onEnterFocusMode = { onFocusModeChange(true) },
                         onBack = onBack,
                         onOpenSettings = onOpenSettings,
+                        onOpenAchievements = onOpenAchievements,
                     )
                 }
                 Column(
@@ -696,6 +699,7 @@ private fun TasbihTopBar(
     onEnterFocusMode: () -> Unit,
     onBack: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     // The head every tab shares; the tasbih opens from the home screen and the adhkar too, so it
@@ -726,6 +730,9 @@ private fun TasbihTopBar(
                     DropdownMenuItem(text = { Text(stringResource(R.string.tasbih_phrase_statistics)) },
                         leadingIcon = { Icon(Icons.Outlined.BarChart, contentDescription = null) },
                         modifier = Modifier.testTag("tasbih_phrase_statistics"), onClick = { expanded = false; onOpenStatistics() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.achievements)) },
+                        leadingIcon = { Icon(Icons.Outlined.Insights, contentDescription = null) },
+                        modifier = Modifier.testTag("tasbih_open_achievements"), onClick = { expanded = false; onOpenAchievements() })
                     DropdownMenuItem(text = { Text(stringResource(R.string.reset)) }, enabled = count > 0,
                         leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                         onClick = { expanded = false; onReset() })

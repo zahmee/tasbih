@@ -27,6 +27,16 @@ class AdaptiveDesignFlowTest {
     private fun scrollTap(list: String, tag: String) {
         waitTag(list); rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag)); tap(tag)
     }
+    /**
+     * Back out of the settings to the day. On a wide screen one back closes the list and the section
+     * beside it together; on a phone each takes its own.
+     */
+    private fun leaveSettings() {
+        repeat(3) {
+            rule.waitForIdle()
+            if (listOf("settings_hub", "about_screen", "appearance_settings").any { rule.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }) back()
+        }
+    }
     private fun back() {
         rule.waitForIdle()
         rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
@@ -69,10 +79,10 @@ class AdaptiveDesignFlowTest {
         rule.onNodeWithTag("reader_count_button").assertIsDisplayed()
         capture("reader-focus")
         tap("reader_exit_focus_mode"); back()
-        // Each tab's settings sit behind the gear on its page since the «more» tab went.
-        // The gear stays in the bar, in a section too, as on every tab.
-        tap("library_open_settings"); waitTag("adhkar_settings"); capture("reading-settings")
-        tap("adhkar_tab_sound"); waitTag("open_sound_settings"); tap("open_sound_settings"); waitTag("sound_settings_screen"); capture("sound"); back()
+        // The adhkar's gear opens their section of the one settings tree, on reading; the record
+        // of what was done sits beside the gear, as it is no setting.
+        tap("library_open_settings"); waitTag("dhikr_settings"); capture("reading-settings")
+        tap("dhikr_tab_sound"); waitTag("tasbih_sound_enabled"); capture("sound"); back()
         tap("open_achievements"); waitTag("achievements_list"); capture("activity")
         scrollTap("achievements_list", "activity_expand_hours")
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("hourly_activity"))
@@ -83,9 +93,11 @@ class AdaptiveDesignFlowTest {
         scrollTap("achievements_list", "activity_expand_calendar")
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_calendar"))
         rule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_calendar_grid"))
-        capture("calendar"); back(); back()
-        tap("nav_home"); tap("home_open_settings"); waitTag("general_settings"); capture("appearance")
-        scrollTap("settings_detail_list", "open_about"); waitTag("about_screen"); capture("about"); back(); back()
+        capture("calendar"); back()
+        // The day's gear opens the whole tree; on a wide screen a section shows beside it.
+        tap("nav_home"); tap("home_open_settings"); waitTag("settings_hub"); capture("settings")
+        tap("settings_open_appearance"); waitTag("appearance_settings"); capture("appearance")
+        scrollTap("settings_hub_list", "open_about"); waitTag("about_screen"); capture("about"); leaveSettings()
         val longText = "سبحان الله والحمد لله ".repeat(22) + "نهاية الذكر"
         rule.activityRule.scenario.onActivity { vm.addCustomPhrase(longText, 33) }
         rule.waitUntil(10_000) { vm.uiState.value.selectedPhrase.text == longText }
