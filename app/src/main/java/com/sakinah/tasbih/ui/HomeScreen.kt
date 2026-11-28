@@ -107,6 +107,8 @@ fun HomeScreen(
     onOpenQibla: () -> Unit = {},
     onOpenTasbih: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    /** The clock at the head of the day opens the wall clock, the same time made large. */
+    onOpenWallClock: () -> Unit = {},
     /** Today's wird, for its line: how much is done and what comes next. */
     wird: com.sakinah.tasbih.wird.WirdBoard? = null,
     onOpenWird: () -> Unit = {},
@@ -183,7 +185,7 @@ fun HomeScreen(
             titleClickLabel = stringResource(R.string.cal_open),
             modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = 920.dp),
             actions = {
-                HomeClock(prayerText)
+                HomeClock(prayerText, onOpenWallClock)
                 // What belongs to the whole app: its look, and about it.
                 SettingsGear(onOpenSettings, "home_open_settings")
             },
@@ -254,7 +256,7 @@ private fun HomeDates(
 
 /** The time now, turning over on the minute itself rather than up to half a minute late. */
 @Composable
-private fun HomeClock(prayerText: PrayerText) {
+private fun HomeClock(prayerText: PrayerText, onOpenWallClock: () -> Unit) {
     var time by remember { mutableStateOf(java.time.ZonedDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -271,7 +273,11 @@ private fun HomeClock(prayerText: PrayerText) {
         prayerText.time(time),
         style = MaterialTheme.typography.titleLarge,
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(4.dp).testTag("home_clock"),
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClickLabel = stringResource(R.string.wall_clock_open), role = Role.Button, onClick = onOpenWallClock)
+            .padding(4.dp)
+            .testTag("home_clock"),
     )
 }
 

@@ -40,7 +40,7 @@ class DailyResetSettingsFlowTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private fun waitTag(tag: String) = rule.waitUntil(10_000) { rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
     /** The settings page in front; each tab's settings list their options under their own tag. */
-    private var list = "adhkar_settings_options"
+    private var list = "dhikr_settings_options"
     private fun scrollSetting(tag: String): SemanticsNodeInteraction {
         rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag))
         return rule.onNodeWithTag(tag).performScrollTo()
@@ -74,25 +74,23 @@ class DailyResetSettingsFlowTest {
         rule.activityRule.scenario.onActivity { vm.incrementTasbih() }
         rule.waitUntil(10_000) { vm.uiState.value.tasbihCount == beforeIncrement + 1 }
         val before = vm.uiState.value.tasbihCount
-        // The tasbih's reset is in the tasbih's own settings, behind the gear on its page.
+        // The reset is one, for the tasbih and the adhkar, in their shared section: the tasbih's
+        // gear opens it on the tasbih, and the adhkar's on reading.
         rule.onNodeWithTag("nav_tasbih").performClick()
         waitTag("tasbih_open_settings")
         rule.onNodeWithTag("tasbih_open_settings").performClick()
-        waitTag("tasbih_settings")
-        rule.onNodeWithTag("tasbih_tab_reset").performClick()
-        list = "tasbih_settings_options"
-        rule.onNodeWithTag("setting_daily_reset_adhkar").assertDoesNotExist()
+        waitTag("dhikr_settings")
+        rule.onNodeWithTag("dhikr_tab_reset").performClick()
         scrollSetting("setting_daily_reset_tasbih").assertIsOn().performClick()
         rule.waitUntil(10_000) { !vm.uiState.value.dailyReset.tasbihEnabled }
         back()
-        // And the adhkar's in the adhkar's.
         rule.onNodeWithTag("nav_library").performClick()
         waitTag("library_open_settings")
         rule.onNodeWithTag("library_open_settings").performClick()
-        waitTag("adhkar_settings")
-        rule.onNodeWithTag("adhkar_tab_reset").performClick()
-        list = "adhkar_settings_options"
-        rule.onNodeWithTag("setting_daily_reset_tasbih").assertDoesNotExist()
+        waitTag("dhikr_settings")
+        rule.onNodeWithTag("dhikr_tab_reset").performClick()
+        // Both switches sit together, so the tasbih's shows what was set from its own gear.
+        scrollSetting("setting_daily_reset_tasbih").assertIsOff()
         scrollSetting("setting_daily_reset_adhkar").assertIsOn().performClick()
         rule.waitUntil(10_000) { !vm.uiState.value.dailyReset.adhkarEnabled }
         scrollSetting("daily_reset_summary").assertTextContains("متوقف", substring = true)
@@ -114,7 +112,7 @@ class DailyResetSettingsFlowTest {
         rule.waitUntil(10_000) { vm.uiState.value.dailyReset.minuteOfDay == 270 }
         assertEquals(before, vm.uiState.value.tasbihCount)
         rule.activityRule.scenario.recreate()
-        waitTag("adhkar_settings")
+        waitTag("dhikr_settings")
         scrollSetting("setting_daily_reset_adhkar").assertIsOff().performClick()
         rule.activityRule.scenario.onActivity { vm.setTasbihDailyReset(true) }
         rule.waitUntil(10_000) { vm.uiState.value.dailyReset == DailyResetSettings(minuteOfDay = 270) }
@@ -126,12 +124,12 @@ class DailyResetSettingsFlowTest {
         scrollSetting("daily_reset_time_cancel").performClick()
         assertEquals(270, vm.uiState.value.dailyReset.minuteOfDay)
         back()
-        // About the app is in the general settings, behind the gear on the day's page.
+        // About the app is in the settings tree, behind the gear on the day's page.
         rule.onNodeWithTag("nav_home").performClick()
         waitTag("home_open_settings")
         rule.onNodeWithTag("home_open_settings").performClick()
-        waitTag("general_settings")
-        rule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("open_about"))
+        waitTag("settings_hub")
+        rule.onNodeWithTag("settings_hub_list").performScrollToNode(hasTestTag("open_about"))
         rule.onNodeWithTag("open_about").performClick()
         rule.onNodeWithTag("about_list").performScrollToNode(hasTestTag("about_quran_store"))
         rule.onNodeWithTag("about_quran_store").assertIsDisplayed()

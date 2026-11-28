@@ -1,6 +1,9 @@
 package com.sakinah.tasbih
 
 import android.content.Context
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.content.Intent
 import android.os.Bundle
 import android.media.AudioManager
@@ -28,6 +31,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Only on a fresh start: after a rotation the screen already shows what was asked for.
         if (savedInstanceState == null) openRequest = requestFrom(intent)
+        publishWallClockShortcut()
         setContent {
             SakinahApp(openRequest = openRequest, onOpenRequestHandled = { openRequest = null })
         }
@@ -43,6 +47,7 @@ class MainActivity : ComponentActivity() {
         externalRequest(intent?.action, intent?.getStringExtra(EXTRA_DESTINATION), LocalDate.now())?.let { return it }
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_PRAYER) return AppOpenRequest.Prayer
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_QIBLA) return AppOpenRequest.Qibla
+        if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WALL_CLOCK) return AppOpenRequest.WallClock
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_CALENDAR_SETTINGS) return AppOpenRequest.CalendarSettings
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIRD) return AppOpenRequest.Wird(intent.getStringExtra(EXTRA_COLLECTION))
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIDGET_STYLE) {
@@ -53,6 +58,21 @@ class MainActivity : ComponentActivity() {
         val day = intent.getLongExtra(EXTRA_DATE, Long.MIN_VALUE)
         val date = if (day == Long.MIN_VALUE) LocalDate.now() else LocalDate.ofEpochDay(day)
         return AppOpenRequest.Calendar(date, showOccasions = intent.getBooleanExtra(EXTRA_OCCASIONS, false))
+    }
+
+    /**
+     * «ساعة الحائط» among the app icon's shortcuts, so a tablet kept as a wall clock can carry it on
+     * its home screen and open the clock in one tap after a restart. Set at each start, which also
+     * keeps its name in step with the app's.
+     */
+    private fun publishWallClockShortcut() {
+        val manager = getSystemService(ShortcutManager::class.java) ?: return
+        val shortcut = ShortcutInfo.Builder(this, WALL_CLOCK_SHORTCUT)
+            .setShortLabel(getString(R.string.wall_clock_title))
+            .setIcon(Icon.createWithResource(this, R.drawable.ic_shortcut_wall_clock))
+            .setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_VIEW).putExtra(EXTRA_OPEN, OPEN_WALL_CLOCK))
+            .build()
+        runCatching { manager.addDynamicShortcuts(listOf(shortcut)) }
     }
 
     companion object {
@@ -88,6 +108,8 @@ class MainActivity : ComponentActivity() {
         private const val OPEN_CALENDAR = "calendar"
         private const val OPEN_PRAYER = "prayer"
         private const val OPEN_QIBLA = "qibla"
+        private const val OPEN_WALL_CLOCK = "wall_clock"
+        private const val WALL_CLOCK_SHORTCUT = "wall_clock"
         private const val OPEN_WIDGET_STYLE = "widget_style"
         private const val OPEN_CALENDAR_SETTINGS = "calendar_settings"
         private const val OPEN_WIRD = "wird"

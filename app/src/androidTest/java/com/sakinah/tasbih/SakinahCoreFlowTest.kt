@@ -149,25 +149,34 @@ class SakinahCoreFlowTest {
         waitForText("ذِكْرٌ مُعَدَّل")
         waitForText("الدورة الحالية 1 من 9")
 
-        // The look of the app is in the general settings, behind the gear on the day's page.
+        // The look of the app is the first section of the settings tree, behind the day's gear.
         waitForTag("nav_home")
         composeRule.onNodeWithTag("nav_home").performClick()
         waitForTag("home_open_settings")
         composeRule.onNodeWithTag("home_open_settings").performClick()
-        waitForTag("general_settings")
-        composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("theme_dark"))
+        waitForTag("settings_open_appearance")
+        composeRule.onNodeWithTag("settings_open_appearance").performClick()
+        waitForTag("appearance_settings")
+        composeRule.onNodeWithTag("appearance_settings_list").performScrollToNode(hasTestTag("theme_dark"))
         composeRule.onNodeWithTag("theme_dark").performClick()
-        composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("font_baqiyat"))
+        composeRule.onNodeWithTag("appearance_settings_list").performScrollToNode(hasTestTag("font_baqiyat"))
         composeRule.onNodeWithTag("font_baqiyat").performClick()
         waitForSelectedTag("font_baqiyat")
         composeRule.onNodeWithTag("font_baqiyat").assertIsSelected()
-        composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-        // The record of what was done opens from the tasbih's own settings.
+        // Out of the settings: one back on a wide screen, where the list and the section close
+        // together, and one for each on a phone.
+        repeat(2) {
+            composeRule.waitForIdle()
+            if (listOf("settings_hub", "appearance_settings").any { composeRule.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }) {
+                composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            }
+        }
+        // The record of what was done opens from the tasbih's menu, as it is no setting.
         composeRule.onNodeWithTag("nav_tasbih").performClick()
-        waitForTag("tasbih_open_settings")
-        composeRule.onNodeWithTag("tasbih_open_settings").performClick()
-        waitForTag("open_achievements")
-        composeRule.onNodeWithTag("open_achievements").performClick()
+        waitForTag("tasbih_actions")
+        composeRule.onNodeWithTag("tasbih_actions").performClick()
+        waitForTag("tasbih_open_achievements")
+        composeRule.onNodeWithTag("tasbih_open_achievements").performClick()
         waitForTag("achievements_screen")
 
         composeRule.onNodeWithTag("achievements_list").performScrollToNode(hasTestTag("activity_expand_sources"))
@@ -206,8 +215,8 @@ class SakinahCoreFlowTest {
 
         waitForTag("home_open_settings")
         composeRule.onNodeWithTag("home_open_settings").performClick()
-        waitForTag("general_settings")
-        composeRule.onNodeWithTag("settings_detail_list").performScrollToNode(hasTestTag("open_about"))
+        waitForTag("settings_hub")
+        composeRule.onNodeWithTag("settings_hub_list").performScrollToNode(hasTestTag("open_about"))
         composeRule.onNodeWithTag("open_about").performClick()
 
         waitForTag("about_screen")
@@ -385,40 +394,38 @@ class SakinahCoreFlowTest {
     @Test
     fun completionSoundSettingsCanBePreviewedAndSurviveRecreation() {
         waitForTag("home_featured")
-        // The tone is reached from the tasbih's (and the adhkar's) own settings, on their sound tab.
+        // The tone is on the sound tab of the tasbih's and the adhkar's one section of the settings.
         composeRule.onNodeWithTag("nav_tasbih").performClick()
         waitForTag("tasbih_open_settings")
         composeRule.onNodeWithTag("tasbih_open_settings").performClick()
-        waitForTag("tasbih_tab_sound")
-        composeRule.onNodeWithTag("tasbih_tab_sound").performClick()
-        waitForTag("open_sound_settings")
-        composeRule.onNodeWithTag("open_sound_settings").performClick()
-        waitForTag("sound_settings_screen")
+        waitForTag("dhikr_tab_sound")
+        composeRule.onNodeWithTag("dhikr_tab_sound").performClick()
+        waitForTag("tasbih_sound_enabled")
 
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("sound_choice_triple_pulse"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("sound_choice_triple_pulse"))
         composeRule.onNodeWithTag("sound_choice_triple_pulse").performClick()
         waitForSelectedTag("sound_choice_triple_pulse")
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("sound_volume"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("sound_volume"))
         composeRule.onNodeWithTag("sound_volume").performSemanticsAction(SemanticsActions.SetProgress) { it(0.7f) }
         waitForText("70٪")
         CompletionSound.entries.forEach { sound ->
-            composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("sound_preview_${sound.storageId}"))
+            composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("sound_preview_${sound.storageId}"))
             composeRule.onNodeWithTag("sound_preview_${sound.storageId}").performClick()
         }
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("tasbih_sound_enabled"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("tasbih_sound_enabled"))
         composeRule.onNodeWithTag("tasbih_sound_enabled").performClick()
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("reader_sound_enabled"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("reader_sound_enabled"))
         composeRule.onNodeWithTag("reader_sound_enabled").performClick()
 
         composeRule.activityRule.scenario.recreate()
-        waitForTag("sound_settings_screen")
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("tasbih_sound_enabled"))
+        waitForTag("tasbih_sound_enabled")
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("tasbih_sound_enabled"))
         composeRule.onNodeWithTag("tasbih_sound_enabled").assertIsOff()
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("reader_sound_enabled"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("reader_sound_enabled"))
         composeRule.onNodeWithTag("reader_sound_enabled").assertIsOff()
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("sound_choice_triple_pulse"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("sound_choice_triple_pulse"))
         composeRule.onNodeWithTag("sound_choice_triple_pulse").assertIsSelected()
-        composeRule.onNodeWithTag("sound_settings_list").performScrollToNode(hasTestTag("sound_volume_value"))
+        composeRule.onNodeWithTag("dhikr_settings_options").performScrollToNode(hasTestTag("sound_volume_value"))
         waitForText("70٪")
 
         composeRule.activityRule.scenario.onActivity { activity ->

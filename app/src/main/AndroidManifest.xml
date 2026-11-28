@@ -96,6 +96,21 @@
             </intent-filter>
         </activity>
 
+        <!-- The wall clock as the system's screen saver, for a tablet left on charge on a wall. -->
+        <service
+            android:name=".ui.wallclock.WallClockDream"
+            android:exported="true"
+            android:label="@string/wall_clock_dream_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/wall_clock_dream" />
+        </service>
+
         <!-- Calendar widgets. They need no permission; their «customise» opens the calendar's settings. -->
         <receiver
             android:name=".widget.CalendarDateWidget"

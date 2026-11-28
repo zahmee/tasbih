@@ -73,12 +73,17 @@ import com.sakinah.tasbih.ui.calendar.ConverterScreen
 import com.sakinah.tasbih.ui.calendar.OccasionsScreen
 import com.sakinah.tasbih.ui.prayer.AlertSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PlaceScreen
-import com.sakinah.tasbih.ui.prayer.ReliabilityScreen
 import com.sakinah.tasbih.ui.prayer.PrayerMonthScreen
 import com.sakinah.tasbih.ui.prayer.PrayerSettingsScreen
 import com.sakinah.tasbih.ui.prayer.PrayerTimesScreen
 import com.sakinah.tasbih.ui.prayer.PrayerViewModel
 import com.sakinah.tasbih.ui.prayer.QiblaScreen
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
@@ -88,11 +93,17 @@ private sealed interface AppDestination {
     data object Library : AppDestination
     data object Tasbih : AppDestination
     data object TasbihPhrases : AppDestination
-    /** Each tab's own settings, behind the gear on its page, since the «more» tab went. */
-    data object AdhkarSettings : AppDestination
-    data object TasbihSettings : AppDestination
-    data object GeneralSettings : AppDestination
-    data object SoundSettings : AppDestination
+    /**
+     * The one settings tree, since November 28, 2026: its list of sections, opened by the gear on
+     * the day's page, and the sections each tab's gear opens directly. On a wide screen a section
+     * opened from the list shows beside it.
+     */
+    data object SettingsHub : AppDestination
+    data object AppearanceSettings : AppDestination
+    data class DhikrSettings(val tab: DhikrSettingsTab = DhikrSettingsTab.READING) : AppDestination
+    data object WidgetSettings : AppDestination
+    /** The clock for a tablet on a wall, opened from the day's clock or its shortcut. */
+    data object WallClock : AppDestination
     data object Achievements : AppDestination
     data object About : AppDestination
     data class Reader(val collectionId: String, val reviewCompleted: Boolean = false) : AppDestination
@@ -106,7 +117,6 @@ private sealed interface AppDestination {
     data object PrayerOptions : AppDestination
     data object Qibla : AppDestination
     data object PrayerAlerts : AppDestination
-    data object PrayerReliability : AppDestination
     data object PrayerMonth : AppDestination
     /** The look of the widget [appWidgetId], or the default look for widgets placed later. */
     data class PrayerWidgetStyle(val appWidgetId: Int? = null) : AppDestination
@@ -119,10 +129,11 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.Library -> "library"
     AppDestination.Tasbih -> "tasbih"
     AppDestination.TasbihPhrases -> "phrases"
-    AppDestination.AdhkarSettings -> "adhkar-settings"
-    AppDestination.TasbihSettings -> "tasbih-settings"
-    AppDestination.GeneralSettings -> "general-settings"
-    AppDestination.SoundSettings -> "sound"
+    AppDestination.SettingsHub -> "settings-hub"
+    AppDestination.AppearanceSettings -> "appearance-settings"
+    is AppDestination.DhikrSettings -> "dhikr-settings:${tab.name}"
+    AppDestination.WidgetSettings -> "widget-settings"
+    AppDestination.WallClock -> "wall-clock"
     AppDestination.Achievements -> "achievements"
     AppDestination.About -> "about"
     is AppDestination.Reader -> "reader:$collectionId:$reviewCompleted"
@@ -135,7 +146,6 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.PrayerOptions -> "prayer-options"
     AppDestination.Qibla -> "qibla"
     AppDestination.PrayerAlerts -> "prayer-alerts"
-    AppDestination.PrayerReliability -> "prayer-reliability"
     AppDestination.PrayerMonth -> "prayer-month"
     is AppDestination.PrayerWidgetStyle -> "prayer-widget-style:${appWidgetId ?: ""}"
     is AppDestination.Wird -> "wird:${addOnEpochDay ?: ""}"
@@ -146,12 +156,18 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "library" -> AppDestination.Library
     "tasbih" -> AppDestination.Tasbih
     "phrases" -> AppDestination.TasbihPhrases
-    "adhkar-settings" -> AppDestination.AdhkarSettings
-    "tasbih-settings" -> AppDestination.TasbihSettings
-    "general-settings" -> AppDestination.GeneralSettings
-    // Saved by versions with the «more» tab; their pages now live in the tabs' own settings.
-    "settings" -> AppDestination.GeneralSettings
-    "sound" -> AppDestination.SoundSettings
+    "settings-hub" -> AppDestination.SettingsHub
+    "appearance-settings" -> AppDestination.AppearanceSettings
+    "widget-settings" -> AppDestination.WidgetSettings
+    "wall-clock" -> AppDestination.WallClock
+    // Saved by versions before the one settings tree: each page opens where its options now are.
+    "adhkar-settings" -> AppDestination.DhikrSettings(DhikrSettingsTab.READING)
+    "tasbih-settings" -> AppDestination.DhikrSettings(DhikrSettingsTab.TASBIH)
+    "sound" -> AppDestination.DhikrSettings(DhikrSettingsTab.SOUND)
+    "general-settings" -> AppDestination.SettingsHub
+    "prayer-reliability" -> AppDestination.PrayerAlerts
+    // Saved by versions with the «more» tab.
+    "settings" -> AppDestination.SettingsHub
     "achievements" -> AppDestination.Achievements
     "about" -> AppDestination.About
     "calendar-occasions" -> AppDestination.CalendarOccasions
@@ -162,17 +178,18 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "prayer-options" -> AppDestination.PrayerOptions
     "qibla" -> AppDestination.Qibla
     "prayer-alerts" -> AppDestination.PrayerAlerts
-    "prayer-reliability" -> AppDestination.PrayerReliability
     "prayer-month" -> AppDestination.PrayerMonth
     "prayer-widget-style" -> AppDestination.PrayerWidgetStyle()
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
             "reader" -> AppDestination.Reader(parts[1], parts.getOrNull(2).toBoolean())
+            "dhikr-settings" -> AppDestination.DhikrSettings(DhikrSettingsTab.valueOf(parts[1]))
             "settings" -> when (SettingsSection.valueOf(parts[1])) {
-                SettingsSection.Reading -> AppDestination.AdhkarSettings
-                SettingsSection.Tasbih, SettingsSection.DailyReset -> AppDestination.TasbihSettings
-                SettingsSection.Appearance -> AppDestination.GeneralSettings
+                SettingsSection.Reading -> AppDestination.DhikrSettings(DhikrSettingsTab.READING)
+                SettingsSection.Tasbih -> AppDestination.DhikrSettings(DhikrSettingsTab.TASBIH)
+                SettingsSection.DailyReset -> AppDestination.DhikrSettings(DhikrSettingsTab.RESET)
+                SettingsSection.Appearance -> AppDestination.AppearanceSettings
             }
             "calendar" -> AppDestination.Calendar(parts.getOrNull(1)?.toLongOrNull())
             "prayer-widget-style" -> AppDestination.PrayerWidgetStyle(parts.getOrNull(1)?.toIntOrNull())
@@ -239,6 +256,7 @@ fun SakinahApp(
     }
 }
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 private fun SakinahNavigation(
     state: SakinahUiState,
@@ -408,6 +426,15 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.PrayerWidgetStyle(request.appWidgetId))
                 onOpenRequestHandled()
             }
+            // From its shortcut, over the day, where back returns.
+            AppOpenRequest.WallClock -> {
+                isTasbihFocusMode = false
+                isReaderFocusMode = false
+                backStack.clear()
+                backStack.add(AppDestination.Home)
+                backStack.add(AppDestination.WallClock)
+                onOpenRequestHandled()
+            }
             // Just as a tap on the tab in the bar: back returns to the day, and leaves from there.
             AppOpenRequest.Today -> {
                 navigateTopLevel(AppDestination.Home)
@@ -441,6 +468,80 @@ private fun SakinahNavigation(
             if (index > 1 || (index == 1 && !tabFromBar)) ::navigateBack else null
         }
 
+    /** A section opened from the settings' list, which a wide screen shows beside it. */
+    fun underHub(destination: AppDestination): Boolean =
+        backStack.lastIndexOf(destination).let { it > 0 && backStack[it - 1] == AppDestination.SettingsHub }
+
+    fun openSettingsHub() {
+        isReaderFocusMode = false
+        if (backStack.lastOrNull() != AppDestination.SettingsHub) backStack.add(AppDestination.SettingsHub)
+    }
+
+    /** From the list, a section takes the place of the one beside it, so back returns to the list. */
+    fun openSettingsArea(area: SettingsArea) {
+        val destination = area.destination()
+        val top = backStack.last()
+        if (top != AppDestination.SettingsHub && underHub(top)) {
+            backStack[backStack.lastIndex] = destination
+        } else {
+            backStack.add(destination)
+        }
+    }
+
+    /** Leaves the settings' list, and the section beside it on a wide screen, in one step. */
+    fun closeSettings() {
+        val index = backStack.lastIndexOf(AppDestination.SettingsHub)
+        if (index > 0) {
+            while (backStack.size > index) backStack.removeAt(backStack.lastIndex)
+            if (backStack.size == 1) tabFromBar = false
+        } else {
+            navigateBack()
+        }
+    }
+
+    // A window wide enough for two panes shows a section beside the settings' list.
+    val paneDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
+    val settingsTwoPane = paneDirective.maxHorizontalPartitions > 1
+    val listDetail = rememberListDetailSceneStrategy<AppDestination>(
+        shouldHandleSinglePaneLayout = false,
+        directive = paneDirective,
+    )
+
+    /**
+     * The way from a section a tab's gear opened to the whole tree: on a wide screen the list comes
+     * in beside the section, on a phone in its place. Null when the list lies under it already.
+     */
+    fun allSettingsFor(destination: AppDestination): (() -> Unit)? =
+        if (underHub(destination)) {
+            null
+        } else {
+            {
+                val index = backStack.lastIndexOf(destination)
+                if (index >= 0) {
+                    if (settingsTwoPane) {
+                        backStack.add(index, AppDestination.SettingsHub)
+                    } else {
+                        while (backStack.size > index + 1) backStack.removeAt(backStack.lastIndex)
+                        backStack[index] = AppDestination.SettingsHub
+                    }
+                }
+            }
+        }
+
+    /**
+     * A section's own back arrow. Beside the list, back leaves the settings whole, as the system's
+     * back does there; on its own, it returns to what lies under it.
+     */
+    fun sectionBack(destination: AppDestination): () -> Unit =
+        if (settingsTwoPane && underHub(destination)) ::closeSettings else ::navigateBack
+
+    /** The list's pane for the settings' list, the detail's for a section opened from it. */
+    fun paneOf(destination: AppDestination): Map<String, Any> = when {
+        destination == AppDestination.SettingsHub -> ListDetailSceneStrategy.listPane(detailPlaceholder = { SettingsPickSection() })
+        destination.settingsArea() != null && underHub(destination) -> ListDetailSceneStrategy.detailPane()
+        else -> emptyMap()
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavigationRail = maxWidth >= 600.dp
         val compactNavigationRail = maxHeight < 480.dp
@@ -459,7 +560,10 @@ private fun SakinahNavigation(
             // Full-screen reading docks its counter to the screen edge and pads for the
             // navigation bar itself, so the bottom inset is left for it to consume.
             val layoutDirection = LocalLayoutDirection.current
-            val contentPadding = if (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader) {
+            val contentPadding = if (backStack.lastOrNull() == AppDestination.WallClock) {
+                // The wall clock fills the whole screen, under the bars it hides.
+                PaddingValues(0.dp)
+            } else if (isReaderFocusMode && backStack.lastOrNull() is AppDestination.Reader) {
                 PaddingValues(
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     top = innerPadding.calculateTopPadding(),
@@ -489,6 +593,7 @@ private fun SakinahNavigation(
                     NavDisplay(
                 backStack = backStack,
                 entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+                sceneStrategies = listOf(listDetail, SinglePaneSceneStrategy()),
                 onBack = ::navigateBack,
                 entryProvider = { destination ->
                     when (destination) {
@@ -504,7 +609,8 @@ private fun SakinahNavigation(
                                 onOpenCalendar = { navigateTopLevel(CalendarTab) },
                                 onOpenQibla = { backStack.add(AppDestination.Qibla) },
                                 onOpenTasbih = ::openTasbih,
-                                onOpenSettings = { backStack.add(AppDestination.GeneralSettings) },
+                                onOpenSettings = ::openSettingsHub,
+                                onOpenWallClock = { backStack.add(AppDestination.WallClock) },
                                 wird = wirdState?.board,
                                 onOpenWird = { openWird() },
                             )
@@ -529,7 +635,8 @@ private fun SakinahNavigation(
                                 onToggleFavorite = viewModel::toggleFavorite,
                                 onRetry = viewModel::retryContentLoad,
                                 onOpenTasbih = ::openTasbih,
-                                onOpenSettings = { backStack.add(AppDestination.AdhkarSettings) },
+                                onOpenSettings = { backStack.add(AppDestination.DhikrSettings(DhikrSettingsTab.READING)) },
+                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
                             )
                         }
 
@@ -550,7 +657,8 @@ private fun SakinahNavigation(
                                 onUpdatePhrase = viewModel::updateTasbihPhrase,
                                 onSetTextScale = viewModel::setTasbihTextScale,
                                 onBack = backFor(destination),
-                                onOpenSettings = { backStack.add(AppDestination.TasbihSettings) },
+                                onOpenSettings = { backStack.add(AppDestination.DhikrSettings(DhikrSettingsTab.TASBIH)) },
+                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
                             )
                         }
 
@@ -567,55 +675,68 @@ private fun SakinahNavigation(
                             )
                         }
 
-                        AppDestination.AdhkarSettings -> NavEntry(destination) {
-                            AdhkarSettingsScreen(
+                        AppDestination.SettingsHub -> NavEntry(destination, metadata = paneOf(destination)) {
+                            val top = backStack.lastOrNull()
+                            SettingsHubScreen(
                                 state = latestState.value,
-                                onBack = ::navigateBack,
-                                onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
-                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
-                                onSetShowDiacritics = viewModel::setShowDiacritics,
-                                onSetTextScale = viewModel::setTextScale,
-                                onSetShowReference = viewModel::setShowReferenceByDefault,
-                                onSetAutoAdvance = viewModel::setAutoAdvanceDhikrEnabled,
-                                onSetReaderSoundEnabled = viewModel::setDhikrCompletionSoundEnabled,
-                                onSetAdhkarDailyReset = viewModel::setAdhkarDailyReset,
-                                onSetDailyResetTime = viewModel::setDailyResetTime,
+                                prayer = prayerState,
+                                alerts = prayerAlerts,
+                                calendarText = calendarText,
+                                selected = top?.takeIf { it != destination && underHub(it) }?.settingsArea(),
+                                onOpen = ::openSettingsArea,
+                                onBack = ::closeSettings,
                             )
                         }
 
-                        AppDestination.TasbihSettings -> NavEntry(destination) {
-                            TasbihSettingsScreen(
+                        AppDestination.AppearanceSettings -> NavEntry(destination, metadata = paneOf(destination)) {
+                            AppearanceSettingsScreen(
                                 state = latestState.value,
-                                onBack = ::navigateBack,
-                                onOpenSoundSettings = { backStack.add(AppDestination.SoundSettings) },
-                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
-                                onSetTasbihTextScale = viewModel::setTasbihTextScale,
-                                onSetHaptics = viewModel::setHaptics,
-                                onSetTasbihSoundEnabled = viewModel::setTasbihCompletionSoundEnabled,
-                                onSetTasbihDailyReset = viewModel::setTasbihDailyReset,
-                                onSetDailyResetTime = viewModel::setDailyResetTime,
-                            )
-                        }
-
-                        AppDestination.GeneralSettings -> NavEntry(destination) {
-                            GeneralSettingsScreen(
-                                state = latestState.value,
-                                onBack = ::navigateBack,
-                                onOpenAbout = { backStack.add(AppDestination.About) },
+                                onBack = sectionBack(destination),
+                                onOpenAllSettings = allSettingsFor(destination),
                                 onSetThemeMode = viewModel::setThemeMode,
                                 onSetArabicFontStyle = viewModel::setArabicFontStyle,
                                 onSetDynamicColor = viewModel::setDynamicColor,
                             )
                         }
 
-                        AppDestination.SoundSettings -> NavEntry(destination) {
-                            SoundSettingsScreen(
+                        is AppDestination.DhikrSettings -> NavEntry(destination, metadata = paneOf(destination)) {
+                            DhikrSettingsScreen(
                                 state = latestState.value,
-                                onBack = ::navigateBack,
+                                initialTab = destination.tab,
+                                onBack = sectionBack(destination),
+                                onOpenAllSettings = allSettingsFor(destination),
+                                onSetShowDiacritics = viewModel::setShowDiacritics,
+                                onSetTextScale = viewModel::setTextScale,
+                                onSetShowReference = viewModel::setShowReferenceByDefault,
+                                onSetAutoAdvance = viewModel::setAutoAdvanceDhikrEnabled,
+                                onSetTasbihTextScale = viewModel::setTasbihTextScale,
+                                onSetHaptics = viewModel::setHaptics,
                                 onSetTasbihSoundEnabled = viewModel::setTasbihCompletionSoundEnabled,
                                 onSetReaderSoundEnabled = viewModel::setDhikrCompletionSoundEnabled,
                                 onSetSound = viewModel::setCompletionSound,
                                 onSetVolume = viewModel::setCompletionSoundVolume,
+                                onSetTasbihDailyReset = viewModel::setTasbihDailyReset,
+                                onSetAdhkarDailyReset = viewModel::setAdhkarDailyReset,
+                                onSetDailyResetTime = viewModel::setDailyResetTime,
+                            )
+                        }
+
+                        AppDestination.WidgetSettings -> NavEntry(destination, metadata = paneOf(destination)) {
+                            WidgetSettingsScreen(
+                                schedule = prayerState?.schedule,
+                                calendarText = calendarText,
+                                onBack = sectionBack(destination),
+                                onOpenAllSettings = allSettingsFor(destination),
+                                onOpenWidgetStyle = { backStack.add(AppDestination.PrayerWidgetStyle(it)) },
+                                onOpenCalendarSettings = { backStack.add(AppDestination.CalendarSettings) },
+                            )
+                        }
+
+                        AppDestination.WallClock -> NavEntry(destination) {
+                            com.sakinah.tasbih.ui.wallclock.WallClock(
+                                window = activity?.window,
+                                arabicFontStyle = latestState.value.arabicFontStyle,
+                                onExit = ::navigateBack,
                             )
                         }
 
@@ -629,8 +750,8 @@ private fun SakinahNavigation(
                             }
                         }
 
-                        AppDestination.About -> NavEntry(destination) {
-                            AboutScreen(onBack = ::navigateBack)
+                        AppDestination.About -> NavEntry(destination, metadata = paneOf(destination)) {
+                            AboutScreen(onBack = sectionBack(destination))
                         }
 
                         is AppDestination.Calendar -> NavEntry(destination) {
@@ -716,7 +837,7 @@ private fun SakinahNavigation(
                             }
                         }
 
-                        AppDestination.PrayerLocation -> NavEntry(destination) {
+                        AppDestination.PrayerLocation -> NavEntry(destination, metadata = paneOf(destination)) {
                             PlaceScreen(
                                 current = prayerState?.settings?.place,
                                 search = placeSearch,
@@ -726,18 +847,17 @@ private fun SakinahNavigation(
                                 followDevice = prayerState?.settings?.followDevice ?: true,
                                 onFollowDevice = prayerViewModel::setFollowDevice,
                                 onRename = prayerViewModel::renamePlace,
-                                onBack = ::navigateBack,
+                                onBack = sectionBack(destination),
                             )
                         }
 
-                        AppDestination.PrayerOptions -> NavEntry(destination) {
+                        AppDestination.PrayerOptions -> NavEntry(destination, metadata = paneOf(destination)) {
                             prayerState?.let { state ->
                                 PrayerSettingsScreen(
                                     state = state,
                                     viewModel = prayerViewModel,
-                                    onBack = ::navigateBack,
-                                    calendarText = calendarText,
-                                    onOpenWidgetStyle = { backStack.add(AppDestination.PrayerWidgetStyle(it)) },
+                                    onBack = sectionBack(destination),
+                                    onOpenAllSettings = allSettingsFor(destination),
                                 )
                             }
                         }
@@ -755,23 +875,15 @@ private fun SakinahNavigation(
                             )
                         }
 
-                        AppDestination.PrayerAlerts -> NavEntry(destination) {
+                        AppDestination.PrayerAlerts -> NavEntry(destination, metadata = paneOf(destination)) {
                             prayerAlerts?.let { alerts ->
                                 AlertSettingsScreen(
                                     alerts = alerts,
                                     viewModel = prayerViewModel,
-                                    onOpenReliability = { backStack.add(AppDestination.PrayerReliability) },
-                                    onBack = ::navigateBack,
+                                    onBack = sectionBack(destination),
+                                    onOpenAllSettings = allSettingsFor(destination),
                                 )
                             }
-                        }
-
-                        AppDestination.PrayerReliability -> NavEntry(destination) {
-                            ReliabilityScreen(
-                                toneId = prayerAlerts?.tone ?: com.sakinah.tasbih.prayer.AlertSettings.DEFAULT_TONE,
-                                viewModel = prayerViewModel,
-                                onBack = ::navigateBack,
-                            )
                         }
 
                         AppDestination.Qibla -> NavEntry(destination) {
@@ -784,9 +896,14 @@ private fun SakinahNavigation(
                             )
                         }
 
-                        AppDestination.CalendarSettings -> NavEntry(destination) {
+                        AppDestination.CalendarSettings -> NavEntry(destination, metadata = paneOf(destination)) {
                             calendarText?.let { text ->
-                                CalendarSettingsScreen(text = text, viewModel = calendarViewModel, onBack = ::navigateBack)
+                                CalendarSettingsScreen(
+                                    text = text,
+                                    viewModel = calendarViewModel,
+                                    onBack = sectionBack(destination),
+                                    onOpenAllSettings = allSettingsFor(destination),
+                                )
                             }
                         }
 
@@ -840,6 +957,9 @@ sealed interface AppOpenRequest {
     /** The wird, from its widget or a reminder, on [collectionId]'s adhkar when the task is their reading. */
     data class Wird(val collectionId: String? = null) : AppOpenRequest
 
+    /** The wall clock, from its shortcut on the launcher. */
+    data object WallClock : AppOpenRequest
+
     /** The day, the adhkar and the tasbih tabs, asked for by another app such as Natlu. */
     data object Today : AppOpenRequest
     data object Adhkar : AppOpenRequest
@@ -848,6 +968,31 @@ sealed interface AppOpenRequest {
 
 /** Every calendar page belongs to the calendar tab, whichever month it opened on. */
 private val CalendarTab = AppDestination.Calendar()
+
+/** The page each section of the settings opens. */
+private fun SettingsArea.destination(): AppDestination = when (this) {
+    SettingsArea.APPEARANCE -> AppDestination.AppearanceSettings
+    SettingsArea.LOCATION -> AppDestination.PrayerLocation
+    SettingsArea.PRAYER -> AppDestination.PrayerOptions
+    SettingsArea.ALERTS -> AppDestination.PrayerAlerts
+    SettingsArea.CALENDAR -> AppDestination.CalendarSettings
+    SettingsArea.DHIKR -> AppDestination.DhikrSettings()
+    SettingsArea.WIDGETS -> AppDestination.WidgetSettings
+    SettingsArea.ABOUT -> AppDestination.About
+}
+
+/** The section of the settings a page is, if it is one. */
+private fun AppDestination.settingsArea(): SettingsArea? = when (this) {
+    AppDestination.AppearanceSettings -> SettingsArea.APPEARANCE
+    AppDestination.PrayerLocation -> SettingsArea.LOCATION
+    AppDestination.PrayerOptions -> SettingsArea.PRAYER
+    AppDestination.PrayerAlerts -> SettingsArea.ALERTS
+    AppDestination.CalendarSettings -> SettingsArea.CALENDAR
+    is AppDestination.DhikrSettings -> SettingsArea.DHIKR
+    AppDestination.WidgetSettings -> SettingsArea.WIDGETS
+    AppDestination.About -> SettingsArea.ABOUT
+    else -> null
+}
 
 private fun Any?.topLevelDestination(): AppDestination? = when (this) {
     AppDestination.Home -> AppDestination.Home
@@ -861,7 +1006,8 @@ private fun Any?.topLevelDestination(): AppDestination? = when (this) {
 /**
  * The bottom bar since November 20, 2026: the day, prayer and the calendar first, then the
  * adhkar and the tasbih, which the user wanted a tap away. The «more» tab went on November 23,
- * 2026, when each tab took its own settings behind a gear on its page.
+ * 2026, when each tab took its own settings behind a gear on its page; since November 28, 2026
+ * each gear opens its own section of one settings tree.
  */
 private data class AppTab(
     val destination: AppDestination,

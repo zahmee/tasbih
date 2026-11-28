@@ -131,6 +131,8 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1")
     implementation("androidx.navigation3:navigation3-runtime:1.1.6")
     implementation("androidx.navigation3:navigation3-ui:1.1.6")
+    // Shows a settings section beside their list on a screen wide enough, as the unfolded phone.
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation3:1.3.0")
     implementation("androidx.room3:room3-runtime:3.0.1")
     implementation("androidx.sqlite:sqlite-framework:2.7.0")
     // Prayer times and the Qibla, computed on the device. MIT licensed, no dependencies, Java 8 bytecode.

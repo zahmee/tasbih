@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The wall clock as the system's screen saver: it has no settings page of its own, as its few
+     choices are on the clock in the app. -->
+<dream xmlns:android="http://schemas.android.com/apk/res/android" />

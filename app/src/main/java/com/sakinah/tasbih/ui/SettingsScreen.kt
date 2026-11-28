@@ -4,6 +4,11 @@ import kotlinx.coroutines.launch
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
@@ -44,13 +49,10 @@ import com.sakinah.tasbih.data.ThemeMode
 import com.sakinah.tasbih.ui.theme.dhikrFontFor
 import kotlin.math.roundToInt
 
+/** The settings pages of versions before the one tree, kept only to read their saved routes. */
 enum class SettingsSection { Reading, Tasbih, Appearance, DailyReset }
 
-/**
- * The look of the whole app: light or dark, the Arabic font, and Android's own colours. In the
- * general settings, which the gear on the day's page opens, since the user moved each tab's
- * settings into that tab on November 23, 2026 and the «more» tab went.
- */
+/** The look of the whole app: light or dark, the Arabic font, and Android's own colours. */
 internal fun LazyListScope.appearanceItems(
     state: SakinahUiState,
     onSetThemeMode: (ThemeMode) -> Unit,
@@ -89,17 +91,25 @@ internal fun LazyListScope.appearanceItems(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsPage(title: String, onBack: () -> Unit, tag: String, content: LazyListScope.() -> Unit) {
+internal fun SettingsPage(
+    title: String,
+    onBack: () -> Unit,
+    tag: String,
+    actions: @Composable RowScope.() -> Unit = {},
+    content: LazyListScope.() -> Unit,
+) {
     val compactInput = isCompactSettingsInput()
     Scaffold(
         modifier = Modifier.testTag(tag),
         topBar = { if (!compactInput) TopAppBar(windowInsets = WindowInsets(0, 0, 0, 0), title = { Text(title) }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
-        }) },
+        }, actions = actions) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("settings_detail_list"),
+                // Each page's list by its own name: on a wide screen the settings' list and a section
+                // show side by side.
+                modifier = Modifier.widthIn(max = SakinahContentMaxWidth).fillMaxSize().testTag("${tag}_list"),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = if (compactInput) 4.dp else 0.dp, bottom = if (compactInput) 4.dp else 20.dp),
                 verticalArrangement = Arrangement.spacedBy(SakinahSpacing.Large),
             ) {
@@ -188,9 +198,36 @@ internal fun TabbedSettingsPage(
 }
 
 @Composable
-internal fun SettingNavigationRow(title: String, description: String, icon: ImageVector, tag: String, onClick: () -> Unit) {
+internal fun SettingNavigationRow(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    tag: String,
+    onClick: () -> Unit,
+    /** The section shown beside the list, on a screen wide enough for both. */
+    selected: Boolean = false,
+) {
+    val highlight = MaterialTheme.colorScheme.secondaryContainer
     Row(
-        Modifier.fillMaxWidth().testTag(tag).clickable(role = Role.Button, onClick = onClick).heightIn(min = 72.dp).padding(vertical = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .testTag(tag)
+            // The mark of the chosen row reaches past its edges, so its text stays where it was.
+            .drawBehind {
+                if (selected) {
+                    val reach = 10.dp.toPx()
+                    drawRoundRect(
+                        color = highlight,
+                        topLeft = Offset(-reach, 0f),
+                        size = Size(size.width + 2 * reach, size.height),
+                        cornerRadius = CornerRadius(16.dp.toPx()),
+                    )
+                }
+            }
+            .clickable(role = Role.Button, onClick = onClick)
+            .then(if (selected) Modifier.semantics { this.selected = true } else Modifier)
+            .heightIn(min = 72.dp)
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         KhatamMedallion(icon)
@@ -249,156 +286,104 @@ private fun TextScaleSetting(title: String, scale: Float, font: FontFamily, valu
     }
 }
 
-/** The three tabs the adhkar's settings are gathered under. */
-private enum class AdhkarTab { READING, SOUND, RESET }
+/** The four tabs of the adhkar's and the tasbih's settings, one section since November 28, 2026. */
+enum class DhikrSettingsTab { READING, TASBIH, SOUND, RESET }
 
 /**
- * The adhkar's own settings, opened by the gear on the adhkar's page: reading, the sound at a
- * dhikr's end, and the daily reset of the day's adhkar. The record of what was done opens from
- * the top bar, as it is the adhkar's and the tasbih's alike.
+ * The adhkar's and the tasbih's settings in one section: reading, the tasbih, the sound at a
+ * dhikr's end, and the daily reset. They were two pages that each held the same tone, volume and
+ * reset time, so a change in one moved the other unseen; here each shows once. The gear on the
+ * adhkar opens it on reading, the tasbih's on the tasbih.
  */
 @Composable
-fun AdhkarSettingsScreen(
+fun DhikrSettingsScreen(
     state: SakinahUiState,
+    initialTab: DhikrSettingsTab,
     onBack: () -> Unit,
-    onOpenSoundSettings: () -> Unit,
-    onOpenAchievements: () -> Unit,
+    onOpenAllSettings: (() -> Unit)?,
     onSetShowDiacritics: (Boolean) -> Unit,
     onSetTextScale: (Float) -> Unit,
     onSetShowReference: (Boolean) -> Unit,
     onSetAutoAdvance: (Boolean) -> Unit,
+    onSetTasbihTextScale: (Float) -> Unit,
+    onSetHaptics: (Boolean) -> Unit,
+    onSetTasbihSoundEnabled: (Boolean) -> Unit,
     onSetReaderSoundEnabled: (Boolean) -> Unit,
+    onSetSound: (com.sakinah.tasbih.data.CompletionSound) -> Unit,
+    onSetVolume: (Float) -> Unit,
+    onSetTasbihDailyReset: (Boolean) -> Unit,
     onSetAdhkarDailyReset: (Boolean) -> Unit,
     onSetDailyResetTime: (Int) -> Unit,
 ) {
-    var tab by rememberSaveable { mutableStateOf(AdhkarTab.READING) }
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
+    val player = rememberCompletionSoundPlayer()
+    var volume by remember(state.completionSoundVolume) { mutableFloatStateOf(state.completionSoundVolume) }
     TabbedSettingsPage(
-        title = stringResource(R.string.adhkar_settings),
+        title = stringResource(R.string.settings_dhikr),
         onBack = onBack,
-        tag = "adhkar_settings",
+        tag = "dhikr_settings",
         tabs = listOf(
-            SettingsTab(stringResource(R.string.reading), Icons.Outlined.AutoStories, "adhkar_tab_reading"),
-            SettingsTab(stringResource(R.string.settings_tab_sound), Icons.AutoMirrored.Outlined.VolumeUp, "adhkar_tab_sound"),
-            SettingsTab(stringResource(R.string.settings_tab_reset), Icons.Outlined.Update, "adhkar_tab_reset"),
+            SettingsTab(stringResource(R.string.reading), Icons.Outlined.AutoStories, "dhikr_tab_reading"),
+            SettingsTab(stringResource(R.string.settings_tab_tasbih), Icons.Outlined.TouchApp, "dhikr_tab_tasbih"),
+            SettingsTab(stringResource(R.string.settings_tab_sound), Icons.AutoMirrored.Outlined.VolumeUp, "dhikr_tab_sound"),
+            SettingsTab(stringResource(R.string.settings_tab_reset), Icons.Outlined.Update, "dhikr_tab_reset"),
         ),
         selected = tab.ordinal,
-        onSelect = { tab = AdhkarTab.entries[it] },
-        actions = { AchievementsAction(onOpenAchievements) },
+        onSelect = { tab = DhikrSettingsTab.entries[it] },
+        actions = { AllSettingsAction(onOpenAllSettings) },
     ) {
         when (tab) {
-            AdhkarTab.READING -> {
+            DhikrSettingsTab.READING -> {
                 item { TextScaleSetting(stringResource(R.string.text_size), state.textScale, dhikrFontFor(state.arabicFontStyle), ReaderTextScaleRange, 8, "reader_text_scale", onSetTextScale) }
                 item { SettingToggleRow(stringResource(R.string.show_diacritics), stringResource(R.string.show_diacritics_description), state.showDiacritics, onSetShowDiacritics, "setting_diacritics") }
                 item { SettingToggleRow(stringResource(R.string.show_reference_by_default), stringResource(R.string.show_reference_by_default_description), state.showReferenceByDefault, onSetShowReference, "setting_reference") }
                 item { SettingToggleRow(stringResource(R.string.auto_advance_dhikr), stringResource(R.string.auto_advance_dhikr_description), state.autoAdvanceDhikrEnabled, onSetAutoAdvance, "setting_auto_advance") }
             }
-            AdhkarTab.SOUND -> {
-                item {
-                    SettingToggleRow(
-                        stringResource(R.string.reader_completion_sound),
-                        stringResource(R.string.reader_completion_sound_description),
-                        state.dhikrCompletionSoundEnabled,
-                        onSetReaderSoundEnabled,
-                        "reader_sound_enabled",
-                    )
-                }
-                item { CompletionToneRow(state, onOpenSoundSettings) }
-            }
-            AdhkarTab.RESET -> dailyResetSettingsItems(state.dailyReset, {}, onSetAdhkarDailyReset, onSetDailyResetTime, showTasbih = false)
-        }
-    }
-}
-
-/** The three tabs the tasbih's settings are gathered under. */
-private enum class TasbihTab { TASBIH, SOUND, RESET }
-
-/** The tasbih's own settings, opened by the gear on the tasbih's page, in the adhkar's form. */
-@Composable
-fun TasbihSettingsScreen(
-    state: SakinahUiState,
-    onBack: () -> Unit,
-    onOpenSoundSettings: () -> Unit,
-    onOpenAchievements: () -> Unit,
-    onSetTasbihTextScale: (Float) -> Unit,
-    onSetHaptics: (Boolean) -> Unit,
-    onSetTasbihSoundEnabled: (Boolean) -> Unit,
-    onSetTasbihDailyReset: (Boolean) -> Unit,
-    onSetDailyResetTime: (Int) -> Unit,
-) {
-    var tab by rememberSaveable { mutableStateOf(TasbihTab.TASBIH) }
-    TabbedSettingsPage(
-        title = stringResource(R.string.tasbih_settings_title),
-        onBack = onBack,
-        tag = "tasbih_settings",
-        tabs = listOf(
-            SettingsTab(stringResource(R.string.tasbih_settings), Icons.Outlined.TouchApp, "tasbih_tab_tasbih"),
-            SettingsTab(stringResource(R.string.settings_tab_sound), Icons.AutoMirrored.Outlined.VolumeUp, "tasbih_tab_sound"),
-            SettingsTab(stringResource(R.string.settings_tab_reset), Icons.Outlined.Update, "tasbih_tab_reset"),
-        ),
-        selected = tab.ordinal,
-        onSelect = { tab = TasbihTab.entries[it] },
-        actions = { AchievementsAction(onOpenAchievements) },
-    ) {
-        when (tab) {
-            TasbihTab.TASBIH -> {
+            DhikrSettingsTab.TASBIH -> {
                 item { TextScaleSetting(stringResource(R.string.tasbih_text_size), state.tasbihTextScale, dhikrFontFor(state.arabicFontStyle), TasbihTextScaleRange, 7, "tasbih_text_scale", onSetTasbihTextScale) }
                 item { SettingToggleRow(stringResource(R.string.haptics), stringResource(R.string.haptics_description), state.hapticsEnabled, onSetHaptics, "setting_haptics") }
             }
-            TasbihTab.SOUND -> {
-                item {
-                    SettingToggleRow(
-                        stringResource(R.string.tasbih_completion_sound),
-                        stringResource(R.string.tasbih_completion_sound_description),
-                        state.tasbihCompletionSoundEnabled,
-                        onSetTasbihSoundEnabled,
-                        "tasbih_sound_enabled",
-                    )
-                }
-                item { CompletionToneRow(state, onOpenSoundSettings) }
-            }
-            TasbihTab.RESET -> dailyResetSettingsItems(state.dailyReset, onSetTasbihDailyReset, {}, onSetDailyResetTime, showAdhkar = false)
+            DhikrSettingsTab.SOUND -> completionSoundItems(
+                state = state,
+                volume = volume,
+                onVolumeChange = { volume = it },
+                onVolumeChangeFinished = { onSetVolume(volume) },
+                onPreview = { player.play(it, volume) },
+                onSetTasbihSoundEnabled = onSetTasbihSoundEnabled,
+                onSetReaderSoundEnabled = onSetReaderSoundEnabled,
+                onSetSound = onSetSound,
+            )
+            DhikrSettingsTab.RESET -> dailyResetSettingsItems(state.dailyReset, onSetTasbihDailyReset, onSetAdhkarDailyReset, onSetDailyResetTime)
         }
-    }
-}
-
-/** The tone and its loudness are one for the adhkar and the tasbih, so both open the same page. */
-@Composable
-private fun CompletionToneRow(state: SakinahUiState, onOpenSoundSettings: () -> Unit) {
-    SettingNavigationRow(
-        stringResource(R.string.completion_sound_tone),
-        completionSoundName(state.completionSound),
-        Icons.AutoMirrored.Outlined.VolumeUp,
-        "open_sound_settings",
-        onOpenSoundSettings,
-    )
-}
-
-@Composable
-private fun AchievementsAction(onOpenAchievements: () -> Unit) {
-    IconButton(onClick = onOpenAchievements, modifier = Modifier.testTag("open_achievements")) {
-        Icon(Icons.Outlined.BarChart, stringResource(R.string.achievements))
     }
 }
 
 /**
- * What belongs to the whole app and to no one tab: its look, and about the app. Opened by the
- * gear on the day's page.
+ * The way from a section to the whole settings tree, for a section a tab's gear opened directly.
+ * Null when the tree's own list lies under the section, or beside it, already.
  */
 @Composable
-fun GeneralSettingsScreen(
+internal fun AllSettingsAction(onOpenAllSettings: (() -> Unit)?) {
+    if (onOpenAllSettings != null) {
+        TextButton(onClick = onOpenAllSettings, modifier = Modifier.testTag("open_all_settings")) {
+            Text(stringResource(R.string.settings_all))
+        }
+    }
+}
+
+/** The look of the whole app: light or dark, the Arabic font, Android's own colours and the digits. */
+@Composable
+fun AppearanceSettingsScreen(
     state: SakinahUiState,
     onBack: () -> Unit,
-    onOpenAbout: () -> Unit,
+    onOpenAllSettings: (() -> Unit)?,
     onSetThemeMode: (ThemeMode) -> Unit,
     onSetArabicFontStyle: (ArabicFontStyle) -> Unit,
     onSetDynamicColor: (Boolean) -> Unit,
 ) {
-    SettingsPage(stringResource(R.string.general_settings), onBack, "general_settings") {
-        item { SakinahSectionHeader(stringResource(R.string.appearance)) }
+    SettingsPage(stringResource(R.string.settings_appearance), onBack, "appearance_settings", actions = { AllSettingsAction(onOpenAllSettings) }) {
         appearanceItems(state, onSetThemeMode, onSetArabicFontStyle, onSetDynamicColor)
         item { HorizontalDivider(); Spacer(Modifier.height(16.dp)); DigitsSetting() }
-        item { HorizontalDivider() }
-        item { SettingNavigationRow(stringResource(R.string.about_app), stringResource(R.string.about_app_entry_description), Icons.Outlined.Info, "open_about", onOpenAbout) }
     }
 }
 
