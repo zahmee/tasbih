@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestFrom(intent: Intent?): AppOpenRequest? {
+        externalRequest(intent?.action, intent?.getStringExtra(EXTRA_DESTINATION), LocalDate.now())?.let { return it }
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_PRAYER) return AppOpenRequest.Prayer
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_QIBLA) return AppOpenRequest.Qibla
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_CALENDAR_SETTINGS) return AppOpenRequest.CalendarSettings
@@ -54,6 +55,34 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        // A contract with other apps (Natlu, com.mushaf.reader) that send it. Once published, these
+        // names and values never change and are never removed; new destinations may be added.
+        // Kept apart from EXTRA_OPEN below, which only the app's own widgets and notifications use.
+        const val ACTION_OPEN = "com.sakinah.tasbih.action.OPEN"
+        const val EXTRA_DESTINATION = "com.sakinah.tasbih.extra.DESTINATION"
+        const val DESTINATION_TODAY = "today"
+        const val DESTINATION_PRAYER = "prayer"
+        const val DESTINATION_CALENDAR = "calendar"
+        const val DESTINATION_ADHKAR = "adhkar"
+        const val DESTINATION_TASBIH = "tasbih"
+        const val DESTINATION_QIBLA = "qibla"
+
+        /**
+         * The screen another app asked for with [ACTION_OPEN], or null for any other action.
+         * A missing or unknown destination opens the day.
+         */
+        fun externalRequest(action: String?, destination: String?, today: LocalDate): AppOpenRequest? {
+            if (action != ACTION_OPEN) return null
+            return when (destination) {
+                DESTINATION_PRAYER -> AppOpenRequest.Prayer
+                DESTINATION_QIBLA -> AppOpenRequest.Qibla
+                DESTINATION_CALENDAR -> AppOpenRequest.Calendar(today)
+                DESTINATION_ADHKAR -> AppOpenRequest.Adhkar
+                DESTINATION_TASBIH -> AppOpenRequest.Tasbih
+                else -> AppOpenRequest.Today
+            }
+        }
+
         private const val EXTRA_OPEN = "open"
         private const val OPEN_CALENDAR = "calendar"
         private const val OPEN_PRAYER = "prayer"

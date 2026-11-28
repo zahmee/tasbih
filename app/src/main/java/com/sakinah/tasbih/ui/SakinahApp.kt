@@ -406,6 +406,19 @@ private fun SakinahNavigation(
                 backStack.add(AppDestination.PrayerWidgetStyle)
                 onOpenRequestHandled()
             }
+            // Just as a tap on the tab in the bar: back returns to the day, and leaves from there.
+            AppOpenRequest.Today -> {
+                navigateTopLevel(AppDestination.Home)
+                onOpenRequestHandled()
+            }
+            AppOpenRequest.Adhkar -> {
+                navigateTopLevel(AppDestination.Library)
+                onOpenRequestHandled()
+            }
+            AppOpenRequest.Tasbih -> {
+                navigateTopLevel(AppDestination.Tasbih)
+                onOpenRequestHandled()
+            }
         }
     }
 
@@ -822,6 +835,11 @@ sealed interface AppOpenRequest {
 
     /** The wird, from its widget or a reminder, on [collectionId]'s adhkar when the task is their reading. */
     data class Wird(val collectionId: String? = null) : AppOpenRequest
+
+    /** The day, the adhkar and the tasbih tabs, asked for by another app such as Natlu. */
+    data object Today : AppOpenRequest
+    data object Adhkar : AppOpenRequest
+    data object Tasbih : AppOpenRequest
 }
 
 /** Every calendar page belongs to the calendar tab, whichever month it opened on. */

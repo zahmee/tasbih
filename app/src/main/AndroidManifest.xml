@@ -60,11 +60,23 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
+            <!--
+                singleTask: one Anaa, in its own task. Every open reaches it through onNewIntent,
+                whatever flags the sender used. Without it, a request from another app with no
+                flags only brought the open app forward and was dropped, since Android matches
+                intents without their extras, or started a second Anaa inside the sender's task.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Other apps, such as Natlu, open the app on a chosen tab. See MainActivity.ACTION_OPEN. -->
+            <intent-filter>
+                <action android:name="com.sakinah.tasbih.action.OPEN" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
