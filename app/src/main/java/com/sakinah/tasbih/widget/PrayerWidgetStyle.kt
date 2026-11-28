@@ -2,11 +2,13 @@ package com.sakinah.tasbih.widget
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -150,104 +152,203 @@ internal object WidgetLines {
 // A file of its own, so the widget's look can never damage prayer or tasbih settings.
 private val Context.widgetDataStore by preferencesDataStore(name = "widget_preferences")
 
+/**
+ * The look of the prayer widgets, one for each widget on the home screen, as the user asked on
+ * November 28, 2026, so two widgets of a kind can look apart. Each is kept under its widget's id,
+ * «w12_day_surface»; the keys without an id are the default, the one style there was until then.
+ * A widget with no style of its own takes the default, and [stylesFor] gives it that default for
+ * its own the first time it is drawn, so a later change to the default leaves it as it is. Saving
+ * a widget's style makes it the default too, so a widget placed next starts from the last look.
+ */
 class PrayerWidgetStyleRepository internal constructor(private val dataStore: DataStore<Preferences>) {
     constructor(context: Context) : this(context.applicationContext.widgetDataStore)
 
-    val style: Flow<PrayerWidgetStyle> = dataStore.data.map(::read)
+    /** The default, for a widget placed later. */
+    val style: Flow<PrayerWidgetStyle> = dataStore.data.map { read(it, Keys.DEFAULT) }
+
+    /** The style of the widget [appWidgetId], or the default where it is null. */
+    fun style(appWidgetId: Int?): Flow<PrayerWidgetStyle> = dataStore.data.map { styleIn(it, appWidgetId) }
 
     suspend fun current(): PrayerWidgetStyle = style.first()
 
-    suspend fun save(style: PrayerWidgetStyle) = dataStore.edit {
-        it[Keys.lines] = WidgetLines.encode(style.lines)
-        it[Keys.surface] = style.surface.name
-        it[Keys.opacity] = style.opacity.coerceIn(0, 100)
-        it[Keys.ink] = style.ink.name
-        it[Keys.accent] = style.accent.name
-        it[Keys.intensity] = style.intensity.name
-        it[Keys.nextMark] = style.nextMark.name
-        it[Keys.weight] = style.weight.name
-        it[Keys.timeWeight] = style.timeWeight.name
-        it[Keys.nameColor] = style.nameColor.name
-        it[Keys.timeColor] = style.timeColor.name
-        it[Keys.scale] = style.scale.name
-        it[Keys.ornament] = style.ornament.name
-        it[Keys.patternIntensity] = style.patternIntensity.name
-        it[Keys.hijriMonthNumber] = style.hijriMonthNumber
-        it[Keys.gregorianMonthNumber] = style.gregorianMonthNumber
-        it[Keys.nextLines] = WidgetLines.encode(style.nextLines)
-        it[Keys.progress] = style.progress
-        it[Keys.prayersBox] = style.prayersBox
-        it[Keys.boxSurface] = style.boxSurface.name
-        it[Keys.boxOpacity] = style.boxOpacity.coerceIn(0, 100)
-        it[Keys.boxLine] = style.boxLine
-        it[Keys.markColor] = style.markColor.name
-        it[Keys.markCurrent] = style.markCurrent
-        it[Keys.progressColor] = style.progressColor.name
-        it[Keys.progressGradient] = style.progressGradient
+    suspend fun current(appWidgetId: Int?): PrayerWidgetStyle = style(appWidgetId).first()
+
+    /** The ids that have a style of their own. */
+    suspend fun styledIds(): Set<Int> = ids(dataStore.data.first())
+
+    /**
+     * The style of each of [appWidgetIds]. One that has none of its own is given the default
+     * for its own now: this is how the widgets placed before styles were apart keep their look.
+     */
+    suspend fun stylesFor(appWidgetIds: Collection<Int>): Map<Int, PrayerWidgetStyle> {
+        val known = ids(dataStore.data.first())
+        if (appWidgetIds.any { it !in known }) {
+            dataStore.edit { p ->
+                val styled = ids(p)
+                val missing = appWidgetIds.filterNot { it in styled }
+                val default = read(p, Keys.DEFAULT)
+                missing.forEach { write(p, Keys.of(it), default) }
+                p[Keys.styled] = names(styled + missing)
+            }
+        }
+        val prefs = dataStore.data.first()
+        return appWidgetIds.associateWith { styleIn(prefs, it) }
     }
 
-    private fun read(p: Preferences): PrayerWidgetStyle {
+    /** Saves the default. */
+    suspend fun save(style: PrayerWidgetStyle) = save(null, style)
+
+    /** Saves [style] for [appWidgetId], and as the default for a widget placed next. */
+    suspend fun save(appWidgetId: Int?, style: PrayerWidgetStyle) = saveAll(listOfNotNull(appWidgetId), style)
+
+    /** «تطبيق على كل الأدوات»: [style] for each of [appWidgetIds], and as the default. */
+    suspend fun saveAll(appWidgetIds: Collection<Int>, style: PrayerWidgetStyle) {
+        dataStore.edit { p ->
+            write(p, Keys.DEFAULT, style)
+            appWidgetIds.forEach { write(p, Keys.of(it), style) }
+            if (appWidgetIds.isNotEmpty()) p[Keys.styled] = names(ids(p) + appWidgetIds)
+        }
+    }
+
+    /** Forgets the styles of widgets taken off the home screen. */
+    suspend fun remove(appWidgetIds: Collection<Int>) {
+        dataStore.edit { p ->
+            appWidgetIds.forEach { id -> Keys.of(id).all.forEach { p.remove(it) } }
+            p[Keys.styled] = names(ids(p) - appWidgetIds.toSet())
+        }
+    }
+
+    /**
+     * After a backup is restored the launcher gives its widgets new ids: each style moves to its
+     * widget's new id. A widget whose old id had no style of its own keeps what it has.
+     */
+    suspend fun remap(oldIds: IntArray, newIds: IntArray) {
+        dataStore.edit { p ->
+            val styled = ids(p)
+            val moved = oldIds.indices
+                .filter { it < newIds.size && oldIds[it] in styled }
+                .associate { newIds[it] to read(p, Keys.of(oldIds[it])) }
+            // The old ones all go first, so an old id that is also another widget's new one is not lost.
+            oldIds.forEach { id -> Keys.of(id).all.forEach { p.remove(it) } }
+            moved.forEach { (id, style) -> write(p, Keys.of(id), style) }
+            p[Keys.styled] = names(styled - oldIds.toSet() + moved.keys)
+        }
+    }
+
+    private fun ids(p: Preferences): Set<Int> = p[Keys.styled].orEmpty().mapNotNull(String::toIntOrNull).toSet()
+
+    private fun names(ids: Collection<Int>): Set<String> = ids.map(Int::toString).toSet()
+
+    private fun styleIn(p: Preferences, appWidgetId: Int?): PrayerWidgetStyle =
+        if (appWidgetId != null && appWidgetId in ids(p)) read(p, Keys.of(appWidgetId)) else read(p, Keys.DEFAULT)
+
+    private fun write(it: MutablePreferences, keys: Keys, style: PrayerWidgetStyle) {
+        it[keys.lines] = WidgetLines.encode(style.lines)
+        it[keys.surface] = style.surface.name
+        it[keys.opacity] = style.opacity.coerceIn(0, 100)
+        it[keys.ink] = style.ink.name
+        it[keys.accent] = style.accent.name
+        it[keys.intensity] = style.intensity.name
+        it[keys.nextMark] = style.nextMark.name
+        it[keys.weight] = style.weight.name
+        it[keys.timeWeight] = style.timeWeight.name
+        it[keys.nameColor] = style.nameColor.name
+        it[keys.timeColor] = style.timeColor.name
+        it[keys.scale] = style.scale.name
+        it[keys.ornament] = style.ornament.name
+        it[keys.patternIntensity] = style.patternIntensity.name
+        it[keys.hijriMonthNumber] = style.hijriMonthNumber
+        it[keys.gregorianMonthNumber] = style.gregorianMonthNumber
+        it[keys.nextLines] = WidgetLines.encode(style.nextLines)
+        it[keys.progress] = style.progress
+        it[keys.prayersBox] = style.prayersBox
+        it[keys.boxSurface] = style.boxSurface.name
+        it[keys.boxOpacity] = style.boxOpacity.coerceIn(0, 100)
+        it[keys.boxLine] = style.boxLine
+        it[keys.markColor] = style.markColor.name
+        it[keys.markCurrent] = style.markCurrent
+        it[keys.progressColor] = style.progressColor.name
+        it[keys.progressGradient] = style.progressGradient
+    }
+
+    private fun read(p: Preferences, keys: Keys): PrayerWidgetStyle {
         val default = PrayerWidgetStyle()
         return PrayerWidgetStyle(
-            lines = WidgetLines.decode(p[Keys.lines]) ?: default.lines,
-            surface = enumOr(p[Keys.surface], default.surface),
-            opacity = (p[Keys.opacity] ?: default.opacity).coerceIn(0, 100),
-            ink = enumOr(p[Keys.ink], default.ink),
-            accent = enumOr(p[Keys.accent], default.accent),
-            intensity = enumOr(p[Keys.intensity], default.intensity),
-            nextMark = enumOr(p[Keys.nextMark], default.nextMark),
-            weight = enumOr(p[Keys.weight], default.weight),
-            timeWeight = enumOr(p[Keys.timeWeight], default.timeWeight),
-            nameColor = enumOr(p[Keys.nameColor], default.nameColor),
-            timeColor = enumOr(p[Keys.timeColor], default.timeColor),
-            scale = enumOr(p[Keys.scale], default.scale),
-            ornament = enumOr(p[Keys.ornament], default.ornament).let { if (it == WidgetOrnament.FRAME) WidgetOrnament.PATTERN else it },
-            patternIntensity = enumOr(p[Keys.patternIntensity], default.patternIntensity),
-            hijriMonthNumber = p[Keys.hijriMonthNumber] ?: default.hijriMonthNumber,
-            gregorianMonthNumber = p[Keys.gregorianMonthNumber] ?: default.gregorianMonthNumber,
-            nextLines = WidgetLines.decode(p[Keys.nextLines])?.take(PrayerWidgetStyle.MAX_NEXT_LINES) ?: default.nextLines,
-            progress = p[Keys.progress] ?: default.progress,
-            prayersBox = p[Keys.prayersBox] ?: default.prayersBox,
-            boxSurface = enumOr(p[Keys.boxSurface], default.boxSurface),
-            boxOpacity = (p[Keys.boxOpacity] ?: default.boxOpacity).coerceIn(0, 100),
-            boxLine = p[Keys.boxLine] ?: default.boxLine,
-            markColor = enumOr(p[Keys.markColor], default.markColor),
-            markCurrent = p[Keys.markCurrent] ?: default.markCurrent,
-            progressColor = enumOr(p[Keys.progressColor], default.progressColor),
-            progressGradient = p[Keys.progressGradient] ?: default.progressGradient,
+            lines = WidgetLines.decode(p[keys.lines]) ?: default.lines,
+            surface = enumOr(p[keys.surface], default.surface),
+            opacity = (p[keys.opacity] ?: default.opacity).coerceIn(0, 100),
+            ink = enumOr(p[keys.ink], default.ink),
+            accent = enumOr(p[keys.accent], default.accent),
+            intensity = enumOr(p[keys.intensity], default.intensity),
+            nextMark = enumOr(p[keys.nextMark], default.nextMark),
+            weight = enumOr(p[keys.weight], default.weight),
+            timeWeight = enumOr(p[keys.timeWeight], default.timeWeight),
+            nameColor = enumOr(p[keys.nameColor], default.nameColor),
+            timeColor = enumOr(p[keys.timeColor], default.timeColor),
+            scale = enumOr(p[keys.scale], default.scale),
+            ornament = enumOr(p[keys.ornament], default.ornament).let { if (it == WidgetOrnament.FRAME) WidgetOrnament.PATTERN else it },
+            patternIntensity = enumOr(p[keys.patternIntensity], default.patternIntensity),
+            hijriMonthNumber = p[keys.hijriMonthNumber] ?: default.hijriMonthNumber,
+            gregorianMonthNumber = p[keys.gregorianMonthNumber] ?: default.gregorianMonthNumber,
+            nextLines = WidgetLines.decode(p[keys.nextLines])?.take(PrayerWidgetStyle.MAX_NEXT_LINES) ?: default.nextLines,
+            progress = p[keys.progress] ?: default.progress,
+            prayersBox = p[keys.prayersBox] ?: default.prayersBox,
+            boxSurface = enumOr(p[keys.boxSurface], default.boxSurface),
+            boxOpacity = (p[keys.boxOpacity] ?: default.boxOpacity).coerceIn(0, 100),
+            boxLine = p[keys.boxLine] ?: default.boxLine,
+            markColor = enumOr(p[keys.markColor], default.markColor),
+            markCurrent = p[keys.markCurrent] ?: default.markCurrent,
+            progressColor = enumOr(p[keys.progressColor], default.progressColor),
+            progressGradient = p[keys.progressGradient] ?: default.progressGradient,
         )
     }
 
     private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =
         enumValues<T>().firstOrNull { it.name == name } ?: default
 
-    private object Keys {
-        val lines = stringPreferencesKey("day_lines")
-        val surface = stringPreferencesKey("day_surface")
-        val opacity = intPreferencesKey("day_opacity")
-        val ink = stringPreferencesKey("day_ink")
-        val accent = stringPreferencesKey("day_accent")
-        val intensity = stringPreferencesKey("day_intensity")
-        val nextMark = stringPreferencesKey("day_next_mark")
-        val weight = stringPreferencesKey("day_weight")
-        val timeWeight = stringPreferencesKey("day_time_weight")
-        val nameColor = stringPreferencesKey("day_name_color")
-        val timeColor = stringPreferencesKey("day_time_color")
-        val scale = stringPreferencesKey("day_scale")
-        val ornament = stringPreferencesKey("day_ornament")
-        val patternIntensity = stringPreferencesKey("day_pattern_intensity")
-        val hijriMonthNumber = booleanPreferencesKey("day_hijri_month_number")
-        val gregorianMonthNumber = booleanPreferencesKey("day_gregorian_month_number")
-        val nextLines = stringPreferencesKey("next_lines")
-        val progress = booleanPreferencesKey("progress")
-        val prayersBox = booleanPreferencesKey("day_prayers_box")
-        val boxSurface = stringPreferencesKey("day_box_surface")
-        val boxOpacity = intPreferencesKey("day_box_opacity")
-        val boxLine = booleanPreferencesKey("day_box_line")
-        val markColor = stringPreferencesKey("mark_color")
-        val markCurrent = booleanPreferencesKey("mark_current")
-        val progressColor = stringPreferencesKey("progress_color")
-        val progressGradient = booleanPreferencesKey("progress_gradient")
+    /** The keys of one style; the default's are the names kept since the first version. */
+    private class Keys(prefix: String) {
+        val lines = stringPreferencesKey("${prefix}day_lines")
+        val surface = stringPreferencesKey("${prefix}day_surface")
+        val opacity = intPreferencesKey("${prefix}day_opacity")
+        val ink = stringPreferencesKey("${prefix}day_ink")
+        val accent = stringPreferencesKey("${prefix}day_accent")
+        val intensity = stringPreferencesKey("${prefix}day_intensity")
+        val nextMark = stringPreferencesKey("${prefix}day_next_mark")
+        val weight = stringPreferencesKey("${prefix}day_weight")
+        val timeWeight = stringPreferencesKey("${prefix}day_time_weight")
+        val nameColor = stringPreferencesKey("${prefix}day_name_color")
+        val timeColor = stringPreferencesKey("${prefix}day_time_color")
+        val scale = stringPreferencesKey("${prefix}day_scale")
+        val ornament = stringPreferencesKey("${prefix}day_ornament")
+        val patternIntensity = stringPreferencesKey("${prefix}day_pattern_intensity")
+        val hijriMonthNumber = booleanPreferencesKey("${prefix}day_hijri_month_number")
+        val gregorianMonthNumber = booleanPreferencesKey("${prefix}day_gregorian_month_number")
+        val nextLines = stringPreferencesKey("${prefix}next_lines")
+        val progress = booleanPreferencesKey("${prefix}progress")
+        val prayersBox = booleanPreferencesKey("${prefix}day_prayers_box")
+        val boxSurface = stringPreferencesKey("${prefix}day_box_surface")
+        val boxOpacity = intPreferencesKey("${prefix}day_box_opacity")
+        val boxLine = booleanPreferencesKey("${prefix}day_box_line")
+        val markColor = stringPreferencesKey("${prefix}mark_color")
+        val markCurrent = booleanPreferencesKey("${prefix}mark_current")
+        val progressColor = stringPreferencesKey("${prefix}progress_color")
+        val progressGradient = booleanPreferencesKey("${prefix}progress_gradient")
+
+        val all: List<Preferences.Key<*>> = listOf(
+            lines, surface, opacity, ink, accent, intensity, nextMark, weight, timeWeight, nameColor, timeColor, scale,
+            ornament, patternIntensity, hijriMonthNumber, gregorianMonthNumber, nextLines, progress, prayersBox,
+            boxSurface, boxOpacity, boxLine, markColor, markCurrent, progressColor, progressGradient,
+        )
+
+        companion object {
+            val DEFAULT = Keys("")
+
+            fun of(appWidgetId: Int) = Keys("w${appWidgetId}_")
+
+            /** The widgets that have a style of their own. */
+            val styled = stringSetPreferencesKey("styled_widgets")
+        }
     }
 }
 

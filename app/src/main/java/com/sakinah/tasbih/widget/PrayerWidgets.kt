@@ -52,8 +52,25 @@ enum class PrayerWidgetKind(val receiver: Class<out AppWidgetProvider>, val foll
         fun anyPlaced(context: Context): Boolean = entries.any { it.followsPrayers && it.placedIds(context).isNotEmpty() }
 
         fun anyAtAll(context: Context): Boolean = entries.any { it.placedIds(context).isNotEmpty() }
+
+        /** The kinds whose look the user chooses; the Qibla has none. */
+        val styled = listOf(DAY, NEXT)
+
+        /** The kind of the widget [appWidgetId], or null where it is not a prayer widget. */
+        fun of(context: Context, appWidgetId: Int): PrayerWidgetKind? {
+            val provider = AppWidgetManager.getInstance(context).getAppWidgetInfo(appWidgetId)?.provider?.className
+            return entries.firstOrNull { it.receiver.name == provider }
+        }
+
+        /** The day's and the next prayer's widgets on the home screen, each kind numbered from 1 by when it was placed. */
+        fun placedStyled(context: Context): List<PlacedPrayerWidget> = styled.flatMap { kind ->
+            kind.placedIds(context).sorted().mapIndexed { index, id -> PlacedPrayerWidget(id, kind, index + 1) }
+        }
     }
 }
+
+/** A prayer widget on the home screen: its id, its kind, and its number among those of its kind. */
+data class PlacedPrayerWidget(val appWidgetId: Int, val kind: PrayerWidgetKind, val number: Int)
 
 abstract class BasePrayerWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -91,6 +108,19 @@ abstract class BasePrayerWidget : AppWidgetProvider() {
     override fun onDisabled(context: Context) {
         runAsync { PrayerAlarms.schedule(context) }
     }
+
+    /** A widget taken off the home screen takes its look with it. */
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        runAsync { PrayerWidgetStyleRepository(context).remove(appWidgetIds.toList()) }
+    }
+
+    /** After a backup is restored each widget comes back under a new id, and its look moves with it. */
+    override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
+        runAsync {
+            PrayerWidgetStyleRepository(context).remap(oldWidgetIds, newWidgetIds)
+            PrayerWidgetUpdater(context).updateAll()
+        }
+    }
 }
 
 // These names are how Android remembers widgets already on a home screen; they must not change.
@@ -118,13 +148,14 @@ class PrayerWidgetUpdater(context: Context) {
         val schedule = settings.place?.let { PrayerSchedule(it, settings, HijriCalendar.from(calendarSettings)) }
         val calendarText = CalendarText(app, calendarSettings)
         val text = PrayerText(app)
-        val style = PrayerWidgetStyleRepository(app).current()
         val nextIds = PrayerWidgetKind.NEXT.placedIds(app)
         val dayIds = PrayerWidgetKind.DAY.placedIds(app)
-        nextIds.forEach { manager.updateAppWidget(it, nextViews(it, schedule, text, calendarText, style)) }
-        dayIds.forEach { manager.updateAppWidget(it, daySized(it, schedule, text, calendarText, style)) }
+        // Each widget in its own look; one drawn for the first time takes the default for its own.
+        val styles = PrayerWidgetStyleRepository(app).stylesFor(nextIds + dayIds)
+        nextIds.forEach { manager.updateAppWidget(it, nextViews(it, schedule, text, calendarText, styles.getValue(it))) }
+        dayIds.forEach { manager.updateAppWidget(it, daySized(it, schedule, text, calendarText, styles.getValue(it))) }
         // Only a bar has to move between prayers; the countdown ticks by itself.
-        WidgetTicker.set(app, on = style.progress && schedule != null && (nextIds.isNotEmpty() || dayIds.isNotEmpty()))
+        WidgetTicker.set(app, on = schedule != null && styles.values.any { it.progress })
         PrayerWidgetKind.QIBLA.placedIds(app).forEach { manager.updateAppWidget(it, qiblaViews(it, schedule, text)) }
     }
 

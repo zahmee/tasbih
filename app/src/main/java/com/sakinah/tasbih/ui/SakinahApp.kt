@@ -108,7 +108,8 @@ private sealed interface AppDestination {
     data object PrayerAlerts : AppDestination
     data object PrayerReliability : AppDestination
     data object PrayerMonth : AppDestination
-    data object PrayerWidgetStyle : AppDestination
+    /** The look of the widget [appWidgetId], or the default look for widgets placed later. */
+    data class PrayerWidgetStyle(val appWidgetId: Int? = null) : AppDestination
     /** The wird; [addOnEpochDay] opens a new task of one time on that day, as the calendar asks. */
     data class Wird(val addOnEpochDay: Long? = null) : AppDestination
 }
@@ -136,7 +137,7 @@ private fun AppDestination.route(): String = when (this) {
     AppDestination.PrayerAlerts -> "prayer-alerts"
     AppDestination.PrayerReliability -> "prayer-reliability"
     AppDestination.PrayerMonth -> "prayer-month"
-    AppDestination.PrayerWidgetStyle -> "prayer-widget-style"
+    is AppDestination.PrayerWidgetStyle -> "prayer-widget-style:${appWidgetId ?: ""}"
     is AppDestination.Wird -> "wird:${addOnEpochDay ?: ""}"
 }
 
@@ -163,7 +164,7 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
     "prayer-alerts" -> AppDestination.PrayerAlerts
     "prayer-reliability" -> AppDestination.PrayerReliability
     "prayer-month" -> AppDestination.PrayerMonth
-    "prayer-widget-style" -> AppDestination.PrayerWidgetStyle
+    "prayer-widget-style" -> AppDestination.PrayerWidgetStyle()
     else -> runCatching {
         val parts = route.split(':')
         when (parts.first()) {
@@ -174,6 +175,7 @@ private fun destinationFromRoute(route: String): AppDestination? = when (route) 
                 SettingsSection.Appearance -> AppDestination.GeneralSettings
             }
             "calendar" -> AppDestination.Calendar(parts.getOrNull(1)?.toLongOrNull())
+            "prayer-widget-style" -> AppDestination.PrayerWidgetStyle(parts.getOrNull(1)?.toIntOrNull())
             // A request to add is not carried over a restart: the page opens as it is.
             "wird" -> AppDestination.Wird()
             else -> null
@@ -403,7 +405,7 @@ private fun SakinahNavigation(
                 backStack.clear()
                 backStack.add(AppDestination.Home)
                 backStack.add(AppDestination.Prayer)
-                backStack.add(AppDestination.PrayerWidgetStyle)
+                backStack.add(AppDestination.PrayerWidgetStyle(request.appWidgetId))
                 onOpenRequestHandled()
             }
         }
@@ -721,13 +723,15 @@ private fun SakinahNavigation(
                                     state = state,
                                     viewModel = prayerViewModel,
                                     onBack = ::navigateBack,
-                                    onOpenWidgetStyle = { backStack.add(AppDestination.PrayerWidgetStyle) },
+                                    calendarText = calendarText,
+                                    onOpenWidgetStyle = { backStack.add(AppDestination.PrayerWidgetStyle(it)) },
                                 )
                             }
                         }
 
-                        AppDestination.PrayerWidgetStyle -> NavEntry(destination) {
+                        is AppDestination.PrayerWidgetStyle -> NavEntry(destination) {
                             com.sakinah.tasbih.ui.prayer.PrayerWidgetStyleScreen(
+                                appWidgetId = destination.appWidgetId,
                                 schedule = prayerState?.schedule,
                                 calendarText = calendarText,
                                 onBack = {
@@ -818,7 +822,7 @@ sealed interface AppOpenRequest {
     data object CalendarSettings : AppOpenRequest
 
     /** The widgets' customisation, from a widget's own «customise», on the widget it came from. */
-    data class WidgetStyle(val next: Boolean) : AppOpenRequest
+    data class WidgetStyle(val next: Boolean, val appWidgetId: Int? = null) : AppOpenRequest
 
     /** The wird, from its widget or a reminder, on [collectionId]'s adhkar when the task is their reading. */
     data class Wird(val collectionId: String? = null) : AppOpenRequest

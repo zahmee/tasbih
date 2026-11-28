@@ -45,7 +45,8 @@ class MainActivity : ComponentActivity() {
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_CALENDAR_SETTINGS) return AppOpenRequest.CalendarSettings
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIRD) return AppOpenRequest.Wird(intent.getStringExtra(EXTRA_COLLECTION))
         if (intent?.getStringExtra(EXTRA_OPEN) == OPEN_WIDGET_STYLE) {
-            return AppOpenRequest.WidgetStyle(next = intent.getBooleanExtra(EXTRA_NEXT, false))
+            val id = intent.getIntExtra(EXTRA_WIDGET_ID, 0).takeIf { it != 0 }
+            return AppOpenRequest.WidgetStyle(next = intent.getBooleanExtra(EXTRA_NEXT, false), appWidgetId = id)
         }
         if (intent?.getStringExtra(EXTRA_OPEN) != OPEN_CALENDAR) return null
         val day = intent.getLongExtra(EXTRA_DATE, Long.MIN_VALUE)
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
         private const val OPEN_CALENDAR_SETTINGS = "calendar_settings"
         private const val OPEN_WIRD = "wird"
         private const val EXTRA_NEXT = "next"
+        private const val EXTRA_WIDGET_ID = "widget_id"
         private const val EXTRA_COLLECTION = "collection"
         private const val EXTRA_DATE = "date"
         private const val EXTRA_OCCASIONS = "occasions"
@@ -78,11 +80,15 @@ class MainActivity : ComponentActivity() {
                 .putExtra(EXTRA_OPEN, OPEN_QIBLA)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
-        /** Opens the prayer widgets' customisation, on the next prayer's widget when [next]. */
-        fun widgetStyleIntent(context: Context, next: Boolean): Intent =
+        /**
+         * Opens the prayer widgets' customisation on the look of the widget [appWidgetId], from its
+         * own «customise»; without an id, on the default look, the next prayer's widget when [next].
+         */
+        fun widgetStyleIntent(context: Context, next: Boolean, appWidgetId: Int? = null): Intent =
             Intent(context, MainActivity::class.java)
                 .putExtra(EXTRA_OPEN, OPEN_WIDGET_STYLE)
                 .putExtra(EXTRA_NEXT, next)
+                .apply { if (appWidgetId != null) putExtra(EXTRA_WIDGET_ID, appWidgetId) }
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
         /**
